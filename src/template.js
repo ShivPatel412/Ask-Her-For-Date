@@ -1,0 +1,57 @@
+const themes = {
+  strawberry: { name: 'Warm Minimal ✨', background: '#FCFAF6', primary: '#FF625F', secondary: '#F4E9DD', text: '#282223', muted: '#70686A', card: '#FFFFFFEE' },
+  blue: { name: 'Blue Trouble 💙', background: '#F4FAFF', primary: '#5BA7E1', secondary: '#E8DEFF', text: '#20242B', muted: '#65717B', card: '#FFFFFFD6' },
+  yellow: { name: 'Yellow Chaos 💛', background: '#FFFBEA', primary: '#E9A900', secondary: '#8FD3FF', text: '#2B2720', muted: '#756D55', card: '#FFFFFFD6' },
+  midnight: { name: 'Midnight Date 🌙', background: '#171329', primary: '#FF7EB3', secondary: '#725AC1', text: '#FFF7FC', muted: '#CBBFD0', card: '#2A2342E6' },
+  rose: { name: 'Rose Gold 🌹', background: '#FFF8F1', primary: '#C87986', secondary: '#F1D1C8', text: '#38272A', muted: '#80666A', card: '#FFFFFFD6' }
+};
+
+const fonts = {
+  romantic: { name: 'Romantic', heading: 'DM Serif Display', body: 'Poppins' },
+  cute: { name: 'Cute', heading: 'Fredoka', body: 'Nunito' },
+  elegant: { name: 'Elegant', heading: 'Playfair Display', body: 'Inter' },
+  modern: { name: 'Modern', heading: 'Manrope', body: 'Inter' },
+  handwritten: { name: 'Handwritten Accent', heading: 'DM Serif Display', body: 'Caveat' }
+};
+
+const defaultContent = {
+  intro: { eyebrow: 'Hey {{recipientName}} 👀', heading: 'I made something for you…', body: 'Made with way too much overthinking 😂', primary: 'Open it 👀' },
+  nickname: { eyebrow: 'Okay, important question first… 👀', heading: 'What am I allowed to call you? 😂', body: 'Choose wisely… this name is going to follow you around this website. 😌', primary: 'Haan, approved 😌', secondary: 'Nahi nahi, change karo 😂' },
+  analysis: { eyebrow: 'Friendship scanner 3000', heading: 'Analyzing our friendship… 👀', body: 'Conclusion: I should probably just ask you.', primary: 'Continue 👀' },
+  main: { eyebrow: 'Okay, ab main point pe aate hain… 👀', heading: 'Will you go on a date with me?', body: "I really enjoy spending time with you, and I've been wanting to ask you this for a while.", primary: 'Haan, chalo 😌', secondary: 'Hmm… sochna padega 👀', tertiary: 'Convince me 😏' },
+  thinking: { eyebrow: '← Ek baar question fir se dekh le? 👀', heading: 'One cute date? That’s it. 😌', body: 'No awkward pressure. Just food, fun, and me behaving (mostly). 😂', primary: 'Achha theek hai 😂', secondary: 'Pehle plan batao 👀', tertiary: 'Aur convince karo 😏', quaternary: 'Still thinking 🤭' },
+  convince: { eyebrow: '← Accha accha, options fir se dikhao 😌', heading: 'Okay {{nickname}}, presentation starts now. 😂', body: 'Why you should say yes:', primary: 'Fineee, yes 😂❤️', secondary: 'Date idea dikhao 👀', tertiary: 'Hmm, aur effort chahiye 😏' },
+  benefits: { eyebrow: '← Restart the drama 😂', heading: 'DATE BENEFITS PACKAGE™', body: 'Prepared specially for {{nickname}} 😂', primary: 'Okay okay, yes 😂❤️', secondary: 'Plan batao pehle 😌', tertiary: 'Still not convinced 😏' },
+  mood: { eyebrow: '← Main question, please 😏', heading: 'Okay {{nickname}}, pick your mood 👀', body: 'You choose the vibe… baaki planning meri. 😌❤️', primary: 'Continue 👀', secondary: '← Pick another vibe' },
+  finalAttempt: { eyebrow: '← Okay, ek aur chance do 😭😂', heading: 'Okay okay… I see how it is. 😂', body: 'One proper date. No big promises. No awkward expectations. Just you, me, food, and a good time. 😌', primary: 'Chal theek hai, date pe chalte hain 😂', secondary: 'Surprise me 😏', tertiary: 'Best friend hi theek hai 😂' },
+  yes: { eyebrow: 'WAIT.', heading: "IT'S A DATE.", body: 'Okay wow. This actually worked. 😂', primary: 'Okay, ab plan karte hain 👀' },
+  availability: { eyebrow: 'One last thing', heading: 'When are you free? 👀', body: 'I promise this is the last interview question 😂', primary: 'Continue ❤️' },
+  success: { eyebrow: 'Perfect. 😌', heading: 'Baaki planning meri.', body: 'You picked the timing. You picked the vibe. You just have to show up. 😂', primary: 'Okay, ab plan karte hain 👀' },
+  decline: { eyebrow: 'Hahaha, okay. 😭😂', heading: 'Best-friend privileges remain fully active. 🤝', body: "Message received. No awkwardness. No pressure.\nUnlimited bakwaas, food plans, memes, and annoying each other continue as usual. 😂\n\nI'm still glad I asked.", primary: 'Done 🤝' },
+  secret: { heading: 'Jokes apart…', body: "I made all this because asking you with a boring text didn't feel right.\nWhatever happens, you're someone I genuinely love spending time with.\nAnd I'm really happy you said yes. ❤️", primary: 'Okay bas, emotional mat ho 😂' }
+};
+
+const nicknames = ['Madam Ji 😌', 'Cutie ❤️', 'Chotu 👀😂', 'Princess 👑', 'Drama Queen 😂', 'My Favorite Human ❤️', 'Miss Nakhrali 😏', 'Boss Lady 😌', 'Cute Trouble 😈', 'Actual name hi theek hai 😂'];
+const favoriteMood = { title: 'Long Drive + Food 🚗🍟', description: 'Good playlist, long talks, and snacks.', favorite: true };
+const moods = [
+  favoriteMood,
+  { title: 'Coffee + Walk ☕', description: 'Good conversations + long walk' },
+  { title: 'Dinner + Dessert 🍝', description: 'Food first. Everything else later.' },
+  { title: 'Movie + Food 🎬', description: "We can judge each other's movie taste 😂" },
+  { title: 'Fun Activity 🎳', description: 'Loser buys dessert.' },
+  { title: 'Drinks + Party 🍸🎉', description: 'Music + drinks + questionable dancing 😂' },
+  { title: 'Surprise Me ✨', description: 'Dangerous amount of trust 👀' }
+];
+const availability = ['This weekend ❤️', 'Next week 😌', "I'll tell you 😂", 'Let me pick a date 📅'];
+
+function defaultConfig(inviterName = '', recipientName = '') {
+  return {
+    theme: { preset: 'strawberry', ...themes.strawberry, fontPreset: 'romantic', ...fonts.romantic },
+    content: structuredClone(defaultContent),
+    features: { nickname: true, analysis: true, mascots: true, tinyMode: true, collection: true, confetti: true, funnyBack: true, music: false, musicUrl: null, musicName: null, memories: false, customNickname: true, mascotPack: 'original' },
+    nicknames: [...nicknames], moods: structuredClone(moods), availability: [...availability],
+    inviterName, recipientName, title: 'Something for you ❤️'
+  };
+}
+
+module.exports = { themes, fonts, favoriteMood, defaultConfig };
