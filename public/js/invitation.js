@@ -119,7 +119,14 @@ function musicControl() {
   const empty = !musicAudio;
   if (empty && !(data.preview && features.music)) return "";
   const disabled = empty ? "disabled" : "";
-  return `<div class="music-player ${empty ? "music-empty" : ""} ${state.musicMinimized ? "minimized" : ""}" role="group" aria-label="Music player"><div class="music-head"><button class="music-minimize" data-music="minimize" aria-label="Minimize player"></button><span class="music-cover" aria-hidden="true">🎧</span><div class="music-meta"><b>${text(empty ? "Add a song in the editor" : features.musicName || "Favorite song")}</b><small>${empty ? "Music is enabled" : "Currently vibing"}</small></div><i class="music-bars" aria-hidden="true"><b></b><b></b><b></b><b></b></i><button data-music="mute" aria-label="Mute music" ${disabled}>🔊</button></div><div class="music-progress"><time data-current>0:00</time><input data-music="seek" type="range" min="0" max="100" value="0" aria-label="Song progress" ${disabled}><time data-duration>${empty ? "--:--" : "0:00"}</time></div><div class="music-controls"><button data-music="back" aria-label="Go back 10 seconds" ${disabled}>↶</button><button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>▶</button><button data-music="forward" aria-label="Go forward 10 seconds" ${disabled}>↷</button><label class="music-volume"><span aria-hidden="true">🔉</span><input data-music="volume" type="range" min="0" max="100" value="35" aria-label="Music volume" ${disabled}></label></div></div>`;
+  return `<div class="music-player ${empty ? "music-empty" : ""} ${state.musicMinimized ? "minimized" : ""}" role="group" aria-label="Music player">
+  <div class="music-head">
+    <button class="music-minimize" data-music="minimize" aria-label="Minimize player"></button>
+      <span class="music-cover" aria-hidden="true">🎧</span>
+        <div class="music-meta"><b>${text(empty ? "Add a song in the editor" : features.musicName || "Favorite song")}</b>
+        <small>${empty ? "Music is enabled" : "Currently vibing"}</small></div><i class="music-bars" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
+        <button data-music="mute" aria-label="Mute music" ${disabled}>🔊</button></div>
+        <div class="music-progress"><time data-current>0:00</time><input data-music="seek" type="range" min="0" max="100" value="0" aria-label="Song progress" ${disabled}><time data-duration>${empty ? "--:--" : "0:00"}</time></div><div class="music-controls"><button data-music="back" aria-label="Go back 10 seconds" ${disabled}>↶</button><button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>▶</button><button data-music="forward" aria-label="Go forward 10 seconds" ${disabled}>↷</button><label class="music-volume"><span aria-hidden="true">🔉</span><input data-music="volume" type="range" min="0" max="100" value="25" aria-label="Music volume" ${disabled}></label></div></div>`;
 }
 function startMusic() {
   if (!musicAudio || !musicAudio.paused) return;
