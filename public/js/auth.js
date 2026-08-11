@@ -1,0 +1,3 @@
+const form=document.querySelector('.auth-form'),password=form?.querySelector('[name="password"]'),confirmation=form?.querySelector('[name="confirmPassword"]'),message=form?.querySelector('.password-match');
+function validatePasswords(){if(!confirmation)return;const mismatch=Boolean(confirmation.value&&confirmation.value!==password.value);confirmation.setCustomValidity(mismatch?'Passwords do not match.':'');message.textContent=mismatch?'Passwords do not match.':confirmation.value?'Passwords match ✓':'';message.classList.toggle('valid',Boolean(confirmation.value&&!mismatch));}
+password?.addEventListener('input',validatePasswords);confirmation?.addEventListener('input',validatePasswords);form?.addEventListener('submit',validatePasswords);

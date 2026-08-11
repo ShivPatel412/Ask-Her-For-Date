@@ -25,7 +25,7 @@ function browser() {
 async function csrf(fetcher, route = '/register') { const html = await (await fetcher(route)).text(); return html.match(/name="csrf-token" content="([^"]+)/)[1]; }
 async function register(fetcher, username, email) {
   const token = await csrf(fetcher);
-  const body = new URLSearchParams({ _csrf: token, username, email, password: 'strong-password-123' });
+  const body = new URLSearchParams({ _csrf: token, username, email, password: 'strong-password-123', confirmPassword:'strong-password-123' });
   const response = await fetcher('/register', { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body });
   assert.equal(response.status, 302); return csrf(fetcher, '/dashboard');
 }
@@ -65,8 +65,10 @@ test('auth, ownership, publishing, visitor events, and analytics work end to end
 
 test('invalid login and invalid CSRF are rejected', async () => {
   const client = browser(), token = await csrf(client, '/login');
+  const landing = await (await client('/')).text(); for(const href of ['/#how-it-works','/#template','/#features','/login','/register'])assert.match(landing,new RegExp(`href="${href.replace('/','\\/')}"`));
   const login = await client('/login', { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({_csrf:token,email:'nobody@example.com',password:'wrong-password'}) });
   assert.equal(login.status, 401);
   const bad = await client('/register', { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({_csrf:'bad',username:'x',email:'x@y.com',password:'12345678'}) });
   assert.equal(bad.status, 403);
+  const registerToken=await csrf(client,'/register'); const mismatch=await client('/register',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_csrf:registerToken,username:'mismatch-user',email:'mismatch@example.com',password:'12345678',confirmPassword:'87654321'})}); assert.equal(mismatch.status,400); assert.match(await mismatch.text(),/Passwords do not match/);
 });
