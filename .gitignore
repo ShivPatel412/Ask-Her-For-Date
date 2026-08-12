@@ -1,5 +1,11 @@
 node_modules/
+.next/
 .env
 data/*.db*
 data/uploads/
 npm-debug.log*
+start.log
+start-error.log
+
+.vercel
+.env*

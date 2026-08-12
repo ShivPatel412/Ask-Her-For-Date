@@ -11,6 +11,7 @@ function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE,
       username TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL,
+      whatsapp_number TEXT,
       role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user','superadmin')),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -46,6 +47,8 @@ function openDatabase(filename) {
     CREATE INDEX IF NOT EXISTS idx_events_session_sequence ON events(session_id, sequence_number);
     CREATE INDEX IF NOT EXISTS idx_events_invitation_created ON events(invitation_id, created_at);
   `);
+  if (!db.prepare('PRAGMA table_info(users)').all().some(column => column.name === 'whatsapp_number'))
+    db.exec('ALTER TABLE users ADD COLUMN whatsapp_number TEXT');
   return db;
 }
 

@@ -98,7 +98,8 @@ Creator preview mode does not create visitor sessions or analytics events.
 | Layer | Technology |
 | --- | --- |
 | Runtime | Node.js 20+ |
-| Server | Express 5 |
+| Web framework | Next.js |
+| Route handlers | Existing Express app mounted behind Next.js rewrites |
 | Database | SQLite through `better-sqlite3` |
 | Sessions | `express-session` with persistent SQLite storage |
 | Authentication | `bcryptjs` password hashing |
@@ -107,7 +108,7 @@ Creator preview mode does not create visitor sessions or analytics events.
 | Configuration | `dotenv` |
 | Tests | Native Node.js test runner |
 
-The application intentionally avoids a frontend framework and build pipeline. Static CSS and JavaScript files are served directly by Express.
+The current Next.js migration keeps the existing server-rendered HTML, CSS, and browser JavaScript. Next.js provides the deployment/runtime layer for Vercel while the existing Express routes continue to handle pages, forms, APIs, sessions, SQLite, and uploads.
 
 ## Requirements
 
@@ -174,8 +175,10 @@ The SQLite database, upload directory, and database schema are created automatic
 
 | Command | Description |
 | --- | --- |
-| `npm start` | Starts the application normally |
-| `npm run dev` | Starts Node in watch mode and restarts after server-side file changes |
+| `npm run dev` | Starts the Next.js development server |
+| `npm run build` | Builds the Next.js/Vercel app |
+| `npm start` | Starts the built Next.js app |
+| `npm run start:express` | Starts the old Express-only server for debugging |
 | `npm test` | Runs the integration test suite |
 | `npm audit --omit=dev` | Checks production dependencies for known vulnerabilities |
 
@@ -183,11 +186,11 @@ The SQLite database, upload directory, and database schema are created automatic
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | `3000` | HTTP port used by Express |
+| `PORT` | `3000` | Local server port |
 | `NODE_ENV` | `development` | Use `production` in production environments |
 | `SESSION_SECRET` | No safe default | Secret used to sign login sessions; use at least 32 unpredictable characters |
 | `TRUST_PROXY` | `0` | Set to `1` when running behind one trusted reverse proxy |
-| `DATABASE_PATH` | `./data/app.db` | SQLite database file location |
+| `DATABASE_PATH` | `./data/app.db` locally, `/tmp/ask-her-out/app.db` on Vercel | SQLite database file location |
 | `SUPERADMIN_EMAIL` | `owner@example.com` | Registration email that receives the superadmin role |
 
 Never commit the real `.env` file. It is excluded by `.gitignore`.
@@ -221,6 +224,10 @@ Duplicating an invitation copies its design and content into a new draft. It doe
 
 ```text
 Ask-Her-Out/
+├── pages/
+│   └── api/
+│       └── express/
+│           └── [[...path]].js       # Next.js API catch-all that runs the Express app
 ├── public/
 │   ├── css/
 │   │   ├── app.css             # Dashboard, authentication, editor, and analytics styles
@@ -234,10 +241,13 @@ Ask-Her-Out/
 │       └── new.js              # Invitation creation forms
 ├── src/
 │   ├── database.js             # SQLite initialization and schema
+│   ├── next-express.js         # Small adapter between Next.js and Express
 │   └── template.js             # Theme presets and default invitation content
 ├── test/
 │   └── app.test.js             # End-to-end integration tests
 ├── data/                       # Runtime database and uploaded audio; not committed
+├── next.config.js              # Next.js rewrites to the Express adapter
+├── vercel.json                 # Vercel build settings
 ├── .env.example                # Safe environment variable template
 ├── package.json                # Scripts, metadata, and dependencies
 └── server.js                   # Express server, routes, validation, and APIs
@@ -428,3 +438,6 @@ Confirm HTTPS is enabled, `NODE_ENV=production` is correct, and `TRUST_PROXY=1` 
 This repository contains one polished template and a single-server SQLite architecture. Image uploads, scheduled publishing, invitation expiry, QR codes, multiple template families, and multi-region deployment are intentionally outside the current version.
 
 The existing JSON content model and feature flags allow those capabilities to be added later without changing the basic invitation ownership and analytics model.
+#   A s k - H e r - F o r - D a t e  
+ #   A s k - H e r - F o r - D a t e  
+ 

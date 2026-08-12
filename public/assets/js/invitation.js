@@ -6,13 +6,17 @@ const screens = data.content.screens,
 const state = {
   screen: "intro",
   previous: "",
-  nickname: localStorage.getItem(`hl-nick-${data.token}`) || "",
+  nickname: data.recipientName,
   mood: "",
   moodChosen: false,
   availability: "",
   date: "",
+  selectedDate: "",
+  selectedTime: "",
+  calendarMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   mainVisits: 0,
   found: new Set(),
+  cutePositions: randomCutePositions(),
   tinyClicks: 0,
   visitorId: localStorage.getItem(`hl-visitor-${data.token}`) || "",
   sessionReady: false,
@@ -190,11 +194,24 @@ function mascots() {
 }
 function collectibles() {
   return ["✦", "🧸", "★", "●", "〰"]
-    .map(
-      (x, i) =>
-        `<button class="collectible c${i}" data-cute="${i}" aria-label="Hidden cute thing ${i + 1}">${x}</button>`,
-    )
+    .map((x, i) => {
+      const position = state.cutePositions[i];
+      return `<button class="collectible c${i} ${state.found.has(String(i)) ? "found" : ""}" style="left:${position.left}%;top:${position.top}%" data-cute="${i}" aria-label="Hidden cute thing ${i + 1}">${x}</button>`;
+    })
     .join("");
+}
+function randomCutePositions() {
+  const zones = [
+    [3, 13, 10, 26],
+    [87, 96, 12, 30],
+    [2, 11, 38, 66],
+    [89, 97, 38, 66],
+    [18, 78, 72, 80],
+  ];
+  return zones.map(([leftMin, leftMax, topMin, topMax]) => ({
+    left: (leftMin + Math.random() * (leftMax - leftMin)).toFixed(1),
+    top: (topMin + Math.random() * (topMax - topMin)).toFixed(1),
+  }));
 }
 function modal(id, heading, body, button) {
   return `<dialog id="${id}-modal" class="${id}-dialog"><div class="modal-inner">${id === "privacy" ? '<div class="privacy-icon" aria-hidden="true">✓</div><span class="modal-kicker">Your privacy matters</span>' : ""}<button class="modal-x" data-close aria-label="Close">×</button><h2>${text(heading)}</h2><p>${text(body)}</p><button class="choice primary modal-action" data-close>${text(button)}</button></div></dialog>`;
@@ -208,9 +225,6 @@ function render() {
   const s = screens[state.screen] || screens.intro;
   if (state.screen === "intro")
     content = copy(s, btn(s.primary, "open", "primary"));
-  if (state.screen === "nickname") content = nicknameScreen();
-  if (state.screen === "nicknameConfirm")
-    content = `<span class="eyebrow">Choice detected</span><h1>So it's “${text(state.nickname)}” now? 👀😂</h1><div class="reaction-card"><span>💬</span><b>${nicknameReaction()}</b></div>${btn(screens.nickname.primary, "nicknameApprove", "primary")}${btn(screens.nickname.secondary, "nicknameChange")}`;
   if (state.screen === "analysis") content = analysisScreen();
   if (state.screen === "main") content = mainScreen();
   if (state.screen === "thinking")
@@ -225,7 +239,6 @@ function render() {
     content = `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="promise"><span><b>🔍</b>You know me already</span><span><b>💬</b>You survive my bakwaas</span><span><b>🙌</b>We have fun together</span></div><h2 class="closing-question">Final answer? 👀</h2><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "decline", "respect")}</div>`;
   if (state.screen === "yes") content = yesScreen();
   if (state.screen === "availability") content = availabilityScreen();
-  if (state.screen === "finalMood") content = finalMoodScreen();
   if (state.screen === "success") content = successScreen();
   if (state.screen === "decline") content = declineScreen();
   app.innerHTML = shell(content);
@@ -247,24 +260,6 @@ function render() {
 }
 function back(label) {
   return `<button class="back" data-action="main">${text(label)}</button>`;
-}
-function nicknameScreen() {
-  const s = screens.nickname;
-  return `${copy(s)}<div class="choices compact">${data.content.nicknames.map((n) => btn(n, "pickNickname")).join("")}${features.customNickname ? btn("I'll choose my own 👀", "customNickname") : ""}</div><div id="custom-nick" hidden><label>Type what I should call you…<input maxlength="25" autocomplete="off"></label><button class="choice primary" data-action="submitNickname">Use this name</button></div>`;
-}
-function nicknameReaction() {
-  const n = state.nickname.replace(/[^\p{L}\s]/gu, "").trim();
-  return (
-    {
-      "Madam Ji": "Understood, Madam Ji. 🫡😂",
-      Cutie: "Bold choice. Can't really disagree though. 😌❤️",
-      Chotu: "Okay okay, height jokes officially unlocked 😂",
-      Princess: "Royal treatment requested. Noted. 👑😂",
-      "Drama Queen": "Finally, an accurate option. 😭😂",
-      "My Favorite Human": "Okay… this one is dangerously wholesome. ❤️",
-      "Cute Trouble": "Yeah… that sounds suspiciously accurate. 😂",
-    }[n] || `${state.nickname} it is. 😌`
-  );
 }
 function analysisScreen() {
   const s = screens.analysis;
@@ -342,25 +337,59 @@ function yesScreen() {
 }
 function availabilityScreen() {
   const s = screens.availability;
-  return `${copy(s)}<div class="choices">${data.content.availability.map((a) => btn(a, "pickAvailability")).join("")}</div><div id="date-pick" hidden><label>Pick a date<input type="date" min="${new Date().toISOString().slice(0, 10)}"></label><button class="choice primary" data-action="submitDate">Use this date</button></div>`;
+  return `${copy(s)}<div id="date-pick" class="date-time-pick"><section class="date-field"><div class="picker-label"><span>📅 Pick the date</span><b>${state.selectedDate ? formatDate(state.selectedDate) : "Choose a day"}</b></div>${calendar()}</section><fieldset class="time-field"><legend>⏰ Pick the time</legend><div class="time-options">${timeOptions()}</div></fieldset><button class="choice primary" data-action="submitDate">Confirm date & time ❤️</button></div>`;
 }
-function finalMoodScreen() {
-  if (state.mood)
-    return `<span class="eyebrow">Final vibe check</span><h1>Still feeling ${text(state.mood)}? 👀</h1>${btn("Yep 😌❤️", "success", "primary")}${btn("Change it 😂", "mood")}`;
-  return moodScreen();
+function minDate() {
+  const date = new Date();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+function formatDate(value) {
+  return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${value}T12:00`));
+}
+function calendar() {
+  const month = state.calendarMonth,
+    year = month.getFullYear(),
+    monthIndex = month.getMonth(),
+    firstDay = new Date(year, monthIndex, 1).getDay(),
+    days = new Date(year, monthIndex + 1, 0).getDate(),
+    currentMonth = minDate().slice(0, 7),
+    monthValue = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+  const dates = Array.from({ length: firstDay + days }, (_, i) => {
+    const day = i - firstDay + 1;
+    if (day < 1) return '<span class="calendar-blank"></span>';
+    const value = `${monthValue}-${String(day).padStart(2, "0")}`,
+      classes = [value === minDate() ? "today" : "", value === state.selectedDate ? "selected" : ""].filter(Boolean).join(" ");
+    return `<button type="button" class="${classes}" data-action="selectDate" data-value="${value}" ${value < minDate() ? "disabled" : ""}>${day}</button>`;
+  }).join("");
+  return `<div class="calendar"><header><button type="button" data-action="calendarPrev" aria-label="Previous month" ${monthValue <= currentMonth ? "disabled" : ""}>‹</button><strong>${month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong><button type="button" data-action="calendarNext" aria-label="Next month">›</button></header><div class="weekdays" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div class="calendar-days">${dates}</div></div>`;
+}
+function timeOptions() {
+  return Array.from({ length: 11 }, (_, i) => {
+    const hour = i + 10;
+    const label = `${hour > 12 ? hour - 12 : hour}:00 ${hour < 12 ? "AM" : "PM"}`;
+    const value = `${String(hour).padStart(2, "0")}:00`;
+    return `<label class="time-option"><input data-time type="radio" name="date-time" value="${value}" ${state.selectedTime === value ? "checked" : ""}><span>${label}</span></label>`;
+  }).join("");
+}
+function formatDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 function datePass(title, people, plan, when) {
   return `<div class="date-pass"><div class="pass-title">✦ ${text(title)} ✦ <small>DATE #001</small></div><div><span>👫</span><b>${text(people)}</b></div><div><span>🍔</span><b>${text(plan)}</b></div><div><span>🗓️</span><b>${text(when)}</b></div><div><span>😎</span><b>Admits: two cute idiots 😂</b></div></div>`;
 }
 function successScreen() {
   const s = screens.success,
-    when = state.date || state.availability || "We decide",
+    when = state.date ? formatDateTime(state.date) : "We decide",
     plan = state.mood || "Food + fun";
-  return `<span class="eyebrow">Perfect. Date planning unlocked ✨</span><h1>${text(s.heading)}</h1><div class="celebration-pair small" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}<div class="evidence-note">Screenshot this. Evidence secured 😂</div><div class="action-stack">${btn(s.primary, "complete", "primary")}<button class="choice" data-modal="secret">One more thing… 👀</button></div>`;
+  const message=encodeURIComponent(`Hey ${data.inviterName}! I said yes 😌❤️ Let's plan it now. I chose ${plan} and ${when}.`),whatsapp=data.whatsappNumber?`<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">${text(s.primary)}</a>`:btn(s.primary,"complete","primary");
+  return `<span class="eyebrow">Perfect. Date planning unlocked ✨</span><h1>${text(s.heading)}</h1><div class="celebration-pair small" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}<div class="evidence-note">Screenshot this. Evidence secured 😂</div><div class="action-stack">${whatsapp}<button class="choice" data-modal="secret">One more thing… 👀</button></div>`;
 }
 function declineScreen() {
-  const s = screens.decline;
-  return `<span class="eyebrow">Choice respected 🤝</span><h1>${text(s.heading)}</h1><div class="status-chip">✓ No awkwardness · No pressure</div><div class="privilege-grid"><span><b>😂</b>Unlimited bakwaas</span><span><b>🍕</b>Food plans</span><span><b>📱</b>Memes continue</span><span><b>🤝</b>Besties remain</span></div><div class="reaction-card"><span>🤝</span><b>I'm still glad I asked.</b></div>${btn(s.primary, "declineComplete", "respect")}`;
+  const s = screens.decline,
+    message = encodeURIComponent(`Hey ${data.inviterName}, I think we're better as best friends 🤝 I hope that's okay—our friendship still matters to me.`),
+    whatsapp = data.whatsappNumber ? `<a class="choice respect whatsapp-plan" data-action="declineComplete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">${text(s.primary)}</a>` : btn(s.primary, "declineComplete", "respect");
+  return `<span class="eyebrow">Choice respected 🤝</span><h1>${text(s.heading)}</h1><div class="status-chip">✓ No awkwardness · No pressure</div><div class="privilege-grid"><span><b>😂</b>Unlimited bakwaas</span><span><b>🍕</b>Food plans</span><span><b>📱</b>Memes continue</span><span><b>🤝</b>Besties remain</span></div><div class="reaction-card"><span>🤝</span><b>I'm still glad I asked.</b></div>${whatsapp}`;
 }
 function bind() {
   app
@@ -431,32 +460,7 @@ function go(screen, event = "screen_view", option = "") {
 function act(action, value) {
   if (action === "open") {
     startMusic();
-    go(
-      features.nickname ? "nickname" : features.analysis ? "analysis" : "main",
-      "button_clicked",
-      value,
-    );
-  } else if (action === "pickNickname") {
-    state.nickname = value;
-    go("nicknameConfirm", "nickname_selected", value);
-  } else if (action === "customNickname") {
-    document.querySelector("#custom-nick").hidden = false;
-    document.querySelector("#custom-nick input").focus();
-  } else if (action === "submitNickname") {
-    const v = document
-      .querySelector("#custom-nick input")
-      .value.trim()
-      .slice(0, 25);
-    if (v) {
-      state.nickname = v;
-      go("nicknameConfirm", "nickname_selected", v);
-    }
-  } else if (action === "nicknameApprove") {
-    localStorage.setItem(`hl-nick-${data.token}`, state.nickname);
-    go(features.analysis ? "analysis" : "main", "button_clicked", value);
-  } else if (action === "nicknameChange") {
-    state.nickname = "";
-    go("nickname", "nickname_changed", value);
+    go("main", "button_clicked", value);
   } else if (action === "main") go("main", "back_to_main", value);
   else if (
     ["thinking", "convince", "benefits", "finalAttempt"].includes(action)
@@ -476,25 +480,25 @@ function act(action, value) {
     go("decline", "screen_view", value);
   } else if (action === "availability")
     go("availability", "button_clicked", value);
-  else if (action === "pickAvailability") {
-    if (value.includes("pick a date")) {
-      document.querySelector("#date-pick").hidden = false;
-      document.querySelector("#date-pick input").focus();
-    } else {
-      state.availability = value;
-      track("availability_selected", "availability", value);
-      go("finalMood");
-    }
-  } else if (action === "submitDate") {
-    const date = document.querySelector("#date-pick input").value;
-    if (date) {
-      state.date = date;
-      state.availability = "Custom date";
-      track("availability_selected", "availability", "Custom date", {
-        selectedDate: date,
-      });
-      go("finalMood");
-    }
+  else if (action === "calendarPrev" || action === "calendarNext") {
+    state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() + (action === "calendarNext" ? 1 : -1), 1);
+    render();
+  } else if (action === "selectDate") {
+    state.selectedTime = document.querySelector("[data-time]:checked")?.value || state.selectedTime;
+    state.selectedDate = value;
+    render();
+  }
+  else if (action === "submitDate") {
+    const date = state.selectedDate;
+    const time = document.querySelector("[data-time]:checked")?.value || state.selectedTime;
+    const dateTime = date && time ? `${date}T${time}` : "";
+    if (!dateTime) return toast("Please choose both a date and time.");
+    if (new Date(dateTime) <= new Date()) return toast("Please choose a future date and time.");
+    state.date = dateTime;
+    track("availability_selected", "availability", formatDateTime(dateTime), {
+      selectedDate: dateTime,
+    });
+    go("success");
   } else if (action === "success") go("success", "screen_view", value);
   else if (action === "complete" || action === "declineComplete") {
     track("completion", state.screen, value);
