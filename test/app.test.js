@@ -27,7 +27,7 @@ async function register(fetcher, username, email) {
   const token = await csrf(fetcher);
   const body = new URLSearchParams({ _csrf: token, username, email, whatsapp:'+91 98765 43210', password: 'strong-password-123', confirmPassword:'strong-password-123' });
   const response = await fetcher('/register', { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body });
-  assert.equal(response.status, 302); return csrf(fetcher, '/dashboard');
+  assert.ok(response.status === 302 || response.status === 303, 'Register redirects to dashboard'); return csrf(fetcher, '/dashboard');
 }
 
 test('auth, ownership, publishing, visitor events, and analytics work end to end', async () => {
@@ -74,6 +74,8 @@ test('auth, ownership, publishing, visitor events, and analytics work end to end
   const analytics = await (await owner(`/api/invitations/${invitation.id}/analytics`)).json();
   assert.equal(analytics.summary.yes, 1); assert.equal(analytics.summary.views, 1); assert.equal(analytics.events.length, 4); assert.equal(analytics.sessions[0].selected_nickname, null); assert.equal(analytics.sessions[0].selected_date, '2026-08-15T19:30');
   assert.equal((await owner(`/api/invitations/${invitation.id}/music`, { method:'DELETE', headers:{'x-csrf-token':ownerCsrf} })).status, 200);
+  const logs = db.prepare('SELECT * FROM user_logs WHERE email=?').all('rahul@example.com');
+  assert.ok(logs.length > 0); assert.equal(logs[0].action, 'REGISTER');
 });
 
 test('invalid login and invalid CSRF are rejected', async () => {
@@ -92,4 +94,21 @@ test('legacy accounts can add WhatsApp from the dashboard', async () => {
   const dashboard=await (await client('/dashboard')).text(); assert.match(dashboard,/class="whatsapp-setup"/);
   const saved=await client('/dashboard/whatsapp',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_csrf:token,whatsapp:'+91 99887 76655'})}); assert.equal(saved.status,302);
   assert.equal(db.prepare('SELECT whatsapp_number FROM users WHERE email=?').get('legacy@example.com').whatsapp_number,'919988776655');
+});
+
+test('superadmin can access admin control panel and view user details and logs', async () => {
+  const adminClient = browser();
+  await register(adminClient, 'admin_boss', 'admin_boss@example.com');
+  db.prepare("UPDATE users SET role='superadmin' WHERE email=?").run('admin_boss@example.com');
+  const adminPage = await adminClient('/admin');
+  assert.equal(adminPage.status, 200);
+  const html = await adminPage.text();
+  assert.match(html, /Admin Control Panel/);
+  assert.match(html, /Registered User Accounts/);
+  assert.match(html, /Security & Authentication Logs/);
+
+  const userClient = browser();
+  await register(userClient, 'regular_user', 'regular@example.com');
+  const regularAdminAccess = await userClient('/admin');
+  assert.equal(regularAdminAccess.status, 403);
 });

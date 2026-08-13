@@ -11,7 +11,7 @@ const { rateLimit } = require('express-rate-limit');
 const { openDatabase } = require('./src/database');
 const { defaultConfig, themes, fonts, favoriteMood } = require('./src/template');
 
-const root = __dirname;
+const root = process.cwd();
 const defaultDataPath = process.env.VERCEL ? path.join(os.tmpdir(), 'ask-her-out', 'app.db') : 'data/app.db';
 const dataPath = path.resolve(root, process.env.DATABASE_PATH || defaultDataPath);
 const uploadsPath = path.join(path.dirname(dataPath), 'uploads');
@@ -90,6 +90,11 @@ function requireCsrf(req, res, next) {
 }
 function requireUser(req, res, next) {
   if (!req.session.userId) return req.accepts('html') ? res.redirect('/login') : res.status(401).json({ error: 'Please log in.' });
+  const user = db.prepare('SELECT id FROM users WHERE id=?').get(req.session.userId);
+  if (!user) {
+    req.session.userId = null;
+    return req.accepts('html') ? res.redirect('/login') : res.status(401).json({ error: 'Please log in.' });
+  }
   next();
 }
 function ownedInvitation(id, userId) {
@@ -102,8 +107,9 @@ function invitationDTO(row) {
   return { id: row.id, token: row.public_token, templateKey: row.template_key, inviterName: row.inviter_name, recipientName: row.recipient_name, whatsappNumber: row.whatsapp_number || '', title: row.title, status: row.status, theme: json(row.theme_config_json), content, features: json(row.feature_config_json), createdAt: row.created_at, updatedAt: row.updated_at, publishedAt: row.published_at };
 }
 function page(title, body, req, script = '') {
-  const user = req.session.userId ? db.prepare('SELECT username FROM users WHERE id=?').get(req.session.userId) : null;
-  const nav = user ? `<nav class="topbar app-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><a class="user-dashboard-link" href="/dashboard" aria-label="Open dashboard"><span class="user-avatar" aria-hidden="true">${escapeHtml(user.username.slice(0,1).toUpperCase())}</span><span class="nav-user">${escapeHtml(user.username)}</span><span class="nav-dashboard-label">Dashboard</span></a><form method="post" action="/logout"><input type="hidden" name="_csrf" value="${csrf(req)}"><button class="link-button">Log out</button></form></nav>` : `<nav class="topbar marketing-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><div class="marketing-links"><a href="/#how-it-works">How it works</a><a href="/#template">Template</a><a href="/#features">Features</a><a href="/#contact">Contact</a></div><div class="marketing-actions"><a class="nav-login" href="/login">Login</a><a class="nav-register" href="/register">Register</a></div></nav>`;
+  const user = req.session.userId ? db.prepare('SELECT username, role FROM users WHERE id=?').get(req.session.userId) : null;
+  const adminBtn = user?.role === 'superadmin' ? `<a class="button ghost small nav-admin" href="/admin" title="Admin Control Panel">👑 Admin</a>` : '';
+  const nav = user ? `<nav class="topbar app-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><a class="user-dashboard-link" href="/dashboard" aria-label="Open dashboard"><span class="user-avatar" aria-hidden="true">${escapeHtml(user.username.slice(0,1).toUpperCase())}</span><span class="nav-user">${escapeHtml(user.username)}</span><span class="nav-dashboard-label">Dashboard</span></a>${adminBtn}<form method="post" action="/logout"><input type="hidden" name="_csrf" value="${csrf(req)}"><button class="link-button">Log out</button></form></nav>` : `<nav class="topbar marketing-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><div class="marketing-links"><a href="/#how-it-works">How it works</a><a href="/#template">Template</a><a href="/#features">Features</a><a href="/#contact">Contact</a></div><div class="marketing-actions"><a class="nav-login" href="/login">Login</a><a class="nav-register" href="/register">Register</a></div></nav>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fff8f5"><meta name="csrf-token" content="${csrf(req)}"><title>${escapeHtml(title)} · Heartlink</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700&family=Nunito:wght@500;700&family=Playfair+Display:wght@600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/css/app.css"></head><body>${nav}${body}<footer class="site-credit">© ${new Date().getFullYear()} Ask Her Out · Designed and developed by <a href="https://shivpatel.in" target="_blank" rel="noopener noreferrer">SastaTengo</a></footer>${script ? `<script src="${script}" defer></script>` : ''}</body></html>`;
 }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c])); }
@@ -136,6 +142,16 @@ function authPage(title, mode, req, error = '', values = {}) {
   const username=escapeHtml(values.username||''),email=escapeHtml(values.email||''),whatsapp=escapeHtml(values.whatsapp||'');
   return page(title, `<main class="auth-wrap auth-modern"><section class="auth-showcase"><a class="auth-back" href="/">← Back home</a><span class="auth-kicker">Ask Her Out ♡</span><h2>${register?'Make the question feel unforgettable.':'Welcome back to your invitation studio.'}</h2><p>${register?'Create, personalize, publish, and share—without writing code.':'Your drafts, published links, music, and responses are waiting.'}</p><div class="auth-preview"><div class="preview-phone auth-phone"><span class="phone-notch"></span><b>Hey, favorite human 👀</b><strong>I made something for you…</strong><i>Open it ♥</i><img class="auth-couple-image" src="/assets/images/landing/hero-couple.png" alt="Cute couple holding a heart"></div></div><ul><li>Live visual preview</li><li>Private share link</li><li>Respectful answer flow</li></ul></section><section class="auth-card"><span class="auth-kicker">${register?'Create your account':'Good to see you again'}</span><h1>${title}</h1><p>${register?'Your first invitation is only a few minutes away.':'Log in to continue creating something memorable.'}</p>${error ? `<div class="alert" role="alert">${escapeHtml(error)}</div>` : ''}<form method="post" action="/${mode}" class="stack auth-form"><input type="hidden" name="_csrf" value="${csrf(req)}">${register ? `<label>Username<input name="username" required minlength="2" maxlength="40" autocomplete="username" value="${username}" placeholder="Your display name"><small>2–40 characters</small></label>` : ''}<label>Email address<input name="email" type="email" required maxlength="254" autocomplete="email" inputmode="email" value="${email}" placeholder="you@example.com"></label>${register?`<label>WhatsApp number<input name="whatsapp" type="tel" required maxlength="24" autocomplete="tel" inputmode="tel" value="${whatsapp}" placeholder="+91 98765 43210"><small>Include your country code so they can message you.</small></label>`:''}<label>Password<input name="password" type="password" required minlength="8" maxlength="72" autocomplete="${register?'new-password':'current-password'}" placeholder="At least 8 characters">${register?'<small>Use 8–72 characters</small>':''}</label>${register?'<label>Confirm password<input name="confirmPassword" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="Type it again"><small class="password-match" aria-live="polite"></small></label>':''}<button class="button primary" type="submit">${register ? 'Create account ♥' : 'Log in →'}</button></form><p class="swap">${register ? 'Already have an account? <a href="/login">Log in</a>' : 'New here? <a href="/register">Create an account</a>'}</p><small class="auth-privacy">By continuing, you agree to use this space kindly and respectfully.</small></section></main>${marketingFooter()}`, req, '/assets/js/auth.js');
 }
+function logUserActivity(userId, email, action, req) {
+  try {
+    const ip = req.ip || req.get('x-forwarded-for') || req.socket?.remoteAddress || '';
+    const ua = clean(req.get('user-agent'), 250);
+    db.prepare('INSERT INTO user_logs (user_id, email, action, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)').run(userId || null, email, action, clean(ip, 50), ua);
+  } catch (err) {
+    console.error('Failed to log user activity:', err);
+  }
+}
+
 app.post('/register', authLimit, requireCsrf, async (req, res) => {
   const username = clean(req.body.username, 40), email = clean(req.body.email, 254).toLowerCase(), whatsappInput=clean(req.body.whatsapp,24), whatsapp=normalizeWhatsApp(whatsappInput), password = String(req.body.password || ''), confirmPassword=String(req.body.confirmPassword||'');
   const values={username,email,whatsapp:whatsappInput};
@@ -143,23 +159,100 @@ app.post('/register', authLimit, requireCsrf, async (req, res) => {
   if(password!==confirmPassword)return res.status(400).send(authPage('Create your account','register',req,'Passwords do not match.',values));
   try {
     const hash = await bcrypt.hash(password, 12);
-    const role = process.env.SUPERADMIN_EMAIL?.toLowerCase() === email ? 'superadmin' : 'user';
+    const totalUsers = db.prepare('SELECT COUNT(*) c FROM users').get().c;
+    const role = (totalUsers === 0 || process.env.SUPERADMIN_EMAIL?.toLowerCase() === email) ? 'superadmin' : 'user';
     const result = db.prepare('INSERT INTO users (email,username,password_hash,whatsapp_number,role) VALUES (?,?,?,?,?)').run(email, username, hash, whatsapp, role);
-    req.session.regenerate(err => { if (err) return res.status(500).send('Could not start session.'); req.session.userId = result.lastInsertRowid; csrf(req); res.redirect('/dashboard'); });
+    logUserActivity(result.lastInsertRowid, email, 'REGISTER', req);
+    req.session.regenerate(err => { if (err) return res.status(500).send('Could not start session.'); req.session.userId = result.lastInsertRowid; csrf(req); res.redirect(303, '/dashboard'); });
   } catch (error) { res.status(409).send(authPage('Create your account', 'register', req, 'That email or username is already in use.',values)); }
 });
 app.post('/login', authLimit, requireCsrf, async (req, res) => {
-  const email = clean(req.body.email, 254).toLowerCase(), password=String(req.body.password||''), user = validEmail(email)?db.prepare('SELECT * FROM users WHERE email=?').get(email):null;
-  if (!user || password.length<8 || password.length>72 || !await bcrypt.compare(password, user.password_hash)) return res.status(401).send(authPage('Welcome back', 'login', req, 'Email or password is incorrect.',{email}));
-  req.session.regenerate(err => { if (err) return res.status(500).send('Could not start session.'); req.session.userId = user.id; csrf(req); res.redirect('/dashboard'); });
+  const loginInput = clean(req.body.email, 254).toLowerCase(), password = String(req.body.password || '');
+  const user = loginInput ? db.prepare('SELECT * FROM users WHERE LOWER(email)=? OR LOWER(username)=?').get(loginInput, loginInput) : null;
+  if (!user || password.length < 8 || password.length > 72 || !await bcrypt.compare(password, user.password_hash)) {
+    logUserActivity(null, loginInput, 'FAILED_LOGIN', req);
+    return res.status(401).send(authPage('Welcome back', 'login', req, 'Email or password is incorrect.', { email: loginInput }));
+  }
+  logUserActivity(user.id, user.email, 'LOGIN', req);
+  req.session.regenerate(err => { if (err) return res.status(500).send('Could not start session.'); req.session.userId = user.id; csrf(req); res.redirect(303, '/dashboard'); });
 });
-app.post('/logout', requireUser, requireCsrf, (req, res) => req.session.destroy(() => res.redirect('/')));
+app.post('/logout', requireUser, requireCsrf, (req, res) => {
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'LOGOUT', req);
+  req.session.destroy(() => res.redirect(303, '/'));
+});
+
+app.post('/dashboard', (req, res) => res.redirect(303, '/dashboard'));
+app.post('/admin', (req, res) => res.redirect(303, '/admin'));
 
 app.get('/admin', requireUser, (req,res) => {
-  const user=db.prepare('SELECT role FROM users WHERE id=?').get(req.session.userId); if(user?.role!=='superadmin')return res.status(403).send('Superadmin access required.');
-  const stats=db.prepare(`SELECT (SELECT COUNT(*) FROM users) users,(SELECT COUNT(*) FROM invitations) invitations,(SELECT COUNT(*) FROM invitations WHERE status='published') published,(SELECT COUNT(*) FROM visitor_sessions) visits`).get();
-  const recent=db.prepare(`SELECT i.id,i.recipient_name,i.status,i.updated_at,u.username FROM invitations i JOIN users u ON u.id=i.owner_user_id ORDER BY i.updated_at DESC LIMIT 50`).all();
-  res.send(page('Admin',`<main class="analytics"><header class="page-head"><div><span class="eyebrow">Application overview</span><h1>Heartlink admin</h1></div></header><section class="metric-grid">${Object.entries(stats).map(([k,v])=>`<div class="metric"><span>${escapeHtml(k)}</span><b>${v}</b></div>`).join('')}</section><section class="panel"><h2>Recent invitations</h2><div class="table-wrap"><table><thead><tr><th>Owner</th><th>Recipient</th><th>Status</th><th>Updated</th></tr></thead><tbody>${recent.map(r=>`<tr><td>${escapeHtml(r.username)}</td><td>${escapeHtml(r.recipient_name)}</td><td>${escapeHtml(r.status)}</td><td>${escapeHtml(r.updated_at)}</td></tr>`).join('')}</tbody></table></div></section></main>`,req));
+  const currentUser = db.prepare('SELECT role FROM users WHERE id=?').get(req.session.userId);
+  if (currentUser?.role !== 'superadmin') {
+    return res.status(403).send(page('Access Denied', '<main class="empty"><h1>👑 Admin access required.</h1><p>Only superadmin accounts can view system intelligence and logs.</p><a class="button primary" href="/dashboard">Back to Dashboard</a></main>', req));
+  }
+
+  const stats = db.prepare(`SELECT (SELECT COUNT(*) FROM users) users, (SELECT COUNT(*) FROM invitations) invitations, (SELECT COUNT(*) FROM invitations WHERE status='published') published, (SELECT COUNT(*) FROM visitor_sessions) visits, (SELECT COUNT(*) FROM user_logs) logs`).get();
+  
+  const allUsers = db.prepare(`SELECT id, username, email, whatsapp_number, role, created_at FROM users ORDER BY id DESC`).all();
+  const userLogs = db.prepare(`SELECT id, user_id, email, action, ip_address, user_agent, created_at FROM user_logs ORDER BY id DESC LIMIT 100`).all();
+  const recentInvitations = db.prepare(`SELECT i.id, i.recipient_name, i.inviter_name, i.status, i.updated_at, u.username FROM invitations i JOIN users u ON u.id=i.owner_user_id ORDER BY i.updated_at DESC LIMIT 50`).all();
+
+  const userTableRows = allUsers.map(u => `<tr><td>#${u.id}</td><td><b>${escapeHtml(u.username)}</b></td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.whatsapp_number || '—')}</td><td><span class="role-badge ${u.role}">${escapeHtml(u.role)}</span></td><td><small>${escapeHtml(new Date(u.created_at).toLocaleString())}</small></td></tr>`).join('');
+  
+  const logTableRows = userLogs.map(l => `<tr><td><small>${escapeHtml(new Date(l.created_at).toLocaleString())}</small></td><td><b>${escapeHtml(l.email)}</b></td><td><span class="log-action ${l.action}">${escapeHtml(l.action)}</span></td><td><code>${escapeHtml(l.ip_address || '—')}</code></td><td><small title="${escapeHtml(l.user_agent || '')}">${escapeHtml((l.user_agent || '—').slice(0, 40))}</small></td></tr>`).join('');
+
+  const inviteTableRows = recentInvitations.map(r => `<tr><td>${escapeHtml(r.username)}</td><td>${escapeHtml(r.inviter_name)} → ${escapeHtml(r.recipient_name)}</td><td><span class="status ${r.status}">${escapeHtml(r.status)}</span></td><td><small>${escapeHtml(new Date(r.updated_at).toLocaleDateString())}</small></td></tr>`).join('');
+
+  const adminBody = `
+    <main class="analytics admin-panel">
+      <header class="page-head">
+        <div>
+          <span class="eyebrow">System & User Intelligence</span>
+          <h1>Admin Control Panel 👑</h1>
+          <p>Monitor registered users, security logs, system metrics, and invitations.</p>
+        </div>
+      </header>
+      <section class="metric-grid">
+        <div class="metric"><span>Total Users</span><b>${stats.users}</b></div>
+        <div class="metric"><span>Invitations</span><b>${stats.invitations}</b></div>
+        <div class="metric"><span>Published</span><b>${stats.published}</b></div>
+        <div class="metric"><span>Visitor Sessions</span><b>${stats.visits}</b></div>
+        <div class="metric"><span>Activity Logs</span><b>${stats.logs}</b></div>
+      </section>
+      
+      <section class="panel">
+        <h2>Registered User Accounts (${allUsers.length})</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>WhatsApp</th><th>Role</th><th>Registered</th></tr></thead>
+            <tbody>${userTableRows || '<tr><td colspan="6">No users found.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Security & Authentication Logs (${userLogs.length})</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Timestamp</th><th>Email</th><th>Action</th><th>IP Address</th><th>User Agent</th></tr></thead>
+            <tbody>${logTableRows || '<tr><td colspan="5">No logs recorded yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>System Invitations (${recentInvitations.length})</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Owner</th><th>Flow</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody>${inviteTableRows || '<tr><td colspan="4">No invitations created yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  `;
+
+  res.send(page('Admin Control Panel 👑', adminBody, req));
 });
 
 app.get('/dashboard', requireUser, (req, res) => {

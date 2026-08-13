@@ -3057,13 +3057,19 @@ html {
 
     .marketing-actions a {
         min-width: auto;
-        min-height: 38px;
-        padding: 7px 11px;
-        font-size: .7rem
+        min-height: 36px;
+        padding: 6px 12px;
+        font-size: .78rem;
+        border-radius: 8px
     }
 
     .marketing-actions .nav-login {
-        display: none
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        background: #ffffffd0;
+        color: var(--ink)
     }
 
     .marketing-hero {
@@ -3235,6 +3241,18 @@ html {
     .builder .builder-grid { height:auto;display:block;padding:10px }
     .builder .preview-pane { height:calc(100vh - 220px);padding:64px 12px 28px }
 }
+
+.admin-panel .panel { margin-bottom: 28px; }
+.admin-panel h2 { display: flex; align-items: center; justify-content: space-between; font: 1.5rem 'DM Serif Display', serif; margin: 0 0 16px; }
+.log-action { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 99px; font-size: .68rem; font-weight: 700; letter-spacing: .02em; }
+.log-action.REGISTER { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+.log-action.LOGIN { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+.log-action.LOGOUT { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
+.log-action.FAILED_LOGIN { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+.role-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: .68rem; font-weight: 700; text-transform: uppercase; }
+.role-badge.superadmin { background: #fff0f3; color: #e43867; border: 1px solid #ffb6c1; }
+.role-badge.user { background: #f0eceb; color: #5a4f53; border: 1px solid #e0d7d5; }
+
 
 @media(max-width:560px) {
     .dashboard-studio .dashboard-hero h1 { font-size:2.7rem }

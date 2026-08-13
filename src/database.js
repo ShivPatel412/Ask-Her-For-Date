@@ -42,10 +42,21 @@ function openDatabase(filename) {
       event_name TEXT NOT NULL, screen TEXT, previous_screen TEXT, option_value TEXT,
       sequence_number INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS user_logs (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER,
+      email TEXT NOT NULL,
+      action TEXT NOT NULL CHECK(action IN ('REGISTER', 'LOGIN', 'LOGOUT', 'FAILED_LOGIN')),
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
     CREATE INDEX IF NOT EXISTS idx_invitations_owner ON invitations(owner_user_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_invitation ON visitor_sessions(invitation_id);
     CREATE INDEX IF NOT EXISTS idx_events_session_sequence ON events(session_id, sequence_number);
     CREATE INDEX IF NOT EXISTS idx_events_invitation_created ON events(invitation_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_user_logs_user ON user_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_logs_created ON user_logs(created_at);
   `);
   if (!db.prepare('PRAGMA table_info(users)').all().some(column => column.name === 'whatsapp_number'))
     db.exec('ALTER TABLE users ADD COLUMN whatsapp_number TEXT');
