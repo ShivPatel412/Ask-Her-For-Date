@@ -170,34 +170,19 @@ function requireUser(req, res, next) {
 }
 function ownedInvitation(id, userId) {
   if (!id || !userId) return null;
-  const user = db.prepare('SELECT username, role, whatsapp_number FROM users WHERE id=?').get(userId);
+  const user = db.prepare('SELECT role FROM users WHERE id=?').get(userId);
   if (!user) return null;
   const isSuper = user.role === 'superadmin';
   const num = Number(id);
   if (!Number.isNaN(num) && num > 0) {
-    const byId = isSuper
+    return isSuper
       ? db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=?').get(num)
       : db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=? AND i.owner_user_id=?').get(num, userId);
-    if (byId) return byId;
-
-    try {
-      const cfg = defaultConfig(user.username || 'Inviter', 'Recipient');
-      const publicToken = token();
-      db.prepare(`INSERT INTO invitations (id, owner_user_id, public_token, inviter_name, recipient_name, title, theme_config_json, content_config_json, feature_config_json) VALUES (?,?,?,?,?,?,?,?,?)`).run(
-        num, userId, publicToken, user.username || 'Inviter', 'Recipient', cfg.title, JSON.stringify(cfg.theme), JSON.stringify({ screens: cfg.content, moods: cfg.moods }), JSON.stringify(cfg.features)
-      );
-      return db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=?').get(num);
-    } catch {
-      const fallback = db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.owner_user_id=? ORDER BY i.id DESC LIMIT 1').get(userId);
-      if (fallback) return fallback;
-    }
   }
   const tokenStr = String(id);
-  const byToken = isSuper
+  return isSuper
     ? db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=?').get(tokenStr)
     : db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.owner_user_id=?').get(tokenStr, userId);
-
-  return byToken;
 }
 function invitationDTO(row) {
   const content=json(row.content_config_json), moods=Array.isArray(content.moods)?content.moods:[];
@@ -325,11 +310,11 @@ app.get('/admin', requireUser, (req,res) => {
   const userLogs = db.prepare(`SELECT id, user_id, email, action, ip_address, user_agent, created_at FROM user_logs ORDER BY id DESC LIMIT 100`).all();
   const recentInvitations = db.prepare(`SELECT i.id, i.recipient_name, i.inviter_name, i.status, i.updated_at, u.username FROM invitations i JOIN users u ON u.id=i.owner_user_id ORDER BY i.updated_at DESC LIMIT 50`).all();
 
-  const userTableRows = allUsers.map(u => `<tr><td>#${u.id}</td><td><b>${escapeHtml(u.username)}</b></td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.whatsapp_number || '—')}</td><td><span class="role-badge ${u.role}">${escapeHtml(u.role)}</span></td><td><small>${escapeHtml(new Date(u.created_at).toLocaleString())}</small></td></tr>`).join('');
+  const userTableRows = allUsers.map(u => `<tr><td>#${u.id}</td><td><b><a href="/admin/users/${u.id}" class="admin-user-link">${escapeHtml(u.username)}</a></b></td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.whatsapp_number || '—')}</td><td><span class="role-badge ${u.role}">${escapeHtml(u.role)}</span></td><td><small>${escapeHtml(new Date(u.created_at).toLocaleString())}</small></td><td><a class="button small ghost" href="/admin/users/${u.id}">History 🔍</a></td></tr>`).join('');
   
-  const logTableRows = userLogs.map(l => `<tr><td><small>${escapeHtml(new Date(l.created_at).toLocaleString())}</small></td><td><b>${escapeHtml(l.email)}</b></td><td><span class="log-action ${l.action}">${escapeHtml(l.action)}</span></td><td><code>${escapeHtml(l.ip_address || '—')}</code></td><td><small title="${escapeHtml(l.user_agent || '')}">${escapeHtml((l.user_agent || '—').slice(0, 40))}</small></td></tr>`).join('');
+  const logTableRows = userLogs.map(l => `<tr><td><small>${escapeHtml(new Date(l.created_at).toLocaleString())}</small></td><td><b>${escapeHtml(l.email)}</b></td><td><span class="log-action ${escapeHtml(l.action)}">${escapeHtml(l.action)}</span></td><td><code>${escapeHtml(l.ip_address || '—')}</code></td><td><small title="${escapeHtml(l.user_agent || '')}">${escapeHtml((l.user_agent || '—').slice(0, 40))}</small></td></tr>`).join('');
 
-  const inviteTableRows = recentInvitations.map(r => `<tr><td>${escapeHtml(r.username)}</td><td>${escapeHtml(r.inviter_name)} → ${escapeHtml(r.recipient_name)}</td><td><span class="status ${r.status}">${escapeHtml(r.status)}</span></td><td><small>${escapeHtml(new Date(r.updated_at).toLocaleDateString())}</small></td></tr>`).join('');
+  const inviteTableRows = recentInvitations.map(r => `<tr><td>${escapeHtml(r.username)}</td><td>${escapeHtml(r.inviter_name)} → ${escapeHtml(r.recipient_name)}</td><td><span class="status ${r.status}">${escapeHtml(r.status)}</span></td><td><small>${escapeHtml(new Date(r.updated_at).toLocaleDateString())}</small></td><td><a class="button small ghost" href="/dashboard/invitations/${r.id}/preview" target="_blank">Preview</a></td></tr>`).join('');
 
   const adminBody = `
     <main class="analytics admin-panel">
@@ -349,19 +334,25 @@ app.get('/admin', requireUser, (req,res) => {
       </section>
       
       <section class="panel">
-        <h2>Registered User Accounts (${allUsers.length})</h2>
+        <div class="panel-head-flex" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h2>Registered User Accounts (${allUsers.length})</h2>
+          <input id="user-search" type="search" placeholder="Filter users…" style="max-width:240px;padding:6px 12px;border:1px solid #dce0e5;border-radius:8px;">
+        </div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>WhatsApp</th><th>Role</th><th>Registered</th></tr></thead>
-            <tbody>${userTableRows || '<tr><td colspan="6">No users found.</td></tr>'}</tbody>
+          <table id="users-table">
+            <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>WhatsApp</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
+            <tbody>${userTableRows || '<tr><td colspan="7">No users found.</td></tr>'}</tbody>
           </table>
         </div>
       </section>
 
       <section class="panel">
-        <h2>Security & Authentication Logs (${userLogs.length})</h2>
+        <div class="panel-head-flex" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h2>Security & Authentication Logs (${userLogs.length})</h2>
+          <input id="log-search" type="search" placeholder="Filter logs…" style="max-width:240px;padding:6px 12px;border:1px solid #dce0e5;border-radius:8px;">
+        </div>
         <div class="table-wrap">
-          <table>
+          <table id="logs-table">
             <thead><tr><th>Timestamp</th><th>Email</th><th>Action</th><th>IP Address</th><th>User Agent</th></tr></thead>
             <tbody>${logTableRows || '<tr><td colspan="5">No logs recorded yet.</td></tr>'}</tbody>
           </table>
@@ -372,15 +363,115 @@ app.get('/admin', requireUser, (req,res) => {
         <h2>System Invitations (${recentInvitations.length})</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Owner</th><th>Flow</th><th>Status</th><th>Updated</th></tr></thead>
-            <tbody>${inviteTableRows || '<tr><td colspan="4">No invitations created yet.</td></tr>'}</tbody>
+            <thead><tr><th>Owner</th><th>Flow</th><th>Status</th><th>Updated</th><th>Preview</th></tr></thead>
+            <tbody>${inviteTableRows || '<tr><td colspan="5">No invitations created yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>
+      <script>
+        document.querySelector('#user-search')?.addEventListener('input', e => {
+          const q = e.target.value.toLowerCase();
+          document.querySelectorAll('#users-table tbody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+          });
+        });
+        document.querySelector('#log-search')?.addEventListener('input', e => {
+          const q = e.target.value.toLowerCase();
+          document.querySelectorAll('#logs-table tbody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+          });
+        });
+      </script>
+    </main>
+  `;
+
+  res.send(page('Admin Control Panel 👑', adminBody, req));
+});
+
+app.get('/admin/users/:id', requireUser, (req, res) => {
+  const currentUser = db.prepare('SELECT role FROM users WHERE id=?').get(req.session.userId);
+  if (currentUser?.role !== 'superadmin') {
+    return res.status(403).send(page('Access Denied', '<main class="empty"><h1>👑 Admin access required.</h1><a class="button primary" href="/dashboard">Back to Dashboard</a></main>', req));
+  }
+  const targetUser = db.prepare('SELECT id, username, email, whatsapp_number, role, created_at, updated_at FROM users WHERE id=?').get(Number(req.params.id));
+  if (!targetUser) return res.status(404).send(page('User Not Found', '<main class="empty"><h1>User account not found.</h1><a class="button primary" href="/admin">Back to Admin</a></main>', req));
+
+  const userInvitations = db.prepare(`SELECT i.*, COUNT(DISTINCT s.id) views, SUM(CASE WHEN s.final_result IS NOT NULL THEN 1 ELSE 0 END) replies, MAX(s.final_result) final_result FROM invitations i LEFT JOIN visitor_sessions s ON s.invitation_id=i.id WHERE i.owner_user_id=? GROUP BY i.id ORDER BY i.updated_at DESC`).all(targetUser.id);
+  const userActivityLogs = db.prepare('SELECT * FROM user_logs WHERE user_id=? OR email=? ORDER BY id DESC LIMIT 100').all(targetUser.id, targetUser.email);
+
+  const inviteRows = userInvitations.map(inv => {
+    const feat = json(inv.feature_config_json);
+    const musicLabel = feat.music && feat.musicUrl ? `🎵 ${escapeHtml(feat.musicName || 'Uploaded Audio')}` : '—';
+    return `<tr>
+      <td>#${inv.id}</td>
+      <td><b>${escapeHtml(inv.title)}</b></td>
+      <td>${escapeHtml(inv.inviter_name)} → ${escapeHtml(inv.recipient_name)}</td>
+      <td><span class="status ${inv.status}">${escapeHtml(inv.status)}</span></td>
+      <td>${inv.views} views / ${inv.replies || 0} replies</td>
+      <td>${escapeHtml(inv.final_result || '—')}</td>
+      <td>${musicLabel}</td>
+      <td><a class="button small ghost" href="/dashboard/invitations/${inv.id}/preview" target="_blank">Preview</a></td>
+    </tr>`;
+  }).join('');
+
+  const logRows = userActivityLogs.map(l => `<tr>
+    <td><small>${escapeHtml(new Date(l.created_at).toLocaleString())}</small></td>
+    <td><span class="log-action ${escapeHtml(l.action)}">${escapeHtml(l.action)}</span></td>
+    <td><code>${escapeHtml(l.ip_address || '—')}</code></td>
+    <td><small>${escapeHtml((l.user_agent || '—').slice(0, 50))}</small></td>
+  </tr>`).join('');
+
+  const body = `
+    <main class="analytics user-detail-panel">
+      <header class="page-head">
+        <div>
+          <nav class="analytics-breadcrumb" aria-label="Breadcrumb"><a href="/admin">← Back to Admin Panel</a><span>User Intelligence</span></nav>
+          <h1>User Profile: ${escapeHtml(targetUser.username)}</h1>
+          <p>Account details, invitation history, visitor metrics, and audit trail.</p>
+        </div>
+      </header>
+
+      <section class="metric-grid">
+        <div class="metric"><span>Account ID</span><b>#${targetUser.id}</b></div>
+        <div class="metric"><span>Role</span><b>${escapeHtml(targetUser.role)}</b></div>
+        <div class="metric"><span>Total Invitations</span><b>${userInvitations.length}</b></div>
+        <div class="metric"><span>Total Views</span><b>${userInvitations.reduce((sum, i) => sum + (i.views || 0), 0)}</b></div>
+        <div class="metric"><span>Total Responses</span><b>${userInvitations.reduce((sum, i) => sum + (i.replies || 0), 0)}</b></div>
+      </section>
+
+      <section class="panel">
+        <h2>Account Information</h2>
+        <dl style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding:12px 0;">
+          <div><dt style="color:#777;font-size:0.8rem;">Email Address</dt><dd style="font-weight:600;font-size:1.05rem;">${escapeHtml(targetUser.email)}</dd></div>
+          <div><dt style="color:#777;font-size:0.8rem;">Username</dt><dd style="font-weight:600;font-size:1.05rem;">${escapeHtml(targetUser.username)}</dd></div>
+          <div><dt style="color:#777;font-size:0.8rem;">WhatsApp Number</dt><dd style="font-weight:600;font-size:1.05rem;">${escapeHtml(targetUser.whatsapp_number || 'Not connected')}</dd></div>
+          <div><dt style="color:#777;font-size:0.8rem;">Member Since</dt><dd style="font-weight:600;font-size:1.05rem;">${escapeHtml(new Date(targetUser.created_at).toLocaleDateString())}</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel">
+        <h2>User Invitations (${userInvitations.length})</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Title</th><th>Flow</th><th>Status</th><th>Engagement</th><th>Final Result</th><th>Audio Status</th><th>Action</th></tr></thead>
+            <tbody>${inviteRows || '<tr><td colspan="8">No invitations created by this user yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Activity & Audit History (${userActivityLogs.length})</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Timestamp</th><th>Action</th><th>IP Address</th><th>Client User Agent</th></tr></thead>
+            <tbody>${logRows || '<tr><td colspan="4">No logs found for this user.</td></tr>'}</tbody>
           </table>
         </div>
       </section>
     </main>
   `;
 
-  res.send(page('Admin Control Panel 👑', adminBody, req));
+  res.send(page(`User: ${targetUser.username} · Admin`, body, req));
 });
 
 app.get('/dashboard', requireUser, (req, res) => {
@@ -392,15 +483,24 @@ app.get('/dashboard', requireUser, (req, res) => {
   res.send(page('Dashboard', `<main class="dashboard dashboard-studio"><header class="page-head dashboard-hero"><div><span class="eyebrow">Your invitation studio</span><h1>Welcome back, ${escapeHtml(user.username)} 👋</h1><p>Create something personal, then share it when it feels right.</p></div><a class="button primary create-invite" href="/dashboard/invitations/new">＋ Create Invitation ♥</a></header>${whatsappSetup}<section class="dashboard-metrics"><article><i>✉</i><div><span>Total invitations</span><b>${totals.all}</b><small>All time</small></div></article><article><i>✓</i><div><span>Published</span><b>${totals.published}</b><small>Live invitations</small></div></article><article><i>◯</i><div><span>Replies</span><b>${totals.replies}</b><small>Total responses</small></div></article><article><i>✎</i><div><span>Drafts</span><b>${totals.draft}</b><small>Not published yet</small></div></article></section><section class="invitations-section"><div class="dashboard-toolbar"><h2>Your Invitations</h2><div><label class="dashboard-search"><span>⌕</span><input id="invitation-search" type="search" placeholder="Search invitations…" aria-label="Search invitations"></label><select id="invitation-filter" aria-label="Filter invitations"><option value="all">All</option><option value="draft">Drafts</option><option value="published">Published</option><option value="disabled">Disabled</option></select></div></div><section class="invite-grid">${cards || '<div class="empty"><div class="empty-heart">♡</div><h2>No invitations yet</h2><p>Your first thoughtful ask starts here.</p><a class="button primary" href="/dashboard/invitations/new">Create Invitation ♥</a></div>'}</section><p id="dashboard-empty-filter" class="dashboard-empty-filter" hidden>No invitations match that search.</p></section></main>`, req, '/assets/js/dashboard.js'));
 });
 
-app.post('/dashboard/whatsapp', requireUser, requireCsrf, (req,res)=>{const whatsapp=normalizeWhatsApp(req.body.whatsapp);if(!whatsapp)return res.status(400).send(page('Invalid WhatsApp number','<main class="empty"><h1>Enter a valid WhatsApp number with country code.</h1><a class="button primary" href="/dashboard">Back to dashboard</a></main>',req));db.prepare('UPDATE users SET whatsapp_number=? WHERE id=?').run(whatsapp,req.session.userId);res.redirect('/dashboard');});
+app.post('/dashboard/whatsapp', requireUser, requireCsrf, (req,res)=>{
+  const whatsapp=normalizeWhatsApp(req.body.whatsapp);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if(!whatsapp)return res.status(400).send(page('Invalid WhatsApp number','<main class="empty"><h1>Enter a valid WhatsApp number with country code.</h1><a class="button primary" href="/dashboard">Back to dashboard</a></main>',req));
+  db.prepare('UPDATE users SET whatsapp_number=? WHERE id=?').run(whatsapp,req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'UPDATE_WHATSAPP', req);
+  res.redirect('/dashboard');
+});
 
 app.get('/dashboard/invitations/new', requireUser, (req, res) => res.send(page('New invitation', `<main class="new-wrap"><header><span class="eyebrow">Choose a starting point</span><h1>Create an invitation</h1><p>Quick Setup gets you a polished link in under a minute.</p></header><section class="template-card selected"><div class="template-art"><img src="/assets/images/landing/hero-couple.png" alt="Cute couple holding a heart"></div><div><span class="pill">Recommended</span><h2>Best Friend → Date ❤️</h2><p>Cute, funny Hinglish date invitation with playful choices, exact date planning, and original mascots.</p></div></section><div class="setup-grid"><form id="quick-form" class="panel stack"><h2>Quick Setup ⚡</h2><label>Your Name<input name="inviterName" required maxlength="60"></label><label>Their Name<input name="recipientName" required maxlength="60"></label><button class="button primary">Create Invitation ❤️</button></form><form id="custom-form" class="panel stack"><h2>Customize Everything ✨</h2><p>Start with the same polished template, then edit the flow, colors, date ideas, and cute features.</p><label>Your Name<input name="inviterName" required maxlength="60"></label><label>Their Name<input name="recipientName" required maxlength="60"></label><button class="button ghost">Open visual builder</button></form></div></main>`, req, '/assets/js/new.js')));
 
 app.post('/api/invitations', requireUser, requireCsrf, (req, res) => {
   const inviterName = clean(req.body.inviterName, 60), recipientName = clean(req.body.recipientName, 60);
   if (!inviterName || !recipientName) return res.status(400).json({ error: 'Both names are required.' });
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   const cfg = defaultConfig(inviterName, recipientName), publicToken = token();
   const result = db.prepare(`INSERT INTO invitations (owner_user_id,public_token,inviter_name,recipient_name,title,theme_config_json,content_config_json,feature_config_json) VALUES (?,?,?,?,?,?,?,?)`).run(req.session.userId, publicToken, inviterName, recipientName, cfg.title, JSON.stringify(cfg.theme), JSON.stringify({ screens: cfg.content, moods: cfg.moods }), JSON.stringify(cfg.features));
+  if (user) logUserActivity(req.session.userId, user.email, 'CREATE_INVITATION', req);
   res.status(201).json({ id: result.lastInsertRowid, token: publicToken });
 });
 
@@ -425,7 +525,9 @@ app.put('/api/invitations/:id', requireUser, requireCsrf, (req, res) => {
   const storedFeatures = json(row.feature_config_json);
   safeFeatures.musicUrl = features.musicUrl || storedFeatures.musicUrl || null;
   safeFeatures.musicName = features.musicName || storedFeatures.musicName || null;
-  db.prepare(`UPDATE invitations SET inviter_name=?,recipient_name=?,title=?,theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(inviterName,recipientName,title,JSON.stringify(safeTheme),JSON.stringify(safeContent),JSON.stringify(safeFeatures),now(),row.id,req.session.userId);
+  db.prepare(`UPDATE invitations SET inviter_name=?,recipient_name=?,title=?,theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(inviterName,recipientName,title,JSON.stringify(safeTheme),JSON.stringify(safeContent),JSON.stringify(safeFeatures),now(),row.id,row.owner_user_id);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'UPDATE_INVITATION', req);
   res.json({ ok:true, updatedAt:now() });
 });
 function detectAudioType(req, buffer) {
@@ -481,13 +583,20 @@ app.post('/api/invitations/:id/music', requireUser, requireCsrf, audioBody, asyn
   }
   const features=json(row.feature_config_json),oldUrl=features.musicUrl;
   Object.assign(features,{music:true,musicUrl:dataUri,musicName:original});
-  db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=?').run(JSON.stringify(features),now(),row.id);
-  removeUnusedMusic(oldUrl,row.id); res.status(201).json({url:dataUri,name:original});
+  db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features),now(),row.id,row.owner_user_id);
+  removeUnusedMusic(oldUrl,row.id);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'UPLOAD_MUSIC', req);
+  res.status(201).json({url:dataUri,name:original});
 });
 app.delete('/api/invitations/:id/music',requireUser,requireCsrf,(req,res)=>{
   const row=ownedInvitation(req.params.id,req.session.userId);if(!row)return res.status(404).json({error:'Not found.'});
   const features=json(row.feature_config_json),oldUrl=features.musicUrl;Object.assign(features,{music:false,musicUrl:null,musicName:null});
-  db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features),now(),row.id,req.session.userId);removeUnusedMusic(oldUrl,row.id);res.json({ok:true});
+  db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features),now(),row.id,row.owner_user_id);
+  removeUnusedMusic(oldUrl,row.id);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'DELETE_MUSIC', req);
+  res.json({ok:true});
 });
 function sanitizeObject(value, maxString, depth) {
   if (depth < 0) return null;
@@ -508,15 +617,25 @@ function sanitizeObject(value, maxString, depth) {
 app.post('/api/invitations/:id/status', requireUser, requireCsrf, (req,res) => {
   const row=ownedInvitation(req.params.id,req.session.userId); if(!row)return res.status(404).json({error:'Not found.'});
   const status=['draft','published','disabled'].includes(req.body.status)?req.body.status:null; if(!status)return res.status(400).json({error:'Invalid status.'});
-  db.prepare(`UPDATE invitations SET status=?,published_at=CASE WHEN ?='published' THEN COALESCE(published_at,?) ELSE published_at END,updated_at=? WHERE id=? AND owner_user_id=?`).run(status,status,now(),now(),row.id,req.session.userId);
+  db.prepare(`UPDATE invitations SET status=?,published_at=CASE WHEN ?='published' THEN COALESCE(published_at,?) ELSE published_at END,updated_at=? WHERE id=? AND owner_user_id=?`).run(status,status,now(),now(),row.id,row.owner_user_id);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, status === 'published' ? 'PUBLISH_INVITATION' : 'STATUS_CHANGE', req);
   res.json({ok:true,url:status==='published'?`/i/${row.public_token}`:null});
 });
 app.post('/api/invitations/:id/duplicate', requireUser, requireCsrf, (req,res) => {
   const r=ownedInvitation(req.params.id,req.session.userId); if(!r)return res.status(404).json({error:'Not found.'});
   const out=db.prepare(`INSERT INTO invitations(owner_user_id,template_key,public_token,inviter_name,recipient_name,title,status,theme_config_json,content_config_json,feature_config_json) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(req.session.userId,r.template_key,token(),r.inviter_name,r.recipient_name,`${r.title} (copy)`,'draft',r.theme_config_json,r.content_config_json,r.feature_config_json);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'DUPLICATE_INVITATION', req);
   res.status(201).json({id:out.lastInsertRowid});
 });
-app.delete('/api/invitations/:id', requireUser, requireCsrf, (req,res) => { const r=ownedInvitation(req.params.id,req.session.userId); if(!r)return res.status(404).json({error:'Not found.'}); db.prepare('DELETE FROM invitations WHERE id=? AND owner_user_id=?').run(r.id,req.session.userId); res.json({ok:true}); });
+app.delete('/api/invitations/:id', requireUser, requireCsrf, (req,res) => {
+  const r=ownedInvitation(req.params.id,req.session.userId); if(!r)return res.status(404).json({error:'Not found.'});
+  db.prepare('DELETE FROM invitations WHERE id=? AND owner_user_id=?').run(r.id,r.owner_user_id);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'DELETE_INVITATION', req);
+  res.json({ok:true});
+});
 
 app.get('/dashboard/invitations/:id/preview', requireUser, (req,res) => { const r=ownedInvitation(req.params.id,req.session.userId); if(!r)return res.status(404).send('Invitation not found.'); res.set('Cache-Control','no-store').send(invitationPage(r,true)); });
 app.get('/i/:token', (req,res) => { const r=db.prepare("SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.status='published'").get(req.params.token); if(!r)return res.status(404).send(page('Invitation unavailable','<main class="empty"><h1>This invitation is unavailable.</h1><p>It may be a draft or temporarily disabled.</p></main>',req)); res.set('Cache-Control','no-store').send(invitationPage(r,false)); });
@@ -543,7 +662,14 @@ app.post('/api/invitations/:token/events', publicLimit, (req,res) => {
 
 app.get('/dashboard/invitations/:id/analytics',requireUser,(req,res)=>{const r=ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).send('Not found.');res.send(page('Analytics',`<main class="analytics analytics-detail" data-id="${r.id}"><header class="page-head analytics-head"><div><nav class="analytics-breadcrumb" aria-label="Breadcrumb"><a href="/dashboard">← Dashboard</a><span>Invitation intelligence</span></nav><h1>${escapeHtml(r.recipient_name)}'s journey</h1><p>See how visitors move through the invitation and where they respond.</p></div><div class="actions"><button id="refresh" class="button ghost small">↻ Refresh</button><button id="reset" class="button danger small">Clear test data</button></div></header><div id="analytics-content" aria-live="polite"></div></main>`,req,'/assets/js/analytics.js'));});
 app.get('/api/invitations/:id/analytics',requireUser,(req,res)=>{const r=ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).json({error:'Not found.'});const sessions=db.prepare('SELECT * FROM visitor_sessions WHERE invitation_id=? ORDER BY started_at DESC').all(r.id),events=db.prepare('SELECT e.*,s.visitor_id,s.final_result FROM events e JOIN visitor_sessions s ON s.id=e.session_id WHERE e.invitation_id=? ORDER BY e.created_at ASC,e.sequence_number ASC').all(r.id);const yes=sessions.filter(s=>s.final_result?.startsWith('YES')).length,best=sessions.filter(s=>s.final_result?.startsWith('BEST')).length;res.json({summary:{views:sessions.length,uniqueSessions:sessions.length,yes,bestFriend:best,incomplete:sessions.filter(s=>!s.completed).length,revisits:sessions.reduce((n,s)=>n+Math.max(0,s.main_question_visits-1),0),averageSteps:sessions.length?Math.round(events.length/sessions.length):0,lastVisit:sessions[0]?.last_activity_at||null},sessions,events});});
-app.delete('/api/invitations/:id/analytics',requireUser,requireCsrf,(req,res)=>{const r=ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).json({error:'Not found.'});db.prepare('DELETE FROM visitor_sessions WHERE invitation_id=?').run(r.id);res.json({ok:true});});
+app.delete('/api/invitations/:id/analytics',requireUser,requireCsrf,(req,res)=>{
+  const r=ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).json({error:'Not found.'});
+  db.prepare('DELETE FROM visitor_sessions WHERE invitation_id=?').run(r.id);
+  const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) logUserActivity(req.session.userId, user.email, 'CLEAR_ANALYTICS', req);
+  res.json({ok:true});
+});
+
 app.get('/dashboard/invitations/:invitationId/sessions/:sessionId',requireUser,(req,res)=>{const r=ownedInvitation(req.params.invitationId,req.session.userId);if(!r)return res.status(404).send('Not found.');const s=db.prepare('SELECT * FROM visitor_sessions WHERE id=? AND invitation_id=?').get(req.params.sessionId,r.id);if(!s)return res.status(404).send('Session not found.');const ev=db.prepare('SELECT * FROM events WHERE session_id=? ORDER BY sequence_number').all(s.id);res.send(page('Session journey',`<main class="analytics"><a href="/dashboard/invitations/${r.id}/analytics">← Analytics</a><header class="page-head"><div><span class="eyebrow">Visitor session</span><h1>${escapeHtml(s.selected_nickname||r.recipient_name||'Recipient')}</h1><p>${escapeHtml(s.final_result||'Incomplete')} · ${ev.length} steps</p></div></header><div class="journey">${ev.map(e=>`<div class="journey-node"><b>${escapeHtml(e.screen||e.event_name)}</b><span>${escapeHtml(e.option_value||e.event_name)}</span><time>${escapeHtml(e.created_at)}</time></div>`).join('')}</div></main>`,req));});
 
 app.use((req,res)=>res.status(404).send(page('Not found','<main class="empty"><h1>That page wandered off.</h1><a class="button primary" href="/">Go home</a></main>',req)));

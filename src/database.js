@@ -52,7 +52,7 @@ function openDatabase(filename) {
       id INTEGER PRIMARY KEY,
       user_id INTEGER,
       email TEXT NOT NULL,
-      action TEXT NOT NULL CHECK(action IN ('REGISTER', 'LOGIN', 'LOGOUT', 'FAILED_LOGIN')),
+      action TEXT NOT NULL,
       ip_address TEXT,
       user_agent TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -64,6 +64,23 @@ function openDatabase(filename) {
     CREATE INDEX IF NOT EXISTS idx_user_logs_user ON user_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_logs_created ON user_logs(created_at);
   `);
+  // If user_logs had a restrictive check constraint from an earlier version, create table as needed without failing
+  try {
+    const tableSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_logs'").get()?.sql || '';
+    if (tableSql.includes('CHECK(action IN')) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_logs_new (
+          id INTEGER PRIMARY KEY, user_id INTEGER, email TEXT NOT NULL, action TEXT NOT NULL,
+          ip_address TEXT, user_agent TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO user_logs_new SELECT * FROM user_logs;
+        DROP TABLE user_logs;
+        ALTER TABLE user_logs_new RENAME TO user_logs;
+        CREATE INDEX IF NOT EXISTS idx_user_logs_user ON user_logs(user_id);
+        CREATE INDEX IF NOT EXISTS idx_user_logs_created ON user_logs(created_at);
+      `);
+    }
+  } catch (e) {}
   if (!db.prepare('PRAGMA table_info(users)').all().some(column => column.name === 'whatsapp_number'))
     db.exec('ALTER TABLE users ADD COLUMN whatsapp_number TEXT');
   dbCache.set(resolved, db);
