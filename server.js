@@ -40,6 +40,33 @@ function seedSuperadminIfEmpty() {
 }
 seedSuperadminIfEmpty();
 
+const SESSION_SECRET = process.env.SESSION_SECRET || 'development-only-change-this-secret-now';
+
+function signSessionState(data) {
+  try {
+    const payloadStr = JSON.stringify(data);
+    const signature = crypto.createHmac('sha256', SESSION_SECRET).update(payloadStr).digest('base64url');
+    return Buffer.from(payloadStr).toString('base64url') + '.' + signature;
+  } catch {
+    return '';
+  }
+}
+
+function verifySessionState(tokenStr) {
+  try {
+    if (!tokenStr || typeof tokenStr !== 'string' || !tokenStr.includes('.')) return null;
+    const parts = tokenStr.split('.');
+    if (parts.length !== 2) return null;
+    const [payloadB64, signature] = parts;
+    const payloadStr = Buffer.from(payloadB64, 'base64url').toString('utf8');
+    const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(payloadStr).digest('base64url');
+    if (signature.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) return null;
+    return JSON.parse(payloadStr);
+  } catch {
+    return null;
+  }
+}
+
 class SQLiteSessionStore extends session.Store {
   get(sid, callback) { try { const row=db.prepare('SELECT data_json FROM web_sessions WHERE sid=? AND expires_at>?').get(sid,Date.now()); callback(null,row?JSON.parse(row.data_json):null); } catch(error){ callback(error); } }
   set(sid, value, callback=()=>{}) { try { const expires=value.cookie?.expires?new Date(value.cookie.expires).getTime():Date.now()+43_200_000; db.prepare('INSERT INTO web_sessions(sid,data_json,expires_at) VALUES(?,?,?) ON CONFLICT(sid) DO UPDATE SET data_json=excluded.data_json,expires_at=excluded.expires_at').run(sid,JSON.stringify(value),expires); callback(); } catch(error){ callback(error); } }
@@ -60,10 +87,43 @@ app.use(express.json({ limit: '128kb' }));
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(session({
   store: new SQLiteSessionStore(),
-  name: 'heartlink.sid', secret: process.env.SESSION_SECRET || 'development-only-change-this-secret-now',
+  name: 'heartlink.sid', secret: SESSION_SECRET,
   resave: false, saveUninitialized: false, rolling: true,
   cookie: { httpOnly: true, sameSite: 'lax', secure: 'auto', maxAge: 1000 * 60 * 60 * 12 }
 }));
+
+app.use((req, res, next) => {
+  const rawCookie = req.headers.cookie || '';
+  const match = rawCookie.match(/(?:^|;\s*)heartlink\.state=([^;]+)/);
+  if (match) {
+    const state = verifySessionState(decodeURIComponent(match[1]));
+    if (state && req.session) {
+      if (!req.session.userId && state.u) req.session.userId = state.u;
+      if (!req.session.csrf && state.c) req.session.csrf = state.c;
+    }
+  }
+
+  const origSetHeader = res.setHeader;
+  res.setHeader = function (name, value) {
+    if (String(name).toLowerCase() === 'set-cookie' && req.session) {
+      const stateData = { u: req.session.userId || null, c: req.session.csrf || null };
+      const signedState = signSessionState(stateData);
+      const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const cookieHeader = `heartlink.state=${encodeURIComponent(signedState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${isHttps ? '; Secure' : ''}`;
+      if (Array.isArray(value)) {
+        value.push(cookieHeader);
+      } else if (value) {
+        value = [value, cookieHeader];
+      } else {
+        value = [cookieHeader];
+      }
+    }
+    return origSetHeader.call(this, name, value);
+  };
+
+  next();
+});
+
 app.use((req, res, next) => {
   if (!req.path.startsWith('/api/') && !req.path.startsWith('/media/')) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -109,7 +169,14 @@ function csrf(req) {
 }
 function requireCsrf(req, res, next) {
   const supplied = req.get('x-csrf-token') || req.body?._csrf;
-  if (!supplied || !req.session?.csrf || supplied.length !== req.session.csrf.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(req.session.csrf))) return res.status(403).json({ error: 'Security token expired. Refresh and try again.' });
+  if (!supplied || !req.session?.csrf || supplied.length !== req.session.csrf.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(req.session.csrf))) {
+    if (req.accepts('html') && !req.path.startsWith('/api/')) {
+      const mode = req.path.includes('register') ? 'register' : 'login';
+      const title = mode === 'register' ? 'Create your account' : 'Welcome back';
+      return res.status(403).send(authPage(title, mode, req, 'Security token expired. Please refresh the page and try again.'));
+    }
+    return res.status(403).json({ error: 'Security token expired. Refresh and try again.' });
+  }
   next();
 }
 function requireUser(req, res, next) {
@@ -219,6 +286,7 @@ app.post('/login', authLimit, requireCsrf, async (req, res) => {
 app.post('/logout', requireUser, requireCsrf, (req, res) => {
   const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) logUserActivity(req.session.userId, user.email, 'LOGOUT', req);
+  res.setHeader('Set-Cookie', 'heartlink.state=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
   req.session.destroy(() => res.redirect(303, '/'));
 });
 
