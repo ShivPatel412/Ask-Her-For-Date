@@ -451,13 +451,32 @@ app.put('/api/invitations/:id', requireUser, requireCsrf, (req, res) => {
   db.prepare(`UPDATE invitations SET inviter_name=?,recipient_name=?,title=?,theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(inviterName,recipientName,title,JSON.stringify(safeTheme),JSON.stringify(safeContent),JSON.stringify(safeFeatures),now(),row.id,req.session.userId);
   res.json({ ok:true, updatedAt:now() });
 });
-const audioFormats = [
-  { ext: 'mp3', valid: b => b.subarray(0,3).toString() === 'ID3' || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0) },
-  { ext: 'ogg', valid: b => b.subarray(0,4).toString() === 'OggS' },
-  { ext: 'wav', valid: b => b.subarray(0,4).toString() === 'RIFF' && b.subarray(8,12).toString() === 'WAVE' },
-  { ext: 'm4a', valid: b => b.subarray(4,8).toString() === 'ftyp' }
-];
-const audioBody = express.raw({ type: () => true, limit: '10mb' });
+function detectAudioType(req, buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 10) return null;
+  if (buffer.subarray(0, 3).toString() === 'ID3' || (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0)) return { ext: 'mp3', mime: 'audio/mpeg' };
+  if (buffer.subarray(0, 4).toString() === 'OggS') return { ext: 'ogg', mime: 'audio/ogg' };
+  if (buffer.subarray(0, 4).toString() === 'RIFF' && buffer.subarray(8, 12).toString() === 'WAVE') return { ext: 'wav', mime: 'audio/wav' };
+  if (buffer.includes(Buffer.from('ftyp')) || buffer.includes(Buffer.from('M4A ')) || buffer.includes(Buffer.from('mp42'))) return { ext: 'm4a', mime: 'audio/mp4' };
+
+  let filename = '';
+  try { filename = decodeURIComponent(req.get('x-file-name') || '').toLowerCase(); } catch {}
+  if (filename.endsWith('.mp3')) return { ext: 'mp3', mime: 'audio/mpeg' };
+  if (filename.endsWith('.m4a') || filename.endsWith('.aac') || filename.endsWith('.mp4')) return { ext: 'm4a', mime: 'audio/mp4' };
+  if (filename.endsWith('.wav')) return { ext: 'wav', mime: 'audio/wav' };
+  if (filename.endsWith('.ogg')) return { ext: 'ogg', mime: 'audio/ogg' };
+  if (filename.endsWith('.webm')) return { ext: 'webm', mime: 'audio/webm' };
+  if (filename.endsWith('.flac')) return { ext: 'flac', mime: 'audio/flac' };
+
+  const contentType = String(req.get('content-type') || '').toLowerCase();
+  if (contentType.includes('audio/mpeg') || contentType.includes('audio/mp3')) return { ext: 'mp3', mime: 'audio/mpeg' };
+  if (contentType.includes('audio/mp4') || contentType.includes('audio/x-m4a') || contentType.includes('audio/m4a') || contentType.includes('audio/aac')) return { ext: 'm4a', mime: 'audio/mp4' };
+  if (contentType.includes('audio/wav') || contentType.includes('audio/x-wav')) return { ext: 'wav', mime: 'audio/wav' };
+  if (contentType.includes('audio/ogg')) return { ext: 'ogg', mime: 'audio/ogg' };
+
+  if (buffer.length >= 100) return { ext: 'mp3', mime: 'audio/mpeg' };
+  return null;
+}
+const audioBody = express.raw({ type: () => true, limit: '15mb' });
 function removeUnusedMusic(url, excludingId) {
   if (!/^\/media\/[a-f0-9]{32}\.(mp3|ogg|wav|m4a)$/.test(url || '')) return;
   const used = db.prepare('SELECT id,feature_config_json FROM invitations WHERE id != ?').all(excludingId).some(row => json(row.feature_config_json).musicUrl === url);
@@ -465,10 +484,9 @@ function removeUnusedMusic(url, excludingId) {
 }
 app.post('/api/invitations/:id/music', requireUser, requireCsrf, audioBody, async (req,res) => {
   const row=ownedInvitation(req.params.id,req.session.userId); if(!row)return res.status(404).json({error:'Not found.'});
-  const type=Buffer.isBuffer(req.body)&&req.body.length>=12?audioFormats.find(format=>format.valid(req.body)):null;
+  const type=detectAudioType(req, req.body);
   if(!type)return res.status(400).json({error:'Upload a valid MP3, M4A, OGG, or WAV file.'});
-  const mimeMap = { mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4' };
-  const mime = mimeMap[type.ext] || 'audio/mpeg';
+  const mime = type.mime || 'audio/mpeg';
   const dataUri = `data:${mime};base64,${req.body.toString('base64')}`;
   let original='Favorite song'; try{original=clean(decodeURIComponent(req.get('x-file-name')||''),100)||original;}catch{}
   try {
