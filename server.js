@@ -83,8 +83,8 @@ app.use(helmet({ contentSecurityPolicy: { directives: {
   fontSrc: ["'self'", 'https://fonts.gstatic.com'], imgSrc: ["'self'", 'data:'], mediaSrc: ["'self'", 'blob:', 'data:'],
   connectSrc: ["'self'"], objectSrc: ["'none'"], baseUri: ["'self'"], frameAncestors: ["'self'"]
 } } }));
-app.use(express.json({ limit: '128kb' }));
-app.use(express.urlencoded({ extended: false, limit: '32kb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: false, limit: '15mb' }));
 app.use(session({
   store: new SQLiteSessionStore(),
   name: 'heartlink.sid', secret: SESSION_SECRET,
@@ -514,9 +514,19 @@ app.delete('/api/invitations/:id/music',requireUser,requireCsrf,(req,res)=>{
 });
 function sanitizeObject(value, maxString, depth) {
   if (depth < 0) return null;
-  if (Array.isArray(value)) return value.slice(0, 30).map(v => sanitizeObject(v,maxString,depth-1));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).slice(0,100).map(([k,v]) => [clean(k,60),sanitizeObject(v,maxString,depth-1)]));
-  if (typeof value === 'string') return clean(value,maxString); if (typeof value === 'boolean' || typeof value === 'number') return value; return null;
+  if (Array.isArray(value)) return value.slice(0, 30).map(v => sanitizeObject(v, maxString, depth - 1));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).slice(0, 100).map(([k, v]) => {
+        const key = clean(k, 60);
+        const limit = (key === 'musicUrl' || key === 'url' || key.endsWith('Url') || key.endsWith('URI')) ? 15_000_000 : maxString;
+        return [key, sanitizeObject(v, limit, depth - 1)];
+      })
+    );
+  }
+  if (typeof value === 'string') return clean(value, maxString);
+  if (typeof value === 'boolean' || typeof value === 'number') return value;
+  return null;
 }
 app.post('/api/invitations/:id/status', requireUser, requireCsrf, (req,res) => {
   const row=ownedInvitation(req.params.id,req.session.userId); if(!row)return res.status(404).json({error:'Not found.'});
