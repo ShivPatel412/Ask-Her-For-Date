@@ -7,9 +7,6 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (process.env.NODE_ENV !== 'production') {
-    delete require.cache[require.resolve('../../../server')];
-  }
   const { app } = require('../../../server');
   const path = Array.isArray(req.query.path) ? req.query.path.join('/') : '';
   const qs = new URL(req.url, 'http://localhost').searchParams;

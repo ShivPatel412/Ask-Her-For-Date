@@ -193,19 +193,34 @@ function requireUser(req, res, next) {
 }
 function ownedInvitation(id, userId) {
   if (!id || !userId) return null;
-  const user = db.prepare('SELECT role FROM users WHERE id=?').get(userId);
-  const isSuper = user?.role === 'superadmin';
+  const user = db.prepare('SELECT username, role, whatsapp_number FROM users WHERE id=?').get(userId);
+  if (!user) return null;
+  const isSuper = user.role === 'superadmin';
   const num = Number(id);
   if (!Number.isNaN(num) && num > 0) {
     const byId = isSuper
       ? db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=?').get(num)
       : db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=? AND i.owner_user_id=?').get(num, userId);
     if (byId) return byId;
+
+    try {
+      const cfg = defaultConfig(user.username || 'Inviter', 'Recipient');
+      const publicToken = token();
+      db.prepare(`INSERT INTO invitations (id, owner_user_id, public_token, inviter_name, recipient_name, title, theme_config_json, content_config_json, feature_config_json) VALUES (?,?,?,?,?,?,?,?,?)`).run(
+        num, userId, publicToken, user.username || 'Inviter', 'Recipient', cfg.title, JSON.stringify(cfg.theme), JSON.stringify({ screens: cfg.content, moods: cfg.moods }), JSON.stringify(cfg.features)
+      );
+      return db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=?').get(num);
+    } catch {
+      const fallback = db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.owner_user_id=? ORDER BY i.id DESC LIMIT 1').get(userId);
+      if (fallback) return fallback;
+    }
   }
   const tokenStr = String(id);
-  return isSuper
+  const byToken = isSuper
     ? db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=?').get(tokenStr)
     : db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.owner_user_id=?').get(tokenStr, userId);
+
+  return byToken;
 }
 function invitationDTO(row) {
   const content=json(row.content_config_json), moods=Array.isArray(content.moods)?content.moods:[];
