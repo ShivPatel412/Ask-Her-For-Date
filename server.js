@@ -192,7 +192,20 @@ function requireUser(req, res, next) {
   next();
 }
 function ownedInvitation(id, userId) {
-  return db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=? AND i.owner_user_id=?').get(Number(id), userId);
+  if (!id || !userId) return null;
+  const user = db.prepare('SELECT role FROM users WHERE id=?').get(userId);
+  const isSuper = user?.role === 'superadmin';
+  const num = Number(id);
+  if (!Number.isNaN(num) && num > 0) {
+    const byId = isSuper
+      ? db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=?').get(num)
+      : db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.id=? AND i.owner_user_id=?').get(num, userId);
+    if (byId) return byId;
+  }
+  const tokenStr = String(id);
+  return isSuper
+    ? db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=?').get(tokenStr)
+    : db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.owner_user_id=?').get(tokenStr, userId);
 }
 function invitationDTO(row) {
   const content=json(row.content_config_json), moods=Array.isArray(content.moods)?content.moods:[];
