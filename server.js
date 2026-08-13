@@ -12,10 +12,12 @@ const { openDatabase } = require('./src/database');
 const { defaultConfig, themes, fonts, favoriteMood } = require('./src/template');
 
 const root = process.cwd();
-const defaultDataPath = process.env.VERCEL ? path.join(os.tmpdir(), 'ask-her-out', 'app.db') : 'data/app.db';
-const dataPath = path.resolve(root, process.env.DATABASE_PATH || defaultDataPath);
+const isVercel = !!(process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NOW_REGION);
+const defaultDataPath = isVercel ? path.join(os.tmpdir(), 'ask-her-out', 'app.db') : 'data/app.db';
+const rawPath = process.env.DATABASE_PATH || defaultDataPath;
+const dataPath = (isVercel && !rawPath.startsWith(os.tmpdir())) ? path.join(os.tmpdir(), 'ask-her-out', 'app.db') : path.resolve(root, rawPath);
 const uploadsPath = path.join(path.dirname(dataPath), 'uploads');
-fs.mkdirSync(uploadsPath, { recursive: true });
+try { fs.mkdirSync(uploadsPath, { recursive: true }); } catch {}
 const db = openDatabase(dataPath);
 
 function seedSuperadminIfEmpty() {
