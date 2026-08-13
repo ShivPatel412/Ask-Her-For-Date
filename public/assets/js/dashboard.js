@@ -4,7 +4,28 @@ function filterInvitations(){const query=search?.value.trim().toLowerCase()||'',
 search?.addEventListener('input',filterInvitations);filter?.addEventListener('change',filterInvitations);
 document.addEventListener('click', async event => {
   const copy = event.target.closest('.copy');
-  if (copy) { if (!copy.dataset.url) return alert('Publish this invitation first.'); await navigator.clipboard.writeText(location.origin + copy.dataset.url); copy.textContent='Copied ✓'; return; }
+  if (copy) {
+    const card = copy.closest('.invite-card');
+    const id = copy.dataset.id || card?.dataset.id;
+    const url = copy.dataset.url;
+    if (card && card.dataset.status !== 'published' && id) {
+      try {
+        await fetch(`/api/invitations/${id}/status`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+          body: JSON.stringify({ status: 'published' })
+        });
+        card.dataset.status = 'published';
+        const badge = card.querySelector('.status');
+        if (badge) { badge.textContent = 'published'; badge.className = 'status published'; }
+      } catch {}
+    }
+    const fullUrl = location.origin + url;
+    await navigator.clipboard.writeText(fullUrl);
+    copy.textContent = 'Copied ✓';
+    setTimeout(() => { copy.textContent = '⌁ Copy link'; }, 2500);
+    return;
+  }
   const button = event.target.closest('[data-action]'); if (!button) return;
   const action=button.dataset.action,id=button.dataset.id;
   if (action==='delete' && !confirm('Delete this invitation and all of its analytics? This cannot be undone.')) return;
