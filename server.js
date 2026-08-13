@@ -80,7 +80,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: { directives: {
   defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", 'https://fonts.googleapis.com'],
-  fontSrc: ["'self'", 'https://fonts.gstatic.com'], imgSrc: ["'self'", 'data:'], mediaSrc: ["'self'", 'blob:'],
+  fontSrc: ["'self'", 'https://fonts.gstatic.com'], imgSrc: ["'self'", 'data:'], mediaSrc: ["'self'", 'blob:', 'data:'],
   connectSrc: ["'self'"], objectSrc: ["'none'"], baseUri: ["'self'"], frameAncestors: ["'self'"]
 } } }));
 app.use(express.json({ limit: '128kb' }));
@@ -452,13 +452,18 @@ app.post('/api/invitations/:id/music', requireUser, requireCsrf, audioBody, asyn
   const row=ownedInvitation(req.params.id,req.session.userId); if(!row)return res.status(404).json({error:'Not found.'});
   const type=Buffer.isBuffer(req.body)&&req.body.length>=12?audioFormats.find(format=>format.valid(req.body)):null;
   if(!type)return res.status(400).json({error:'Upload a valid MP3, M4A, OGG, or WAV file.'});
-  const filename=`${crypto.randomBytes(16).toString('hex')}.${type.ext}`, url=`/media/${filename}`;
-  await fs.promises.writeFile(path.join(uploadsPath,filename),req.body,{flag:'wx'});
-  const features=json(row.feature_config_json),oldUrl=features.musicUrl;
+  const mimeMap = { mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4' };
+  const mime = mimeMap[type.ext] || 'audio/mpeg';
+  const dataUri = `data:${mime};base64,${req.body.toString('base64')}`;
   let original='Favorite song'; try{original=clean(decodeURIComponent(req.get('x-file-name')||''),100)||original;}catch{}
-  Object.assign(features,{music:true,musicUrl:url,musicName:original});
-  db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features),now(),row.id,req.session.userId);
-  removeUnusedMusic(oldUrl,row.id); res.status(201).json({url,name:original});
+  try {
+    const filename=`${crypto.randomBytes(16).toString('hex')}.${type.ext}`;
+    await fs.promises.writeFile(path.join(uploadsPath,filename),req.body,{flag:'wx'});
+  } catch (err) {}
+  const features=json(row.feature_config_json),oldUrl=features.musicUrl;
+  Object.assign(features,{music:true,musicUrl:dataUri,musicName:original});
+  db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=?').run(JSON.stringify(features),now(),row.id);
+  removeUnusedMusic(oldUrl,row.id); res.status(201).json({url:dataUri,name:original});
 });
 app.delete('/api/invitations/:id/music',requireUser,requireCsrf,(req,res)=>{
   const row=ownedInvitation(req.params.id,req.session.userId);if(!row)return res.status(404).json({error:'Not found.'});

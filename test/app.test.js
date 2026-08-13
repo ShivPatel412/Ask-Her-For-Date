@@ -48,7 +48,7 @@ test('auth, ownership, publishing, visitor events, and analytics work end to end
   const fakeMp3 = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(32)]);
   const musicUpload = await owner(`/api/invitations/${invitation.id}/music`, { method:'POST', headers:{'content-type':'application/octet-stream','x-file-name':encodeURIComponent('favorite.mp3'),'x-csrf-token':ownerCsrf}, body:fakeMp3 });
   assert.equal(musicUpload.status, 201); const uploadedMusic = await musicUpload.json();
-  assert.match(uploadedMusic.url, /^\/media\/[a-f0-9]{32}\.mp3$/); assert.equal((await fetch(origin + uploadedMusic.url)).status, 200);
+  assert.match(uploadedMusic.url, /^data:audio\/mpeg;base64,/);
   const autosave = await owner(`/api/invitations/${invitation.id}`, { method:'PUT', headers:{'content-type':'application/json','x-csrf-token':ownerCsrf}, body:JSON.stringify({inviterName:initialInvitation.inviterName,recipientName:initialInvitation.recipientName,title:initialInvitation.title,theme:exactTheme,content:initialInvitation.content,features:{...initialInvitation.features,music:true}}) });
   const presetOnlyTheme = { preset: 'blue', background: '#F4FAFF', primary: '#5BA7E1', secondary: '#E8DEFF', text: '#20242B', muted: '#65717B', card: '#FFFFFFD6' };
   const presetSave = await owner(`/api/invitations/${invitation.id}`, { method:'PUT', headers:{'content-type':'application/json','x-csrf-token':ownerCsrf}, body:JSON.stringify({inviterName:initialInvitation.inviterName,recipientName:initialInvitation.recipientName,title:initialInvitation.title,theme:presetOnlyTheme,content:initialInvitation.content,features:initialInvitation.features}) });

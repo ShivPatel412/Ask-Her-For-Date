@@ -97,7 +97,8 @@ function shell(content) {
 function setupMusic() {
   if (
     !features.music ||
-    !/^\/media\/[a-f0-9]{32}\.(mp3|ogg|wav|m4a)$/.test(features.musicUrl || "")
+    (!features.musicUrl?.startsWith("/media/") &&
+      !features.musicUrl?.startsWith("data:audio/"))
   )
     return;
   musicAudio = document.createElement("audio");
