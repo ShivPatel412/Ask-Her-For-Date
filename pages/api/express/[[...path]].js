@@ -2,12 +2,13 @@ const { runExpress } = require('../../../src/next-express');
 
 export const config = {
   api: {
-    bodyParser: false,
-    responseLimit: false,
+    bodyParser: {
+      sizeLimit: '15mb',
+    },
   },
 };
 
-async function handler(req, res) {
+export default async function handler(req, res) {
   const { app } = require('../../../server');
   const path = Array.isArray(req.query.path) ? req.query.path.join('/') : '';
   const qs = new URL(req.url, 'http://localhost').searchParams;
@@ -32,12 +33,4 @@ async function handler(req, res) {
   await runExpress(app, req, res);
 }
 
-module.exports = handler;
-module.exports.default = handler;
-module.exports.config = {
-  api: {
-    bodyParser: false,
-    responseLimit: false,
-  },
-};
 
