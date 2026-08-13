@@ -17,6 +17,29 @@ const dataPath = path.resolve(root, process.env.DATABASE_PATH || defaultDataPath
 const uploadsPath = path.join(path.dirname(dataPath), 'uploads');
 fs.mkdirSync(uploadsPath, { recursive: true });
 const db = openDatabase(dataPath);
+
+function seedSuperadminIfEmpty() {
+  try {
+    const userCount = db.prepare('SELECT COUNT(*) c FROM users').get().c;
+    if (userCount === 0) {
+      const email = (process.env.SUPERADMIN_EMAIL || 'info@shivpatel.in').toLowerCase();
+      const username = process.env.SUPERADMIN_USERNAME || 'sastatengo';
+      const defaultPassword = process.env.SUPERADMIN_PASSWORD || 'Shiv@412';
+      const whatsapp = process.env.SUPERADMIN_WHATSAPP || '6351149722';
+      const hash = bcrypt.hashSync(defaultPassword, 12);
+      const result = db.prepare('INSERT INTO users (email, username, password_hash, whatsapp_number, role) VALUES (?, ?, ?, ?, ?)').run(
+        email, username, hash, whatsapp, 'superadmin'
+      );
+      try {
+        db.prepare('INSERT INTO user_logs (user_id, email, action, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)').run(result.lastInsertRowid, email, 'REGISTER', '127.0.0.1', 'System Seed');
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.error('[SEED ERROR] Failed to seed superadmin:', err);
+  }
+}
+seedSuperadminIfEmpty();
+
 class SQLiteSessionStore extends session.Store {
   get(sid, callback) { try { const row=db.prepare('SELECT data_json FROM web_sessions WHERE sid=? AND expires_at>?').get(sid,Date.now()); callback(null,row?JSON.parse(row.data_json):null); } catch(error){ callback(error); } }
   set(sid, value, callback=()=>{}) { try { const expires=value.cookie?.expires?new Date(value.cookie.expires).getTime():Date.now()+43_200_000; db.prepare('INSERT INTO web_sessions(sid,data_json,expires_at) VALUES(?,?,?) ON CONFLICT(sid) DO UPDATE SET data_json=excluded.data_json,expires_at=excluded.expires_at').run(sid,JSON.stringify(value),expires); callback(); } catch(error){ callback(error); } }
