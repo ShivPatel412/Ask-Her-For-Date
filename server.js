@@ -95,37 +95,12 @@ app.use(session({
 }));
 
 app.use((req, res, next) => {
-  const rawCookie = req.headers.cookie || '';
-  const match = rawCookie.match(/(?:^|;\s*)heartlink\.state=([^;]+)/);
-  if (match) {
-    const state = verifySessionState(decodeURIComponent(match[1]));
-    if (state && req.session) {
-      if (!req.session.userId && state.u) req.session.userId = state.u;
-      if (!req.session.csrf && state.c) req.session.csrf = state.c;
-    }
+  if (!req.path.startsWith('/assets/') && !req.path.startsWith('/media/')) {
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Vary', 'Cookie, Authorization');
   }
-
-  const origSetHeader = res.setHeader;
-  res.setHeader = function (name, value) {
-    if (String(name).toLowerCase() === 'set-cookie') {
-      const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      let stateCookie = `heartlink.state=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${isHttps ? '; Secure' : ''}`;
-      if (req.session?.userId || req.session?.csrf) {
-        const stateData = { u: req.session.userId || null, c: req.session.csrf || null };
-        const signedState = signSessionState(stateData);
-        stateCookie = `heartlink.state=${encodeURIComponent(signedState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${isHttps ? '; Secure' : ''}`;
-      }
-      if (Array.isArray(value)) {
-        value.push(stateCookie);
-      } else if (value) {
-        value = [value, stateCookie];
-      } else {
-        value = [stateCookie];
-      }
-    }
-    return origSetHeader.call(this, name, value);
-  };
-
   next();
 });
 
