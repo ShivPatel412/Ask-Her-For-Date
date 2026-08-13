@@ -446,8 +446,8 @@ app.put('/api/invitations/:id', requireUser, requireCsrf, (req, res) => {
   if (!allowedFonts.has(theme.heading) || !allowedFonts.has(theme.body)) return res.status(400).json({ error:'Choose a curated font.' });
   const safeContent = sanitizeObject(content, 1000, 5); const safeFeatures = sanitizeObject(features, 100, 3); const safeTheme = sanitizeObject(theme, 100, 2);
   const storedFeatures = json(row.feature_config_json);
-  safeFeatures.musicUrl = storedFeatures.musicUrl || null;
-  safeFeatures.musicName = storedFeatures.musicName || null;
+  safeFeatures.musicUrl = features.musicUrl || storedFeatures.musicUrl || null;
+  safeFeatures.musicName = features.musicName || storedFeatures.musicName || null;
   db.prepare(`UPDATE invitations SET inviter_name=?,recipient_name=?,title=?,theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(inviterName,recipientName,title,JSON.stringify(safeTheme),JSON.stringify(safeContent),JSON.stringify(safeFeatures),now(),row.id,req.session.userId);
   res.json({ ok:true, updatedAt:now() });
 });
@@ -484,15 +484,24 @@ function removeUnusedMusic(url, excludingId) {
 }
 app.post('/api/invitations/:id/music', requireUser, requireCsrf, audioBody, async (req,res) => {
   const row=ownedInvitation(req.params.id,req.session.userId); if(!row)return res.status(404).json({error:'Not found.'});
-  const type=detectAudioType(req, req.body);
-  if(!type)return res.status(400).json({error:'Upload a valid MP3, M4A, OGG, or WAV file.'});
-  const mime = type.mime || 'audio/mpeg';
-  const dataUri = `data:${mime};base64,${req.body.toString('base64')}`;
-  let original='Favorite song'; try{original=clean(decodeURIComponent(req.get('x-file-name')||''),100)||original;}catch{}
-  try {
-    const filename=`${crypto.randomBytes(16).toString('hex')}.${type.ext}`;
-    await fs.promises.writeFile(path.join(uploadsPath,filename),req.body,{flag:'wx'});
-  } catch (err) {}
+  let dataUri = '';
+  let original = clean(decodeURIComponent(req.get('x-file-name')||''),100) || 'Favorite song';
+  if (req.body && typeof req.body === 'object' && req.body.musicUrl) {
+    dataUri = String(req.body.musicUrl);
+    if (req.body.name) original = clean(req.body.name, 100);
+  } else if (Buffer.isBuffer(req.body)) {
+    const type = detectAudioType(req, req.body);
+    if (!type) return res.status(400).json({ error: 'Upload a valid MP3, M4A, OGG, or WAV file.' });
+    const mime = type.mime || 'audio/mpeg';
+    dataUri = `data:${mime};base64,${req.body.toString('base64')}`;
+    try {
+      const filename=`${crypto.randomBytes(16).toString('hex')}.${type.ext}`;
+      await fs.promises.writeFile(path.join(uploadsPath,filename),req.body,{flag:'wx'});
+    } catch (err) {}
+  }
+  if (!dataUri || (!dataUri.startsWith('data:audio/') && !dataUri.startsWith('/media/'))) {
+    return res.status(400).json({ error: 'Upload a valid MP3, M4A, OGG, or WAV file.' });
+  }
   const features=json(row.feature_config_json),oldUrl=features.musicUrl;
   Object.assign(features,{music:true,musicUrl:dataUri,musicName:original});
   db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=?').run(JSON.stringify(features),now(),row.id);
