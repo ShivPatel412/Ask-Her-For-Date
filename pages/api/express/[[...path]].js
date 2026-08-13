@@ -1,5 +1,11 @@
 const { runExpress } = require('../../../src/next-express');
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req, res) {
   if (process.env.NODE_ENV !== 'production') {
     delete require.cache[require.resolve('../../../server')];

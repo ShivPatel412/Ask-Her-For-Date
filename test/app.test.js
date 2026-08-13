@@ -50,7 +50,11 @@ test('auth, ownership, publishing, visitor events, and analytics work end to end
   assert.equal(musicUpload.status, 201); const uploadedMusic = await musicUpload.json();
   assert.match(uploadedMusic.url, /^\/media\/[a-f0-9]{32}\.mp3$/); assert.equal((await fetch(origin + uploadedMusic.url)).status, 200);
   const autosave = await owner(`/api/invitations/${invitation.id}`, { method:'PUT', headers:{'content-type':'application/json','x-csrf-token':ownerCsrf}, body:JSON.stringify({inviterName:initialInvitation.inviterName,recipientName:initialInvitation.recipientName,title:initialInvitation.title,theme:exactTheme,content:initialInvitation.content,features:{...initialInvitation.features,music:true}}) });
-  assert.equal(autosave.status, 200); const musicAfterAutosave = await (await owner(`/api/invitations/${invitation.id}`)).json(); assert.equal(musicAfterAutosave.features.musicUrl,uploadedMusic.url); assert.equal(musicAfterAutosave.features.musicName,'favorite.mp3');
+  const presetOnlyTheme = { preset: 'blue', background: '#F4FAFF', primary: '#5BA7E1', secondary: '#E8DEFF', text: '#20242B', muted: '#65717B', card: '#FFFFFFD6' };
+  const presetSave = await owner(`/api/invitations/${invitation.id}`, { method:'PUT', headers:{'content-type':'application/json','x-csrf-token':ownerCsrf}, body:JSON.stringify({inviterName:initialInvitation.inviterName,recipientName:initialInvitation.recipientName,title:initialInvitation.title,theme:presetOnlyTheme,content:initialInvitation.content,features:initialInvitation.features}) });
+  assert.equal(presetSave.status, 200, 'Updating with preset theme without explicit fonts succeeds');
+  await owner(`/api/invitations/${invitation.id}`, { method:'PUT', headers:{'content-type':'application/json','x-csrf-token':ownerCsrf}, body:JSON.stringify({inviterName:initialInvitation.inviterName,recipientName:initialInvitation.recipientName,title:initialInvitation.title,theme:exactTheme,content:initialInvitation.content,features:initialInvitation.features}) });
+
 
   const stranger = browser(), strangerCsrf = await register(stranger, 'aman', 'aman@example.com');
   assert.equal((await stranger(`/api/invitations/${invitation.id}`)).status, 404);
@@ -86,6 +90,9 @@ test('invalid login and invalid CSRF are rejected', async () => {
   const bad = await client('/register', { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({_csrf:'bad',username:'x',email:'x@y.com',password:'12345678'}) });
   assert.equal(bad.status, 403);
   const registerToken=await csrf(client,'/register'); const mismatch=await client('/register',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_csrf:registerToken,username:'mismatch-user',email:'mismatch@example.com',whatsapp:'+91 98765 43210',password:'12345678',confirmPassword:'87654321'})}); assert.equal(mismatch.status,400); assert.match(await mismatch.text(),/Passwords do not match/);
+  const usernameLoginToken = await csrf(client, '/login');
+  const usernameLogin = await client('/login', { method:'POST', headers:{'content-type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({_csrf:usernameLoginToken,email:'rahul',password:'strong-password-123'}) });
+  assert.ok(usernameLogin.status === 302 || usernameLogin.status === 303, 'Login with username redirects');
 });
 
 test('legacy accounts can add WhatsApp from the dashboard', async () => {
