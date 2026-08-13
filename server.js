@@ -105,17 +105,20 @@ app.use((req, res, next) => {
 
   const origSetHeader = res.setHeader;
   res.setHeader = function (name, value) {
-    if (String(name).toLowerCase() === 'set-cookie' && req.session) {
-      const stateData = { u: req.session.userId || null, c: req.session.csrf || null };
-      const signedState = signSessionState(stateData);
+    if (String(name).toLowerCase() === 'set-cookie') {
       const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const cookieHeader = `heartlink.state=${encodeURIComponent(signedState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${isHttps ? '; Secure' : ''}`;
+      let stateCookie = `heartlink.state=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${isHttps ? '; Secure' : ''}`;
+      if (req.session?.userId || req.session?.csrf) {
+        const stateData = { u: req.session.userId || null, c: req.session.csrf || null };
+        const signedState = signSessionState(stateData);
+        stateCookie = `heartlink.state=${encodeURIComponent(signedState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${isHttps ? '; Secure' : ''}`;
+      }
       if (Array.isArray(value)) {
-        value.push(cookieHeader);
+        value.push(stateCookie);
       } else if (value) {
-        value = [value, cookieHeader];
+        value = [value, stateCookie];
       } else {
-        value = [cookieHeader];
+        value = [stateCookie];
       }
     }
     return origSetHeader.call(this, name, value);
@@ -286,8 +289,15 @@ app.post('/login', authLimit, requireCsrf, async (req, res) => {
 app.post('/logout', requireUser, requireCsrf, (req, res) => {
   const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) logUserActivity(req.session.userId, user.email, 'LOGOUT', req);
-  res.setHeader('Set-Cookie', 'heartlink.state=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
-  req.session.destroy(() => res.redirect(303, '/'));
+  req.session.userId = null;
+  req.session.csrf = null;
+  req.session.destroy(() => {
+    res.setHeader('Set-Cookie', [
+      'heartlink.sid=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
+      'heartlink.state=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax'
+    ]);
+    res.redirect(303, '/');
+  });
 });
 
 app.post('/dashboard', (req, res) => res.redirect(303, '/dashboard'));
