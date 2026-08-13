@@ -64,19 +64,11 @@ function audioBufferToWavBlob(buffer) {
 }
 
 async function compressAudioFile(file) {
-  if (file.size <= 2.2 * 1024 * 1024) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
   try {
     const arrayBuffer = await file.arrayBuffer();
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    const maxDuration = Math.min(audioBuffer.duration, 90);
+    const maxDuration = Math.min(audioBuffer.duration, 45);
     const sampleRate = 22050;
     const offlineCtx = new OfflineAudioContext(1, Math.floor(sampleRate * maxDuration), sampleRate);
     const source = offlineCtx.createBufferSource();
