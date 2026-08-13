@@ -62,7 +62,7 @@ app.use(session({
   store: new SQLiteSessionStore(),
   name: 'heartlink.sid', secret: process.env.SESSION_SECRET || 'development-only-change-this-secret-now',
   resave: false, saveUninitialized: false, rolling: true,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: production, maxAge: 1000 * 60 * 60 * 12 }
+  cookie: { httpOnly: true, sameSite: 'lax', secure: 'auto', maxAge: 1000 * 60 * 60 * 12 }
 }));
 app.use((req, res, next) => {
   if (!req.path.startsWith('/api/') && !req.path.startsWith('/media/')) {
@@ -103,16 +103,17 @@ const normalizeWhatsApp = value => { const raw=String(value??'').trim(),digits=r
 const validColor = value => /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value);
 
 function csrf(req) {
+  if (!req?.session) return '';
   if (!req.session.csrf) req.session.csrf = token(24);
   return req.session.csrf;
 }
 function requireCsrf(req, res, next) {
   const supplied = req.get('x-csrf-token') || req.body?._csrf;
-  if (!supplied || !req.session.csrf || supplied.length !== req.session.csrf.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(req.session.csrf))) return res.status(403).json({ error: 'Security token expired. Refresh and try again.' });
+  if (!supplied || !req.session?.csrf || supplied.length !== req.session.csrf.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(req.session.csrf))) return res.status(403).json({ error: 'Security token expired. Refresh and try again.' });
   next();
 }
 function requireUser(req, res, next) {
-  if (!req.session.userId) return req.accepts('html') ? res.redirect('/login') : res.status(401).json({ error: 'Please log in.' });
+  if (!req.session?.userId) return req.accepts('html') ? res.redirect('/login') : res.status(401).json({ error: 'Please log in.' });
   const user = db.prepare('SELECT id FROM users WHERE id=?').get(req.session.userId);
   if (!user) {
     req.session.userId = null;
@@ -130,7 +131,7 @@ function invitationDTO(row) {
   return { id: row.id, token: row.public_token, templateKey: row.template_key, inviterName: row.inviter_name, recipientName: row.recipient_name, whatsappNumber: row.whatsapp_number || '', title: row.title, status: row.status, theme: json(row.theme_config_json), content, features: json(row.feature_config_json), createdAt: row.created_at, updatedAt: row.updated_at, publishedAt: row.published_at };
 }
 function page(title, body, req, script = '') {
-  const user = req.session.userId ? db.prepare('SELECT username, role FROM users WHERE id=?').get(req.session.userId) : null;
+  const user = req.session?.userId ? db.prepare('SELECT username, role FROM users WHERE id=?').get(req.session.userId) : null;
   const adminBtn = user?.role === 'superadmin' ? `<a class="button ghost small nav-admin" href="/admin" title="Admin Control Panel">👑 Admin</a>` : '';
   const nav = user ? `<nav class="topbar app-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><a class="user-dashboard-link" href="/dashboard" aria-label="Open dashboard"><span class="user-avatar" aria-hidden="true">${escapeHtml(user.username.slice(0,1).toUpperCase())}</span><span class="nav-user">${escapeHtml(user.username)}</span><span class="nav-dashboard-label">Dashboard</span></a>${adminBtn}<form method="post" action="/logout"><input type="hidden" name="_csrf" value="${csrf(req)}"><button class="link-button">Log out</button></form></nav>` : `<nav class="topbar marketing-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><div class="marketing-links"><a href="/#how-it-works">How it works</a><a href="/#template">Template</a><a href="/#features">Features</a><a href="/#contact">Contact</a></div><div class="marketing-actions"><a class="nav-login" href="/login">Login</a><a class="nav-register" href="/register">Register</a></div></nav>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fff8f5"><meta name="csrf-token" content="${csrf(req)}"><title>${escapeHtml(title)} · Heartlink</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700&family=Nunito:wght@500;700&family=Playfair+Display:wght@600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/css/app.css"></head><body>${nav}${body}<footer class="site-credit">© ${new Date().getFullYear()} Ask Her Out · Designed and developed by <a href="https://shivpatel.in" target="_blank" rel="noopener noreferrer">SastaTengo</a></footer>${script ? `<script src="${script}" defer></script>` : ''}</body></html>`;
@@ -186,7 +187,15 @@ app.post('/register', authLimit, requireCsrf, async (req, res) => {
     const role = (totalUsers === 0 || process.env.SUPERADMIN_EMAIL?.toLowerCase() === email) ? 'superadmin' : 'user';
     const result = db.prepare('INSERT INTO users (email,username,password_hash,whatsapp_number,role) VALUES (?,?,?,?,?)').run(email, username, hash, whatsapp, role);
     logUserActivity(result.lastInsertRowid, email, 'REGISTER', req);
-    req.session.regenerate(err => { if (err) return res.status(500).send('Could not start session.'); req.session.userId = result.lastInsertRowid; csrf(req); res.redirect(303, '/dashboard'); });
+    req.session.regenerate(err => {
+      if (err) return res.status(500).send('Could not start session.');
+      req.session.userId = result.lastInsertRowid;
+      csrf(req);
+      req.session.save(saveErr => {
+        if (saveErr) return res.status(500).send('Could not save session.');
+        res.redirect(303, '/dashboard');
+      });
+    });
   } catch (error) { res.status(409).send(authPage('Create your account', 'register', req, 'That email or username is already in use.',values)); }
 });
 app.post('/login', authLimit, requireCsrf, async (req, res) => {
@@ -197,7 +206,15 @@ app.post('/login', authLimit, requireCsrf, async (req, res) => {
     return res.status(401).send(authPage('Welcome back', 'login', req, 'Email or password is incorrect.', { email: loginInput }));
   }
   logUserActivity(user.id, user.email, 'LOGIN', req);
-  req.session.regenerate(err => { if (err) return res.status(500).send('Could not start session.'); req.session.userId = user.id; csrf(req); res.redirect(303, '/dashboard'); });
+  req.session.regenerate(err => {
+    if (err) return res.status(500).send('Could not start session.');
+    req.session.userId = user.id;
+    csrf(req);
+    req.session.save(saveErr => {
+      if (saveErr) return res.status(500).send('Could not save session.');
+      res.redirect(303, '/dashboard');
+    });
+  });
 });
 app.post('/logout', requireUser, requireCsrf, (req, res) => {
   const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);

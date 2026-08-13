@@ -2,9 +2,15 @@ const Database = require('better-sqlite3');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const dbCache = new Map();
+
 function openDatabase(filename) {
-  fs.mkdirSync(path.dirname(filename), { recursive: true });
-  const db = new Database(filename);
+  const resolved = path.resolve(filename);
+  if (dbCache.has(resolved)) {
+    return dbCache.get(resolved);
+  }
+  fs.mkdirSync(path.dirname(resolved), { recursive: true });
+  const db = new Database(resolved);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(`
@@ -60,6 +66,7 @@ function openDatabase(filename) {
   `);
   if (!db.prepare('PRAGMA table_info(users)').all().some(column => column.name === 'whatsapp_number'))
     db.exec('ALTER TABLE users ADD COLUMN whatsapp_number TEXT');
+  dbCache.set(resolved, db);
   return db;
 }
 
