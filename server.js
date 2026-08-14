@@ -90,8 +90,8 @@ app.use(express.urlencoded({ extended: false, limit: '15mb' }));
 app.use(session({
   store: new SQLiteSessionStore(),
   name: 'heartlink.sid', secret: SESSION_SECRET,
-  resave: true, saveUninitialized: true, rolling: true,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 1000 * 60 * 60 * 12 }
+  resave: false, saveUninitialized: false, rolling: false,
+  cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 1000 * 60 * 60 * 24 * 7 }
 }));
 
 app.use((req, res, next) => {

@@ -97,7 +97,22 @@ async function track(
   }
 }
 function shell(content) {
-  return `<main class="invite-shell screen-${state.screen}" style='${css}'><div class="ambient a"></div><div class="ambient b"></div>${musicControl()}${data.preview ? '<span class="preview-badge">Preview · analytics off</span>' : ""}${features.mascots && features.mascotPack !== "none" ? mascots() : ""}<section class="invite-card" aria-live="polite">${content}</section>${features.collection ? collectibles() : ""}<footer><button data-modal="privacy">Privacy</button><span>Cute things found: ${state.found.size}/5</span><small class="invite-credit">© ${new Date().getFullYear()} Ask Her Out · Designed and developed by <a href="https://shivpatel.in" target="_blank" rel="noopener noreferrer">SastaTengo</a></small></footer><div id="toast" role="status"></div>${modal("privacy", "Privacy", `This invitation records interactions within this website, such as which options are selected and date preferences. It does not access your contacts, precise location, camera, microphone, or browsing history.`, "Got it")}${modal("secret", screens.secret.heading, screens.secret.body, screens.secret.primary)}</main>`;
+  const modal404 = (state.screen === "finalAttempt" && state.evasionStage === 3)
+    ? `<div class="evasion-modal-overlay">
+        <div class="retro-error-card">
+          <div class="retro-header"><b>⚠️ SYSTEM ERROR 404</b><span aria-hidden="true">[!]</span></div>
+          <div class="retro-body">
+            <h3>REJECTION NOT FOUND</h3>
+            <p>Saying 'NO / Best Friend' to <b>${esc(data.inviterName)}</b> is currently deprecated on this server. 😂</p>
+            <code>Status: 404 Not Supported<br>Action: Please select YES to continue 😌❤️</code>
+            <button class="retro-btn" data-action="yes" type="button">Okay Fineee, YES 😂❤️</button>
+            <button class="fallback-friend-link" data-action="forceDecline" type="button" style="color:#a8a3b5;margin-top:6px;text-align:center;">Sach me best friend hi rehna hai 🤝</button>
+          </div>
+        </div>
+      </div>`
+    : "";
+
+  return `<main class="invite-shell screen-${state.screen}" style='${css}'><div class="ambient a"></div><div class="ambient b"></div>${musicControl()}${features.mascots && features.mascotPack !== "none" ? mascots() : ""}<section class="invite-card" aria-live="polite">${content}</section>${features.collection ? collectibles() : ""}<footer><button data-modal="privacy">Privacy</button><span>Cute things found: ${state.found.size}/5</span><small class="invite-credit">© ${new Date().getFullYear()} Ask Her Out · Designed and developed by <a href="https://shivpatel.in" target="_blank" rel="noopener noreferrer">SastaTengo</a></small></footer><div id="toast" role="status"></div>${modal("privacy", "Privacy", `This invitation records interactions within this website, such as which options are selected and date preferences. It does not access your contacts, precise location, camera, microphone, or browsing history.`, "Got it")}${modal("secret", screens.secret.heading, screens.secret.body, screens.secret.primary)}${modal404}</main>`;
 }
 function setupMusic() {
   if (
@@ -342,24 +357,7 @@ function finalAttemptScreen() {
 
   const fallback = isEvasion
     ? `<button class="fallback-friend-link" data-action="forceDecline" type="button">Sach me friendzone karna hai? Click here 🤝</button>`
-    : "";
-
-  const modal404 = state.evasionStage === 3
-    ? `<div class="evasion-modal-overlay">
-        <div class="retro-error-card">
-          <div class="retro-header"><b>⚠️ SYSTEM ERROR 404</b><span aria-hidden="true">[!]</span></div>
-          <div class="retro-body">
-            <h3>REJECTION NOT FOUND</h3>
-            <p>Saying 'NO / Best Friend' to <b>${esc(data.inviterName)}</b> is currently deprecated on this server. 😂</p>
-            <code>Status: 404 Not Supported<br>Action: Please select YES to continue 😌❤️</code>
-            <button class="retro-btn" data-action="yes" type="button">Okay Fineee, YES 😂❤️</button>
-            <button class="fallback-friend-link" data-action="forceDecline" type="button" style="color:#a8a3b5;margin-top:6px;text-align:center;">Sach me best friend hi rehna hai 🤝</button>
-          </div>
-        </div>
-      </div>`
-    : "";
-
-  return `${modal404}${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="promise"><span><b>🔍</b>You know me already</span><span><b>💬</b>You survive my bakwaas</span><span><b>🙌</b>We have fun together</span></div><h2 class="closing-question">${isEvasion ? "Saying YES is recommended 😌❤️" : "Final answer? 👀"}</h2><div class="action-stack"><button class="choice ${yesClass}" data-action="yes" type="button" ${yesStyle}>${text(s.primary)}</button>${btn(s.secondary, "mood")}<button class="choice ${rejectBtnClass}" data-action="${rejectBtnAction}" type="button">${text(rejectBtnText)}</button></div>${fallback}`;
+  return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="promise"><span><b>🔍</b>You know me already</span><span><b>💬</b>You survive my bakwaas</span><span><b>🙌</b>We have fun together</span></div><h2 class="closing-question">${isEvasion ? "Saying YES is recommended 😌❤️" : "Final answer? 👀"}</h2><div class="action-stack"><button class="choice ${yesClass}" data-action="yes" type="button" ${yesStyle}>${text(s.primary)}</button>${btn(s.secondary, "mood")}<button class="choice ${rejectBtnClass}" data-action="${rejectBtnAction}" type="button">${text(rejectBtnText)}</button></div>${fallback}`;
 }
 function back(label) {
   return `<button class="back" data-action="main">${text(label)}</button>`;
@@ -554,13 +552,38 @@ function bind() {
   
   const teleportBtn = app.querySelector(".evasion-teleport");
   if (teleportBtn) {
+    let lastMove = 0;
     const moveBtn = () => {
-      const x = (Math.random() > 0.5 ? 1 : -1) * (30 + Math.random() * 55);
-      const y = (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 40);
+      const nowTime = Date.now();
+      if (nowTime - lastMove < 90) return;
+      lastMove = nowTime;
+      const x = (Math.random() > 0.5 ? 1 : -1) * (110 + Math.random() * 140);
+      const y = (Math.random() > 0.5 ? 1 : -1) * (70 + Math.random() * 110);
       teleportBtn.style.transform = `translate(${x}px, ${y}px)`;
     };
     teleportBtn.addEventListener("mouseenter", moveBtn);
     teleportBtn.addEventListener("touchstart", moveBtn, { passive: true });
+    teleportBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      moveBtn();
+      act("rejectAttempt", "evasion_intercepted");
+    });
+    const checkProximity = (e) => {
+      if (!teleportBtn.isConnected) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      if (clientX == null || clientY == null) return;
+      const rect = teleportBtn.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const dist = Math.hypot(clientX - centerX, clientY - centerY);
+      if (dist < 140) {
+        moveBtn();
+      }
+    };
+    window.addEventListener("pointermove", checkProximity);
+    window.addEventListener("touchmove", checkProximity, { passive: true });
   }
   
   app.querySelectorAll("[data-voice]").forEach((el) => {
