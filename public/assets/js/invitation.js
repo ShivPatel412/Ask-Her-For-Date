@@ -47,7 +47,8 @@ const vars = (s) =>
       })[k],
   );
 const text = (s) => esc(vars(s)).replace(/\n/g, "<br>");
-const css = `--bg:${theme.background};--primary:${theme.primary};--secondary:${theme.secondary};--text:${theme.text};--muted:${theme.muted};--card:${theme.card};--heading:${JSON.stringify(theme.heading)};--body:${JSON.stringify(theme.body)}`;
+const cleanFont = (f) => String(f ?? "").replace(/['"]/g, "");
+const css = `--bg:${theme.background};--primary:${theme.primary};--secondary:${theme.secondary};--text:${theme.text};--muted:${theme.muted};--card:${theme.card};--heading:'${cleanFont(theme.heading)}';--body:'${cleanFont(theme.body)}'`;
 
 async function initialize() {
   setupMusic();

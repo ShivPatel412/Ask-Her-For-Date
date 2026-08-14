@@ -631,7 +631,8 @@ app.post('/api/invitations', requireUser, requireCsrf, (req, res) => {
 });
 
 app.get('/dashboard/invitations/:id/edit', requireUser, (req, res) => {
-  const row = ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).send('Invitation not found.');
+  const row = ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).send(page('Invitation not found', '<main class="empty"><h1>Invitation not found.</h1><p>The invitation you requested does not exist or you do not have access to it.</p><a class="button primary" href="/dashboard">Return to Dashboard</a></main>', req));
   res.send(page('Edit invitation', `<main id="builder" class="builder" data-id="${row.id}"><header class="builder-head"><div><a href="/dashboard">← Dashboard</a><h1>${escapeHtml(row.recipient_name)}'s invitation <span aria-hidden="true">✎</span></h1><span id="save-status">✓ All changes saved</span></div><div class="actions"><a class="button ghost small" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a><button id="save-draft" class="button ghost small">▣ Save draft</button><button id="publish" class="button primary small">Publish Invitation ♥</button></div></header><div class="mobile-tabs"><button data-tab="edit" class="active">Edit</button><button data-tab="preview">Preview</button></div><div class="builder-grid"><section id="controls" class="controls"></section><aside id="preview-pane" class="preview-pane"><div class="preview-toolbar" aria-label="Preview size"><button class="active" data-viewport="mobile">▯ Mobile</button><button data-viewport="tablet">▯ Tablet</button><button data-viewport="desktop">▱ Desktop</button></div><div class="phone"><iframe title="Live invitation preview" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe></div><span class="preview-dots" aria-hidden="true">● ○ ○ ○ ○</span></aside></div></main>`, req, '/assets/js/builder.js'));
 });
 
@@ -765,7 +766,11 @@ app.delete('/api/invitations/:id', requireUser, requireCsrf, (req,res) => {
   res.json({ok:true});
 });
 
-app.get('/dashboard/invitations/:id/preview', requireUser, (req,res) => { const r=ownedInvitation(req.params.id,req.session.userId); if(!r)return res.status(404).send('Invitation not found.'); res.set('Cache-Control','no-store').send(invitationPage(r,true)); });
+app.get('/dashboard/invitations/:id/preview', requireUser, (req,res) => {
+  const r = ownedInvitation(req.params.id, req.session.userId);
+  if (!r) return res.status(404).send(page('Invitation not found', '<main class="empty"><h1>Invitation preview unavailable.</h1><p>This invitation does not exist or you do not have permission to view it.</p><a class="button primary" href="/dashboard">Return to Dashboard</a></main>', req));
+  res.set('Cache-Control','no-store').send(invitationPage(r,true));
+});
 app.get('/i/:token', (req,res) => { const r=db.prepare("SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.status='published'").get(req.params.token); if(!r)return res.status(404).send(page('Invitation unavailable','<main class="empty"><h1>This invitation is unavailable.</h1><p>It may be a draft or temporarily disabled.</p></main>',req)); res.set('Cache-Control','no-store').send(invitationPage(r,false)); });
 function invitationPage(row, preview) {
   const cfg=invitationDTO(row), payload={...cfg,preview};
