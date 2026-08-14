@@ -18,13 +18,28 @@ function render(){
     <details><summary>5. Date Options</summary><div class="section-body"><p class="hint">Choose one featured date idea. The recipient selects the exact date and time after saying yes.</p>${c.moods.map((m,i)=>`<fieldset class="${m.favorite?'favorite-field':''}"><legend>Option ${i+1}${m.favorite?' · My favorite':''}</legend>${field('Title',`content.moods.${i}.title`,m.title)}${field('Description',`content.moods.${i}.description`,m.description)}<button type="button" class="favorite-option ${m.favorite?'active':''}" data-favorite-index="${i}">${m.favorite?'★ Featured & selected':'☆ Make my favorite'}</button></fieldset>`).join('')}<button class="button ghost small add" data-list="moods">+ Add option</button></div></details>
     <details class="feature-section"><summary>6. Cute Features <small>Playful touches for the invitation.</small></summary><div class="section-body feature-list">${[['Mascots','mascots'],['Tiny Mode','tinyMode'],['Cute-item collection','collection'],['Confetti','confetti'],['Funny Back buttons','funnyBack']].map(([l,k])=>featureToggle(l,`features.${k}`,f[k])).join('')}<label class="mascot-select"><span><b>Mascot pack</b><small>Choose the characters shown in the invitation.</small></span><select data-path="features.mascotPack">${['original','yellow','blue','pink','bears','cats','bunnies','none'].map(x=>`<option ${f.mascotPack===x?'selected':''} value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></label></div></details>
     <details class="music-section"><summary>7. Music <small>Set the mood after they open the invitation.</small></summary><div class="section-body"><div class="music-enable">${toggle('Enable music','features.music',f.music)}<small>Play your selected song after the invitation is opened.</small></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload favorite song</b><small>MP3, M4A, OGG, or WAV · max 10 MB</small><span id="music-upload-copy" class="button primary small">Choose file</span><input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><p class="music-safety">♡ Your song never autoplays. It starts only after the recipient interacts.</p>${f.musicUrl?`<div class="music-current"><span class="music-note">♫</span><div><b>${esc(f.musicName||'Favorite song')}</b><small>Ready to play after “Open it”</small></div><label class="change-music button ghost small">Change<input class="music-replace" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><button id="remove-music" class="icon-button" aria-label="Remove song">×</button></div>`:''}<p class="music-tip"><b>♡ Tip</b><span>Keep it short and sweet—your favorite moment works beautifully.</span></p></div></details>
-    <details><summary>8. Final Message</summary><div class="section-body">${field('Secret heading','content.screens.secret.heading',s.secret.heading)}<label>Secret message<textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret.body)}</textarea></label></div></details>
-    <details><summary>9. Publish</summary><div class="section-body"><p>Status: <b>${state.status}</b></p><button class="button primary" id="publish-inline">Publish Invitation ❤️</button>${state.status==='published'?`<div class="share-box"><input readonly value="${location.origin}/i/${state.token}"><button class="button small copy-link">Copy Link</button></div>`:''}</div></details>`;
+    <details class="music-section"><summary>8. Personal Voice Note 🎙️ <small>Add your personal voice message.</small></summary><div class="section-body"><p class="hint">Record with your mic or upload an audio file. The background song will automatically duck when your voice note plays!</p><div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;"><button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button><span id="recording-timer" style="font-weight:700;font-size:0.85rem;display:none;color:#ff625f;">● 0:00</span></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload recorded voice note</b><small>MP3, M4A, OGG, WAV, or AAC · max 10 MB</small><span id="voice-upload-copy" class="button ghost small">Choose voice file</span><input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*"></label>${f.voiceNoteUrl?`<div class="music-current" style="margin-top:12px;"><span class="music-note">🎙️</span><div><b>${esc(f.voiceNoteName||'Personal Voice Note')}</b><small>Ready to play in invitation</small></div><button id="remove-voice" class="icon-button" type="button" aria-label="Remove voice note">×</button></div>`:''}</div></details>
+    <details><summary>9. Final Message</summary><div class="section-body">${field('Secret heading','content.screens.secret.heading',s.secret.heading)}<label>Secret message<textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret.body)}</textarea></label></div></details>
+    <details><summary>10. Publish</summary><div class="section-body"><p>Status: <b>${state.status}</b></p><button class="button primary" id="publish-inline">Publish Invitation ❤️</button>${state.status==='published'?`<div class="share-box"><input readonly value="${location.origin}/i/${state.token}"><button class="button small copy-link">Copy Link</button></div>`:''}</div></details>`;
 }
 function setPath(path,value){const bits=path.split('.');let obj=state;for(let i=0;i<bits.length-1;i++)obj=obj[bits[i]];obj[bits.at(-1)]=value;scheduleSave();}
 controls.addEventListener('input',e=>{if(!e.target.dataset.path)return;setPath(e.target.dataset.path,e.target.type==='checkbox'?e.target.checked:e.target.value);if(e.target.dataset.path.startsWith('theme.'))updateThemePreview();});
-controls.addEventListener('change',e=>{if((e.target.id==='music-file'||e.target.classList.contains('music-replace'))&&e.target.files[0])uploadMusic(e.target.files[0]);});
-controls.addEventListener('click',e=>{const add=e.target.closest('.add'),remove=e.target.closest('.remove'),themeButton=e.target.closest('[data-theme-preset]'),favoriteButton=e.target.closest('[data-favorite-index]');if(themeButton){Object.assign(state.theme,state.presets.themes[themeButton.dataset.themePreset],{preset:themeButton.dataset.themePreset});render();updateThemePreview();scheduleSave();}if(favoriteButton){state.content.moods.forEach((m,i)=>m.favorite=i===Number(favoriteButton.dataset.favoriteIndex));render();scheduleSave();}if(add){e.preventDefault();if(add.dataset.list==='moods'&&state.content.moods.length<10)state.content.moods.push({title:'New date idea ✨',description:'Add a little description',favorite:false});render();scheduleSave();}if(remove){e.preventDefault();state.content[remove.dataset.list].splice(Number(remove.dataset.index),1);if(remove.dataset.list==='moods'&&state.content.moods.length&&!state.content.moods.some(m=>m.favorite))state.content.moods[0].favorite=true;render();scheduleSave();}if(e.target.id==='remove-music')removeMusic();if(e.target.id==='publish-inline')publish();if(e.target.closest('.copy-link'))copyLink();});
+controls.addEventListener('change',e=>{
+  if((e.target.id==='music-file'||e.target.classList.contains('music-replace'))&&e.target.files[0])uploadMusic(e.target.files[0]);
+  if(e.target.id==='voice-file'&&e.target.files[0])uploadVoiceNote(e.target.files[0]);
+});
+controls.addEventListener('click',e=>{
+  const add=e.target.closest('.add'),remove=e.target.closest('.remove'),themeButton=e.target.closest('[data-theme-preset]'),favoriteButton=e.target.closest('[data-favorite-index]');
+  if(themeButton){Object.assign(state.theme,state.presets.themes[themeButton.dataset.themePreset],{preset:themeButton.dataset.themePreset});render();updateThemePreview();scheduleSave();}
+  if(favoriteButton){state.content.moods.forEach((m,i)=>m.favorite=i===Number(favoriteButton.dataset.favoriteIndex));render();scheduleSave();}
+  if(add){e.preventDefault();if(add.dataset.list==='moods'&&state.content.moods.length<10)state.content.moods.push({title:'New date idea ✨',description:'Add a little description',favorite:false});render();scheduleSave();}
+  if(remove){e.preventDefault();state.content[remove.dataset.list].splice(Number(remove.dataset.index),1);if(remove.dataset.list==='moods'&&state.content.moods.length&&!state.content.moods.some(m=>m.favorite))state.content.moods[0].favorite=true;render();scheduleSave();}
+  if(e.target.id==='remove-music')removeMusic();
+  if(e.target.id==='remove-voice')removeVoiceNote();
+  if(e.target.id==='record-voice-btn')toggleRecordVoice();
+  if(e.target.id==='publish-inline')publish();
+  if(e.target.closest('.copy-link'))copyLink();
+});
 function updateThemePreview(){const shell=preview.contentDocument?.querySelector('.invite-shell');if(!shell)return;for(const key of ['background','primary','secondary','text','muted','card'])if(state.theme[key])shell.style.setProperty(`--${key==='background'?'bg':key}`,state.theme[key]);}
 function audioBufferToWavBlob(buffer) {
   const numChannels = 1;
@@ -95,6 +110,81 @@ async function compressAudioFile(file) {
 
 async function uploadMusic(file){const copy=document.querySelector('#music-upload-copy');copy.textContent=`Optimizing ${file.name}…`;document.querySelector('#save-status').textContent='Uploading music…';try{await saveQueue;const dataUrl=await compressAudioFile(file);let r=await fetch(`/api/invitations/${id}/music`,{method:'POST',headers:{'content-type':'application/json','x-csrf-token':csrf},body:JSON.stringify({musicUrl:dataUrl,name:file.name})});let out={};try{out=await r.json();}catch{}if(!r.ok){Object.assign(state.features,{music:true,musicUrl:dataUrl,musicName:file.name});const savedOk=await save();if(!savedOk){copy.textContent=out.error||'Could not upload song.';document.querySelector('#save-status').textContent='Upload failed';return toast(copy.textContent);}}else{Object.assign(state.features,{music:true,musicUrl:out.url||dataUrl,musicName:out.name||file.name});}document.querySelector('#save-status').textContent='Music saved ✓';render();preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;toast('Favorite song added ♫');}catch{copy.textContent='Upload failed. Check file.';document.querySelector('#save-status').textContent='Upload failed';toast(copy.textContent);}}
 async function removeMusic(){if(!confirm('Remove this song from the invitation?'))return;const r=await fetch(`/api/invitations/${id}/music`,{method:'DELETE',headers:{'x-csrf-token':csrf}});if(r.ok){Object.assign(state.features,{music:false,musicUrl:null,musicName:null});render();preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;toast('Song removed.');}}
+
+let mediaRecorder = null;
+let audioChunks = [];
+let recordTimer = null;
+let recordSeconds = 0;
+
+async function toggleRecordVoice() {
+  const btn = document.querySelector('#record-voice-btn');
+  const timerEl = document.querySelector('#recording-timer');
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        clearInterval(recordTimer);
+        if (timerEl) timerEl.style.display = 'none';
+        if (btn) btn.textContent = '🎙️ Start Recording';
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        if (blob.size < 100) return toast('Recording too short.');
+        uploadVoiceNote(new File([blob], 'my-voice-note.webm', { type: 'audio/webm' }));
+      };
+      mediaRecorder.start();
+      recordSeconds = 0;
+      if (timerEl) { timerEl.style.display = 'inline'; timerEl.textContent = '● 0:00'; }
+      if (btn) btn.textContent = '⏹ Stop & Save';
+      recordTimer = setInterval(() => {
+        recordSeconds++;
+        const mins = Math.floor(recordSeconds / 60);
+        const secs = recordSeconds % 60;
+        if (timerEl) timerEl.textContent = `● ${mins}:${String(secs).padStart(2, '0')}`;
+        if (recordSeconds >= 60) {
+          mediaRecorder.stop();
+        }
+      }, 1000);
+    } catch (err) {
+      toast('Microphone permission required for voice recording.');
+    }
+  } else {
+    mediaRecorder.stop();
+  }
+}
+
+async function uploadVoiceNote(file) {
+  const copy = document.querySelector('#voice-upload-copy');
+  if (copy) copy.textContent = `Saving ${file.name}…`;
+  document.querySelector('#save-status').textContent = 'Uploading voice note…';
+  try {
+    await saveQueue;
+    const dataUrl = await compressAudioFile(file);
+    Object.assign(state.features, { voiceNoteUrl: dataUrl, voiceNoteName: file.name });
+    const savedOk = await save();
+    if (savedOk) {
+      document.querySelector('#save-status').textContent = 'Voice note saved ✓';
+      render();
+      preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+      toast('Voice note saved 🎙️');
+    } else {
+      toast('Failed to save voice note.');
+    }
+  } catch {
+    toast('Failed to upload voice note.');
+  }
+}
+
+async function removeVoiceNote() {
+  if (!confirm('Remove this voice note from the invitation?')) return;
+  Object.assign(state.features, { voiceNoteUrl: null, voiceNoteName: null });
+  await save();
+  render();
+  preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+  toast('Voice note removed.');
+}
 function scheduleSave(){document.querySelector('#save-status').textContent='Saving…';clearTimeout(timer);timer=setTimeout(save,650);}
 // Serialize autosaves: an older theme snapshot can never arrive after a newer one.
 async function save(){clearTimeout(timer);const version=++saveVersion,body=JSON.stringify({inviterName:state.inviterName,recipientName:state.recipientName,title:state.title,theme:state.theme,content:state.content,features:state.features});const run=async()=>{try{const r=await fetch(`/api/invitations/${id}`,{method:'PUT',headers:{'content-type':'application/json','x-csrf-token':csrf},body});if(version===saveVersion){document.querySelector('#save-status').textContent=r.ok?'Saved ✓':'Save failed';if(r.ok)preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;else toast((await r.json()).error||'Could not save changes.');}return r.ok;}catch{if(version===saveVersion){document.querySelector('#save-status').textContent='Save failed';toast('Could not save changes.');}return false;}};saveQueue=saveQueue.then(run,run);return saveQueue;}

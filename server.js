@@ -304,11 +304,12 @@ app.get('/admin', requireUser, (req,res) => {
     return res.status(403).send(page('Access Denied', '<main class="empty"><h1>👑 Admin access required.</h1><p>Only superadmin accounts can view system intelligence and logs.</p><a class="button primary" href="/dashboard">Back to Dashboard</a></main>', req));
   }
 
-  const stats = db.prepare(`SELECT (SELECT COUNT(*) FROM users) users, (SELECT COUNT(*) FROM invitations) invitations, (SELECT COUNT(*) FROM invitations WHERE status='published') published, (SELECT COUNT(*) FROM visitor_sessions) visits, (SELECT COUNT(*) FROM user_logs) logs`).get();
+  const stats = db.prepare(`SELECT (SELECT COUNT(*) FROM users) users, (SELECT COUNT(*) FROM invitations) invitations, (SELECT COUNT(*) FROM invitations WHERE status='published') published, (SELECT COUNT(*) FROM visitor_sessions) visits, (SELECT COUNT(*) FROM user_logs) logs, (SELECT COUNT(*) FROM email_notifications) emails`).get();
   
   const allUsers = db.prepare(`SELECT id, username, email, whatsapp_number, role, created_at FROM users ORDER BY id DESC`).all();
   const userLogs = db.prepare(`SELECT id, user_id, email, action, ip_address, user_agent, created_at FROM user_logs ORDER BY id DESC LIMIT 100`).all();
   const recentInvitations = db.prepare(`SELECT i.id, i.recipient_name, i.inviter_name, i.status, i.updated_at, u.username FROM invitations i JOIN users u ON u.id=i.owner_user_id ORDER BY i.updated_at DESC LIMIT 50`).all();
+  const recentEmails = db.prepare(`SELECT e.*, i.title as invite_title FROM email_notifications e JOIN invitations i ON i.id=e.invitation_id ORDER BY e.id DESC LIMIT 30`).all();
 
   const userTableRows = allUsers.map(u => `<tr><td>#${u.id}</td><td><b><a href="/admin/users/${u.id}" class="admin-user-link">${escapeHtml(u.username)}</a></b></td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.whatsapp_number || '—')}</td><td><span class="role-badge ${u.role}">${escapeHtml(u.role)}</span></td><td><small>${escapeHtml(new Date(u.created_at).toLocaleString())}</small></td><td><a class="button small ghost" href="/admin/users/${u.id}">History 🔍</a></td></tr>`).join('');
   
@@ -316,13 +317,15 @@ app.get('/admin', requireUser, (req,res) => {
 
   const inviteTableRows = recentInvitations.map(r => `<tr><td>${escapeHtml(r.username)}</td><td>${escapeHtml(r.inviter_name)} → ${escapeHtml(r.recipient_name)}</td><td><span class="status ${r.status}">${escapeHtml(r.status)}</span></td><td><small>${escapeHtml(new Date(r.updated_at).toLocaleDateString())}</small></td><td><a class="button small ghost" href="/dashboard/invitations/${r.id}/preview" target="_blank">Preview</a></td></tr>`).join('');
 
+  const emailTableRows = recentEmails.map(em => `<tr><td><small>${escapeHtml(new Date(em.created_at).toLocaleString())}</small></td><td><b>${escapeHtml(em.recipient_email)}</b></td><td>${escapeHtml(em.invite_title)}</td><td><span class="status ${em.status === 'SENT' ? 'published' : em.status === 'SIMULATED' ? 'draft' : 'disabled'}">${escapeHtml(em.status)}</span></td><td><small>${escapeHtml(em.subject)}</small></td></tr>`).join('');
+
   const adminBody = `
     <main class="analytics admin-panel">
       <header class="page-head">
         <div>
           <span class="eyebrow">System & User Intelligence</span>
           <h1>Admin Control Panel 👑</h1>
-          <p>Monitor registered users, security logs, system metrics, and invitations.</p>
+          <p>Monitor registered users, security logs, system metrics, recipient responses, and email alerts.</p>
         </div>
       </header>
       <section class="metric-grid">
@@ -330,6 +333,7 @@ app.get('/admin', requireUser, (req,res) => {
         <div class="metric"><span>Invitations</span><b>${stats.invitations}</b></div>
         <div class="metric"><span>Published</span><b>${stats.published}</b></div>
         <div class="metric"><span>Visitor Sessions</span><b>${stats.visits}</b></div>
+        <div class="metric"><span>Email Alerts</span><b>${stats.emails}</b></div>
         <div class="metric"><span>Activity Logs</span><b>${stats.logs}</b></div>
       </section>
       
@@ -342,6 +346,16 @@ app.get('/admin', requireUser, (req,res) => {
           <table id="users-table">
             <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>WhatsApp</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
             <tbody>${userTableRows || '<tr><td colspan="7">No users found.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Automated SMTP Email Notifications (${recentEmails.length})</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Timestamp</th><th>Recipient Email</th><th>Invitation</th><th>Status</th><th>Subject</th></tr></thead>
+            <tbody>${emailTableRows || '<tr><td colspan="5">No emails sent yet.</td></tr>'}</tbody>
           </table>
         </div>
       </section>
@@ -398,21 +412,76 @@ app.get('/admin/users/:id', requireUser, (req, res) => {
 
   const userInvitations = db.prepare(`SELECT i.*, COUNT(DISTINCT s.id) views, SUM(CASE WHEN s.final_result IS NOT NULL THEN 1 ELSE 0 END) replies, MAX(s.final_result) final_result FROM invitations i LEFT JOIN visitor_sessions s ON s.invitation_id=i.id WHERE i.owner_user_id=? GROUP BY i.id ORDER BY i.updated_at DESC`).all(targetUser.id);
   const userActivityLogs = db.prepare('SELECT * FROM user_logs WHERE user_id=? OR email=? ORDER BY id DESC LIMIT 100').all(targetUser.id, targetUser.email);
+  const userEmails = db.prepare('SELECT e.*, i.title as invite_title FROM email_notifications e JOIN invitations i ON i.id=e.invitation_id WHERE e.user_id=? OR e.recipient_email=? ORDER BY e.id DESC').all(targetUser.id, targetUser.email);
+  
+  const userSessions = db.prepare(`
+    SELECT s.*, i.title as invite_title, i.recipient_name as target_name
+    FROM visitor_sessions s
+    JOIN invitations i ON i.id = s.invitation_id
+    WHERE i.owner_user_id = ?
+    ORDER BY s.started_at DESC
+  `).all(targetUser.id);
 
   const inviteRows = userInvitations.map(inv => {
     const feat = json(inv.feature_config_json);
-    const musicLabel = feat.music && feat.musicUrl ? `🎵 ${escapeHtml(feat.musicName || 'Uploaded Audio')}` : '—';
+    const musicLabel = feat.music && feat.musicUrl ? `🎵 ${escapeHtml(feat.musicName || 'Audio')}` : '';
+    const voiceLabel = feat.voiceNoteUrl ? `🎙️ ${escapeHtml(feat.voiceNoteName || 'Voice Note')}` : '';
+    const mediaBadge = [musicLabel, voiceLabel].filter(Boolean).join(' + ') || '—';
     return `<tr>
       <td>#${inv.id}</td>
       <td><b>${escapeHtml(inv.title)}</b></td>
       <td>${escapeHtml(inv.inviter_name)} → ${escapeHtml(inv.recipient_name)}</td>
       <td><span class="status ${inv.status}">${escapeHtml(inv.status)}</span></td>
       <td>${inv.views} views / ${inv.replies || 0} replies</td>
-      <td>${escapeHtml(inv.final_result || '—')}</td>
-      <td>${musicLabel}</td>
+      <td><b>${escapeHtml(inv.final_result || '—')}</b></td>
+      <td><small>${mediaBadge}</small></td>
       <td><a class="button small ghost" href="/dashboard/invitations/${inv.id}/preview" target="_blank">Preview</a></td>
     </tr>`;
   }).join('');
+
+  const sessionCards = userSessions.map(s => {
+    const events = db.prepare('SELECT * FROM events WHERE session_id=? ORDER BY sequence_number ASC').all(s.id);
+    const timelineItems = events.map(e => `
+      <li style="margin-bottom:6px;font-size:0.84rem;">
+        <span style="color:#888;font-family:monospace;font-size:0.75rem;">[${new Date(e.created_at).toLocaleTimeString()}]</span>
+        <strong style="color:var(--text);">${escapeHtml(e.screen || e.event_name)}</strong>:
+        <span style="color:#555;">${escapeHtml(e.option_value || e.event_name)}</span>
+      </li>
+    `).join('');
+
+    return `
+      <article class="panel" style="margin-bottom:16px;background:#faf8f5;border:1px solid #e8e3dc;border-radius:14px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div>
+            <b>${escapeHtml(s.invite_title)}</b> · Recipient: <b>${escapeHtml(s.selected_nickname || s.target_name || 'Recipient')}</b>
+            <div style="font-size:0.8rem;color:#777;">Started: ${new Date(s.started_at).toLocaleString()} · Visitor ID: <code>${escapeHtml(s.visitor_id.slice(0, 16))}…</code></div>
+          </div>
+          <div>
+            <span class="status ${s.final_result?.startsWith('YES') ? 'published' : 'draft'}" style="font-size:0.9rem;font-weight:700;">${escapeHtml(s.final_result || (s.completed ? 'COMPLETED' : 'INCOMPLETE'))}</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;background:#fff;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:0.85rem;">
+          <div><span style="color:#888;">Chosen Vibe:</span> <b>${escapeHtml(s.selected_mood || 'None')}</b></div>
+          <div><span style="color:#888;">Chosen Date/Time:</span> <b>${escapeHtml(s.selected_date || 'None')}</b></div>
+          <div><span style="color:#888;">Revisits:</span> <b>${s.main_question_visits}</b></div>
+          <div><span style="color:#888;">Total Steps:</span> <b>${events.length}</b></div>
+        </div>
+        <details>
+          <summary style="cursor:pointer;font-weight:600;font-size:0.85rem;color:var(--primary);">View Complete Clickstream Timeline (${events.length} clicks/actions)</summary>
+          <ul style="margin:10px 0 0;padding-left:20px;border-left:2px solid var(--primary);">
+            ${timelineItems || '<li>No interaction steps recorded.</li>'}
+          </ul>
+        </details>
+      </article>
+    `;
+  }).join('');
+
+  const emailRows = userEmails.map(em => `<tr>
+    <td><small>${escapeHtml(new Date(em.created_at).toLocaleString())}</small></td>
+    <td>${escapeHtml(em.invite_title)}</td>
+    <td><span class="status ${em.status === 'SENT' ? 'published' : em.status === 'SIMULATED' ? 'draft' : 'disabled'}">${escapeHtml(em.status)}</span></td>
+    <td><small>${escapeHtml(em.subject)}</small></td>
+  </tr>`).join('');
 
   const logRows = userActivityLogs.map(l => `<tr>
     <td><small>${escapeHtml(new Date(l.created_at).toLocaleString())}</small></td>
@@ -427,7 +496,7 @@ app.get('/admin/users/:id', requireUser, (req, res) => {
         <div>
           <nav class="analytics-breadcrumb" aria-label="Breadcrumb"><a href="/admin">← Back to Admin Panel</a><span>User Intelligence</span></nav>
           <h1>User Profile: ${escapeHtml(targetUser.username)}</h1>
-          <p>Account details, invitation history, visitor metrics, and audit trail.</p>
+          <p>Account details, created invitations, live recipient responses, full clickstream timelines, and email alerts.</p>
         </div>
       </header>
 
@@ -437,6 +506,7 @@ app.get('/admin/users/:id', requireUser, (req, res) => {
         <div class="metric"><span>Total Invitations</span><b>${userInvitations.length}</b></div>
         <div class="metric"><span>Total Views</span><b>${userInvitations.reduce((sum, i) => sum + (i.views || 0), 0)}</b></div>
         <div class="metric"><span>Total Responses</span><b>${userInvitations.reduce((sum, i) => sum + (i.replies || 0), 0)}</b></div>
+        <div class="metric"><span>Email Alerts</span><b>${userEmails.length}</b></div>
       </section>
 
       <section class="panel">
@@ -453,8 +523,23 @@ app.get('/admin/users/:id', requireUser, (req, res) => {
         <h2>User Invitations (${userInvitations.length})</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>Title</th><th>Flow</th><th>Status</th><th>Engagement</th><th>Final Result</th><th>Audio Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>ID</th><th>Title</th><th>Flow</th><th>Status</th><th>Engagement</th><th>Final Result</th><th>Audio Assets</th><th>Action</th></tr></thead>
             <tbody>${inviteRows || '<tr><td colspan="8">No invitations created by this user yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Recipient Responses & Complete Clickstream History (${userSessions.length})</h2>
+        ${sessionCards || '<p style="color:#777;padding:12px 0;">No recipient responses received yet for this user.</p>'}
+      </section>
+
+      <section class="panel">
+        <h2>Automated Email Alerts (${userEmails.length})</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Timestamp</th><th>Invitation</th><th>Status</th><th>Subject</th></tr></thead>
+            <tbody>${emailRows || '<tr><td colspan="4">No emails sent for this user.</td></tr>'}</tbody>
           </table>
         </div>
       </section>
@@ -525,6 +610,8 @@ app.put('/api/invitations/:id', requireUser, requireCsrf, (req, res) => {
   const storedFeatures = json(row.feature_config_json);
   safeFeatures.musicUrl = features.musicUrl || storedFeatures.musicUrl || null;
   safeFeatures.musicName = features.musicName || storedFeatures.musicName || null;
+  safeFeatures.voiceNoteUrl = features.voiceNoteUrl || storedFeatures.voiceNoteUrl || null;
+  safeFeatures.voiceNoteName = features.voiceNoteName || storedFeatures.voiceNoteName || null;
   db.prepare(`UPDATE invitations SET inviter_name=?,recipient_name=?,title=?,theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(inviterName,recipientName,title,JSON.stringify(safeTheme),JSON.stringify(safeContent),JSON.stringify(safeFeatures),now(),row.id,row.owner_user_id);
   const user = db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) logUserActivity(req.session.userId, user.email, 'UPDATE_INVITATION', req);
@@ -605,7 +692,7 @@ function sanitizeObject(value, maxString, depth) {
     return Object.fromEntries(
       Object.entries(value).slice(0, 100).map(([k, v]) => {
         const key = clean(k, 60);
-        const limit = (key === 'musicUrl' || key === 'url' || key.endsWith('Url') || key.endsWith('URI')) ? 15_000_000 : maxString;
+        const limit = (key === 'musicUrl' || key === 'voiceNoteUrl' || key === 'url' || key.endsWith('Url') || key.endsWith('URI')) ? 15_000_000 : maxString;
         return [key, sanitizeObject(v, limit, depth - 1)];
       })
     );
@@ -644,20 +731,159 @@ function invitationPage(row, preview) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta name="theme-color" content="${escapeHtml(cfg.theme.background)}"><title>${escapeHtml(cfg.title)}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700&family=Nunito:wght@500;700&family=Playfair+Display:wght@600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/css/invitation.css"></head><body><div id="app"></div><script id="invitation-data" type="application/json">${safeJSON(payload)}</script><script src="/assets/js/invitation.js" defer></script></body></html>`;
 }
 
+// SMTP Email Notification Alert System
+const nodemailer = require('nodemailer');
+let mailTransporter = null;
+function getMailer() {
+  if (mailTransporter) return mailTransporter;
+  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+    try {
+      mailTransporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS || '',
+        },
+      });
+    } catch {}
+  }
+  return mailTransporter;
+}
+
+async function sendInvitationEmailAlert(invitationId, sessionId) {
+  try {
+    const inv = db.prepare(`
+      SELECT i.*, u.email as owner_email, u.username as owner_username, u.id as owner_id
+      FROM invitations i
+      JOIN users u ON u.id = i.owner_user_id
+      WHERE i.id = ?
+    `).get(invitationId);
+    if (!inv || !inv.owner_email) return;
+
+    const session = db.prepare('SELECT * FROM visitor_sessions WHERE id = ?').get(sessionId);
+    if (!session) return;
+
+    const allEvents = db.prepare('SELECT * FROM events WHERE session_id = ? ORDER BY sequence_number ASC').all(sessionId);
+
+    const resultLabel = session.final_result || (session.completed ? 'COMPLETED' : 'RESPONDED');
+    const nickname = session.selected_nickname || inv.recipient_name || 'Recipient';
+    const mood = session.selected_mood || 'Not specified';
+    const dateVal = session.selected_date || 'Not specified';
+
+    const timelineHtml = allEvents.map((e) => {
+      const timeStr = new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `<li style="margin-bottom:8px;line-height:1.4;">
+        <span style="color:#888;font-family:monospace;font-size:12px;">[${timeStr}]</span>
+        <strong style="color:#282223;">${escapeHtml(e.event_name.replace(/_/g, ' '))}</strong>:
+        <span style="color:#555;">${escapeHtml(e.option_value || e.screen || 'action')}</span>
+      </li>`;
+    }).join('');
+
+    const subject = `🎉 ${inv.recipient_name} responded to your date invitation! (${resultLabel})`;
+    const bodyHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"></head>
+      <body style="font-family:'Segoe UI',Roboto,Helvetica,sans-serif;background:#f9f6f2;color:#282223;padding:24px;margin:0;">
+        <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,0.06);border:1px solid #ede8e3;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <span style="font-size:36px;">💌</span>
+            <h1 style="margin:8px 0 4px;font-size:22px;color:#ff625f;">New Date Response!</h1>
+            <p style="margin:0;color:#70686a;font-size:14px;">Hey <b>${escapeHtml(inv.owner_username)}</b>, your invitation received a response.</p>
+          </div>
+          
+          <div style="background:#fff3f2;border-radius:14px;padding:16px 20px;margin-bottom:20px;border:1px solid #ffd8d6;text-align:center;">
+            <span style="font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:700;color:#ff625f;">Final Decision</span>
+            <div style="font-size:24px;font-weight:800;color:#282223;margin-top:4px;">${escapeHtml(resultLabel)}</div>
+          </div>
+
+          <table style="width:100%;margin-bottom:20px;font-size:14px;border-collapse:collapse;">
+            <tr><td style="padding:6px 0;color:#888;">Recipient:</td><td style="padding:6px 0;font-weight:700;text-align:right;">${escapeHtml(inv.recipient_name)} (${escapeHtml(nickname)})</td></tr>
+            <tr><td style="padding:6px 0;color:#888;">Chosen Vibe:</td><td style="padding:6px 0;font-weight:700;text-align:right;">${escapeHtml(mood)}</td></tr>
+            <tr><td style="padding:6px 0;color:#888;">Chosen Date & Time:</td><td style="padding:6px 0;font-weight:700;text-align:right;">${escapeHtml(dateVal)}</td></tr>
+            <tr><td style="padding:6px 0;color:#888;">Total Clicks/Steps:</td><td style="padding:6px 0;font-weight:700;text-align:right;">${allEvents.length} actions</td></tr>
+          </table>
+
+          <div style="border-top:1px dashed #e2ded9;padding-top:16px;margin-top:16px;">
+            <h3 style="font-size:14px;color:#70686a;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px;">Detailed Clickstream & Interaction History:</h3>
+            <ul style="padding-left:16px;margin:0;font-size:13px;">
+              ${timelineHtml || '<li>No interaction steps recorded.</li>'}
+            </ul>
+          </div>
+
+          <div style="text-align:center;margin-top:28px;padding-top:16px;border-top:1px solid #eee;">
+            <small style="color:#aaa;font-size:11px;">Sent automatically by Ask Her For Date / Heartlink</small>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailer = getMailer();
+    let status = 'SIMULATED';
+    let errorMsg = null;
+
+    if (mailer) {
+      try {
+        await mailer.sendMail({
+          from: process.env.SMTP_FROM || `"Heartlink" <noreply@${process.env.SMTP_HOST || 'heartlink.app'}>`,
+          to: inv.owner_email,
+          subject,
+          html: bodyHtml,
+        });
+        status = 'SENT';
+      } catch (err) {
+        status = 'FAILED';
+        errorMsg = err.message;
+      }
+    }
+
+    db.prepare(`
+      INSERT INTO email_notifications (invitation_id, user_id, recipient_email, event_type, subject, body_html, status, error_message)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(inv.id, inv.owner_id, inv.owner_email, resultLabel, subject, bodyHtml, status, errorMsg);
+
+    logUserActivity(inv.owner_id, inv.owner_email, `EMAIL_NOTIFICATION_${status}`, { ip: '127.0.0.1', get: () => 'System' });
+  } catch (e) {
+    console.error('Error sending invitation email alert:', e);
+  }
+}
+
 app.post('/api/invitations/:token/session', publicLimit, (req,res) => {
   const inv=db.prepare("SELECT id FROM invitations WHERE public_token=? AND status='published'").get(req.params.token); if(!inv)return res.status(404).json({error:'Not found.'});
   const visitorId=/^[A-Za-z0-9_-]{16,80}$/.test(req.body.visitorId||'')?req.body.visitorId:token(16);
   db.prepare('INSERT OR IGNORE INTO visitor_sessions(invitation_id,visitor_id) VALUES(?,?)').run(inv.id,visitorId);
   const s=db.prepare('SELECT id FROM visitor_sessions WHERE invitation_id=? AND visitor_id=?').get(inv.id,visitorId); res.status(201).json({visitorId,sessionId:s.id});
 });
-const allowedEvents=new Set(['invitation_opened','screen_view','button_clicked','back_to_main','nickname_selected','nickname_changed','mood_selected','mood_changed','availability_selected','main_question_view','final_yes','best_friend_result','completion','cute_item_found','tiny_mode','music_play','music_pause']);
+const allowedEvents=new Set(['invitation_opened','screen_view','button_clicked','back_to_main','nickname_selected','nickname_changed','mood_selected','mood_changed','availability_selected','main_question_view','final_yes','best_friend_result','completion','cute_item_found','tiny_mode','music_play','music_pause','evasion_triggered','evasion_teleport','evasion_error_modal','voice_note_played']);
 app.post('/api/invitations/:token/events', publicLimit, (req,res) => {
   const inv=db.prepare("SELECT id FROM invitations WHERE public_token=? AND status='published'").get(req.params.token); if(!inv)return res.status(404).json({error:'Not found.'});
   const visitorId=clean(req.body.visitorId,80), eventName=clean(req.body.eventName,50); if(!/^[A-Za-z0-9_-]{16,80}$/.test(visitorId)||!allowedEvents.has(eventName))return res.status(400).json({error:'Invalid event.'});
   const s=db.prepare('SELECT * FROM visitor_sessions WHERE invitation_id=? AND visitor_id=?').get(inv.id,visitorId); if(!s)return res.status(404).json({error:'Session not found.'});
   const sequence=db.prepare('SELECT COALESCE(MAX(sequence_number),0)+1 n FROM events WHERE session_id=?').get(s.id).n;
   const screen=clean(req.body.screen,50),previous=clean(req.body.previousScreen,50),option=clean(req.body.optionValue,100);
-  db.transaction(()=>{ db.prepare('INSERT INTO events(invitation_id,session_id,event_name,screen,previous_screen,option_value,sequence_number) VALUES(?,?,?,?,?,?,?)').run(inv.id,s.id,eventName,screen,previous,option,sequence); const updates={}; if(eventName==='nickname_selected')updates.selected_nickname=option;if(eventName==='mood_selected'||eventName==='mood_changed')updates.selected_mood=option;if(eventName==='availability_selected'){updates.selected_availability=option;updates.selected_date=clean(req.body.selectedDate,16)||null;}if(eventName==='final_yes')updates.final_result='YES ❤️';if(eventName==='best_friend_result')updates.final_result='BEST FRIEND 🤝';if(eventName==='completion')updates.completed=1;if(eventName==='main_question_view')updates.main_question_visits=s.main_question_visits+1; const keys=Object.keys(updates); if(keys.length)db.prepare(`UPDATE visitor_sessions SET ${keys.map(k=>`${k}=?`).join(',')},last_activity_at=? WHERE id=?`).run(...keys.map(k=>updates[k]),now(),s.id);else db.prepare('UPDATE visitor_sessions SET last_activity_at=? WHERE id=?').run(now(),s.id); })(); res.status(201).json({ok:true,sequence});
+  db.transaction(()=>{
+    db.prepare('INSERT INTO events(invitation_id,session_id,event_name,screen,previous_screen,option_value,sequence_number) VALUES(?,?,?,?,?,?,?)').run(inv.id,s.id,eventName,screen,previous,option,sequence);
+    const updates={};
+    if(eventName==='nickname_selected')updates.selected_nickname=option;
+    if(eventName==='mood_selected'||eventName==='mood_changed')updates.selected_mood=option;
+    if(eventName==='availability_selected'){updates.selected_availability=option;updates.selected_date=clean(req.body.selectedDate,30)||null;}
+    if(eventName==='final_yes')updates.final_result='YES ❤️';
+    if(eventName==='best_friend_result')updates.final_result='BEST FRIEND 🤝';
+    if(eventName==='completion')updates.completed=1;
+    if(eventName==='main_question_view')updates.main_question_visits=s.main_question_visits+1;
+    const keys=Object.keys(updates);
+    if(keys.length)db.prepare(`UPDATE visitor_sessions SET ${keys.map(k=>`${k}=?`).join(',')},last_activity_at=? WHERE id=?`).run(...keys.map(k=>updates[k]),now(),s.id);
+    else db.prepare('UPDATE visitor_sessions SET last_activity_at=? WHERE id=?').run(now(),s.id);
+  })();
+  
+  if (['final_yes', 'best_friend_result', 'completion', 'availability_selected'].includes(eventName)) {
+    sendInvitationEmailAlert(inv.id, s.id);
+  }
+
+  res.status(201).json({ok:true,sequence});
 });
 
 app.get('/dashboard/invitations/:id/analytics',requireUser,(req,res)=>{const r=ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).send('Not found.');res.send(page('Analytics',`<main class="analytics analytics-detail" data-id="${r.id}"><header class="page-head analytics-head"><div><nav class="analytics-breadcrumb" aria-label="Breadcrumb"><a href="/dashboard">← Dashboard</a><span>Invitation intelligence</span></nav><h1>${escapeHtml(r.recipient_name)}'s journey</h1><p>See how visitors move through the invitation and where they respond.</p></div><div class="actions"><button id="refresh" class="button ghost small">↻ Refresh</button><button id="reset" class="button danger small">Clear test data</button></div></header><div id="analytics-content" aria-live="polite"></div></main>`,req,'/assets/js/analytics.js'));});

@@ -57,12 +57,26 @@ function openDatabase(filename) {
       user_agent TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS email_notifications (
+      id INTEGER PRIMARY KEY,
+      invitation_id INTEGER NOT NULL REFERENCES invitations(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      recipient_email TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      body_html TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'SENT',
+      error_message TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
     CREATE INDEX IF NOT EXISTS idx_invitations_owner ON invitations(owner_user_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_invitation ON visitor_sessions(invitation_id);
     CREATE INDEX IF NOT EXISTS idx_events_session_sequence ON events(session_id, sequence_number);
     CREATE INDEX IF NOT EXISTS idx_events_invitation_created ON events(invitation_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_user_logs_user ON user_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_logs_created ON user_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_email_notifications_invitation ON email_notifications(invitation_id);
+    CREATE INDEX IF NOT EXISTS idx_email_notifications_created ON email_notifications(created_at);
   `);
   // If user_logs had a restrictive check constraint from an earlier version, create table as needed without failing
   try {

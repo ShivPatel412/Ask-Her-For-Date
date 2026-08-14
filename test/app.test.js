@@ -267,3 +267,99 @@ test('PHASE 11, 13 & 15: CSRF, Security Headers, and XSS Sanitization', async ()
   assert.doesNotMatch(previewHtml, /<img\s+src=/);
   assert.doesNotMatch(previewHtml, /<script>(?!id="invitation-data")[^<]*alert/);
 });
+
+test('NEW FEATURES: Voice Note, Playful Evasion, SMTP Email Alerts, and Admin Clickstream Inspector', async () => {
+  const creator = browser();
+  const creatorCsrf = await register(creator, 'voice_creator', 'voice_creator@example.com');
+
+  // 1. Create invitation
+  const createRes = await creator('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': creatorCsrf },
+    body: JSON.stringify({ inviterName: 'Rohan', recipientName: 'Sneha' })
+  });
+  assert.equal(createRes.status, 201);
+  const { id: invId, token: invToken } = await createRes.json();
+
+  // 2. Save voice note in builder
+  const fakeVoiceUri = 'data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYECGFOAZwEAAAAAAAFAmQEAAYP/AAA=';
+  const saveVoice = await creator(`/api/invitations/${invId}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': creatorCsrf },
+    body: JSON.stringify({
+      inviterName: 'Rohan',
+      recipientName: 'Sneha',
+      title: 'Coffee Date?',
+      features: { voiceNoteUrl: fakeVoiceUri, voiceNoteName: 'rohan-voice.webm' }
+    })
+  });
+  assert.equal(saveVoice.status, 200);
+
+  // Verify voice note is preserved in DTO
+  const getInv = await creator(`/api/invitations/${invId}`);
+  const invData = await getInv.json();
+  assert.equal(invData.features.voiceNoteUrl, fakeVoiceUri);
+  assert.equal(invData.features.voiceNoteName, 'rohan-voice.webm');
+
+  // 3. Publish invitation
+  await creator(`/api/invitations/${invId}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': creatorCsrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+
+  // 4. Visitor simulation with Playful Evasion and Full Clickstream
+  const visitorId = 'v_user_test_' + Date.now();
+  const sessionRes = await fetch(`${origin}/api/invitations/${invToken}/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ visitorId })
+  });
+  assert.equal(sessionRes.status, 201);
+
+  // Track clickstream steps
+  const steps = [
+    { eventName: 'invitation_opened', screen: 'start', optionValue: 'Open it' },
+    { eventName: 'screen_view', screen: 'main', optionValue: 'Main Screen' },
+    { eventName: 'button_clicked', screen: 'finalAttempt', optionValue: 'Friend hi theek hai 😂' },
+    { eventName: 'evasion_triggered', screen: 'finalAttempt', optionValue: 'reject_attempt_1' },
+    { eventName: 'evasion_teleport', screen: 'finalAttempt', optionValue: 'reject_attempt_2' },
+    { eventName: 'evasion_error_modal', screen: 'finalAttempt', optionValue: 'reject_attempt_3' },
+    { eventName: 'mood_selected', screen: 'mood', optionValue: 'Coffee & Endless Conversations ☕' },
+    { eventName: 'availability_selected', screen: 'availability', optionValue: '15 Aug 2026, 06:00 PM', selectedDate: '2026-08-15T18:00' },
+    { eventName: 'voice_note_played', screen: 'yes', optionValue: 'voice_playback' },
+    { eventName: 'final_yes', screen: 'yes', optionValue: 'Haan, chalo 😌❤️' }
+  ];
+
+  for (const s of steps) {
+    const res = await fetch(`${origin}/api/invitations/${invToken}/events`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ visitorId, ...s })
+    });
+    assert.equal(res.status, 201, `Failed event: ${s.eventName}`);
+  }
+
+  // 5. Verify email notification recorded in database
+  const emailRow = db.prepare('SELECT * FROM email_notifications WHERE invitation_id=? ORDER BY id DESC LIMIT 1').get(invId);
+  assert.ok(emailRow, 'Email notification must be logged');
+  assert.equal(emailRow.recipient_email, 'voice_creator@example.com');
+  assert.match(emailRow.subject, /responded to your date invitation/);
+  assert.match(emailRow.body_html, /Detailed Clickstream & Interaction History/);
+  assert.match(emailRow.body_html, /evasion triggered/);
+  assert.match(emailRow.body_html, /Coffee &amp; Endless Conversations/);
+
+  // 6. Superadmin inspection of user detail and full clickstream timeline
+  const admin = browser();
+  const adminCsrf = await register(admin, 'superadmin_tester', 'superadmin_feat@example.com');
+  db.prepare("UPDATE users SET role='superadmin' WHERE email='superadmin_feat@example.com'").run();
+
+  const creatorUser = db.prepare('SELECT id FROM users WHERE email=?').get('voice_creator@example.com');
+  const userDetailRes = await admin(`/admin/users/${creatorUser.id}`);
+  assert.equal(userDetailRes.status, 200);
+  const detailHtml = await userDetailRes.text();
+  assert.match(detailHtml, /Recipient Responses & Complete Clickstream History/);
+  assert.match(detailHtml, /View Complete Clickstream Timeline/);
+  assert.match(detailHtml, /Automated Email Alerts/);
+});
+

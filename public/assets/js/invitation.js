@@ -21,8 +21,12 @@ const state = {
   visitorId: localStorage.getItem(`hl-visitor-${data.token}`) || "",
   sessionReady: false,
   musicMinimized: false,
+  evasionStage: 0,
+  voicePlaying: false,
 };
 let musicAudio = null;
+let voiceAudio = null;
+let savedMusicVolume = 0.35;
 const esc = (s) =>
   String(s ?? "").replace(
     /[&<>"']/g,
@@ -47,6 +51,7 @@ const css = `--bg:${theme.background};--primary:${theme.primary};--secondary:${t
 
 async function initialize() {
   setupMusic();
+  setupVoiceNote();
   if (!data.preview) {
     if (!state.visitorId) {
       state.visitorId = crypto.randomUUID().replaceAll("-", "");
@@ -105,7 +110,7 @@ function setupMusic() {
   musicAudio.src = features.musicUrl;
   musicAudio.loop = true;
   musicAudio.preload = "metadata";
-  musicAudio.volume = 0.35;
+  musicAudio.volume = savedMusicVolume;
   document.body.append(musicAudio);
   musicAudio.addEventListener("play", () => {
     state.musicPlaying = true;
@@ -119,6 +124,64 @@ function setupMusic() {
   });
   musicAudio.addEventListener("timeupdate", updateMusicUI);
   musicAudio.addEventListener("loadedmetadata", updateMusicUI);
+}
+function setupVoiceNote() {
+  if (
+    !features.voiceNoteUrl ||
+    (!features.voiceNoteUrl.startsWith("/media/") &&
+      !features.voiceNoteUrl.startsWith("data:audio/"))
+  )
+    return;
+  voiceAudio = document.createElement("audio");
+  voiceAudio.src = features.voiceNoteUrl;
+  voiceAudio.preload = "metadata";
+  document.body.append(voiceAudio);
+  voiceAudio.addEventListener("play", () => {
+    state.voicePlaying = true;
+    updateVoiceUI();
+    duckMusic();
+    track("voice_note_played", state.screen, features.voiceNoteName || "voice_note");
+  });
+  voiceAudio.addEventListener("pause", () => {
+    state.voicePlaying = false;
+    updateVoiceUI();
+    restoreMusic();
+  });
+  voiceAudio.addEventListener("ended", () => {
+    state.voicePlaying = false;
+    updateVoiceUI();
+    restoreMusic();
+  });
+}
+function duckMusic() {
+  if (!musicAudio) return;
+  savedMusicVolume = musicAudio.volume || 0.35;
+  musicAudio.volume = Math.min(0.08, savedMusicVolume * 0.25);
+}
+function restoreMusic() {
+  if (!musicAudio) return;
+  musicAudio.volume = savedMusicVolume || 0.35;
+}
+function updateVoiceUI() {
+  const card = document.querySelector("#voice-note-player");
+  if (!card) return;
+  card.classList.toggle("playing", state.voicePlaying);
+  const btn = card.querySelector(".voice-play-btn");
+  if (btn) btn.textContent = state.voicePlaying ? "⏸" : "▶";
+  const status = card.querySelector(".voice-status");
+  if (status) status.textContent = state.voicePlaying ? "Playing message…" : "Tap to listen";
+}
+function toggleVoiceNote() {
+  if (!voiceAudio) return;
+  if (voiceAudio.paused) {
+    voiceAudio.play().catch(() => {});
+  } else {
+    voiceAudio.pause();
+  }
+}
+function voiceNoteWidget() {
+  if (!features.voiceNoteUrl) return "";
+  return `<div class="voice-note-card ${state.voicePlaying ? "playing" : ""}" id="voice-note-player"><button class="voice-play-btn" data-voice="toggle" type="button" aria-label="Play voice note">${state.voicePlaying ? "⏸" : "▶"}</button><div class="voice-meta"><b>🎙️ Voice note from ${esc(data.inviterName)}</b><small class="voice-status">${state.voicePlaying ? "Playing message…" : "Tap to listen"}</small></div><div class="voice-waveform" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></div></div>`;
 }
 function musicControl() {
   const empty = !musicAudio;
@@ -237,7 +300,7 @@ function render() {
   if (state.screen === "moodConfirm")
     content = `<span class="eyebrow">Vibe selected ✨</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div>${btn(screens.mood.primary, "yes", "primary")}${btn(screens.mood.secondary, "mood")}`;
   if (state.screen === "finalAttempt")
-    content = `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="promise"><span><b>🔍</b>You know me already</span><span><b>💬</b>You survive my bakwaas</span><span><b>🙌</b>We have fun together</span></div><h2 class="closing-question">Final answer? 👀</h2><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "decline", "respect")}</div>`;
+    content = finalAttemptScreen();
   if (state.screen === "yes") content = yesScreen();
   if (state.screen === "availability") content = availabilityScreen();
   if (state.screen === "success") content = successScreen();
@@ -258,6 +321,45 @@ function render() {
     confetti();
     sessionStorage.setItem(`hl-confetti-${data.token}`, "1");
   }
+}
+function finalAttemptScreen() {
+  const s = screens.finalAttempt;
+  const isEvasion = state.evasionStage >= 1;
+  const yesScale = state.evasionStage === 1 ? 1.2 : state.evasionStage >= 2 ? 1.38 : 1;
+  const yesClass = isEvasion ? "primary evasion-growing-yes" : "primary";
+  const yesStyle = isEvasion ? `style="--yes-scale:${yesScale};"` : "";
+  
+  let rejectBtnText = s.tertiary;
+  let rejectBtnClass = "respect";
+  let rejectBtnAction = "rejectAttempt";
+  if (state.evasionStage === 1) {
+    rejectBtnText = "Wait... ek baar aur socho 🥺";
+    rejectBtnClass = "respect evasion-teleport";
+  } else if (state.evasionStage >= 2) {
+    rejectBtnText = "Pakad ke dikhao 😂🏃";
+    rejectBtnClass = "respect evasion-teleport";
+  }
+
+  const fallback = isEvasion
+    ? `<button class="fallback-friend-link" data-action="forceDecline" type="button">Sach me friendzone karna hai? Click here 🤝</button>`
+    : "";
+
+  const modal404 = state.evasionStage === 3
+    ? `<div class="evasion-modal-overlay">
+        <div class="retro-error-card">
+          <div class="retro-header"><b>⚠️ SYSTEM ERROR 404</b><span aria-hidden="true">[!]</span></div>
+          <div class="retro-body">
+            <h3>REJECTION NOT FOUND</h3>
+            <p>Saying 'NO / Best Friend' to <b>${esc(data.inviterName)}</b> is currently deprecated on this server. 😂</p>
+            <code>Status: 404 Not Supported<br>Action: Please select YES to continue 😌❤️</code>
+            <button class="retro-btn" data-action="yes" type="button">Okay Fineee, YES 😂❤️</button>
+            <button class="fallback-friend-link" data-action="forceDecline" type="button" style="color:#a8a3b5;margin-top:6px;text-align:center;">Sach me best friend hi rehna hai 🤝</button>
+          </div>
+        </div>
+      </div>`
+    : "";
+
+  return `${modal404}${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="promise"><span><b>🔍</b>You know me already</span><span><b>💬</b>You survive my bakwaas</span><span><b>🙌</b>We have fun together</span></div><h2 class="closing-question">${isEvasion ? "Saying YES is recommended 😌❤️" : "Final answer? 👀"}</h2><div class="action-stack"><button class="choice ${yesClass}" data-action="yes" type="button" ${yesStyle}>${text(s.primary)}</button>${btn(s.secondary, "mood")}<button class="choice ${rejectBtnClass}" data-action="${rejectBtnAction}" type="button">${text(rejectBtnText)}</button></div>${fallback}`;
 }
 function back(label) {
   return `<button class="back" data-action="main">${text(label)}</button>`;
@@ -334,7 +436,7 @@ function moodReaction() {
 }
 function yesScreen() {
   const s = screens.yes;
-  return `<span class="eyebrow">${text(s.eyebrow)}</span><div class="answer-chips"><span>👀 Sach mein, ${text(state.nickname)}?</span><span>😂 Like… actually yes?</span></div><h1>${text(s.heading)}</h1><div class="celebration-pair" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, "Food + fun", "We decide")}<div class="evidence-note">Screenshot this. Evidence secured 😂</div>${btn(s.primary, "availability", "primary")}`;
+  return `<span class="eyebrow">${text(s.eyebrow)}</span><div class="answer-chips"><span>👀 Sach mein, ${text(state.nickname)}?</span><span>😂 Like… actually yes?</span></div><h1>${text(s.heading)}</h1><div class="celebration-pair" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, "Food + fun", "We decide")}${voiceNoteWidget()}<div class="evidence-note">Screenshot this. Evidence secured 😂</div>${btn(s.primary, "availability", "primary")}`;
 }
 function availabilityScreen() {
   const s = screens.availability;
@@ -384,7 +486,7 @@ function successScreen() {
     when = state.date ? formatDateTime(state.date) : "We decide",
     plan = state.mood || "Food + fun";
   const message=encodeURIComponent(`Hey ${data.inviterName}! I said yes 😌❤️ Let's plan it now. I chose ${plan} and ${when}.`),whatsapp=data.whatsappNumber?`<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">${text(s.primary)}</a>`:btn(s.primary,"complete","primary");
-  return `<span class="eyebrow">Perfect. Date planning unlocked ✨</span><h1>${text(s.heading)}</h1><div class="celebration-pair small" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}<div class="evidence-note">Screenshot this. Evidence secured 😂</div><div class="action-stack">${whatsapp}<button class="choice" data-modal="secret">One more thing… 👀</button></div>`;
+  return `<span class="eyebrow">Perfect. Date planning unlocked ✨</span><h1>${text(s.heading)}</h1><div class="celebration-pair small" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}${voiceNoteWidget()}<div class="evidence-note">Screenshot this. Evidence secured 😂</div><div class="action-stack">${whatsapp}<button class="choice" data-modal="secret">One more thing… 👀</button></div>`;
 }
 function declineScreen() {
   const s = screens.decline,
@@ -449,6 +551,22 @@ function bind() {
     musicAudio.muted = false;
     updateMusicUI();
   });
+  
+  const teleportBtn = app.querySelector(".evasion-teleport");
+  if (teleportBtn) {
+    const moveBtn = () => {
+      const x = (Math.random() > 0.5 ? 1 : -1) * (30 + Math.random() * 55);
+      const y = (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 40);
+      teleportBtn.style.transform = `translate(${x}px, ${y}px)`;
+    };
+    teleportBtn.addEventListener("mouseenter", moveBtn);
+    teleportBtn.addEventListener("touchstart", moveBtn, { passive: true });
+  }
+  
+  app.querySelectorAll("[data-voice]").forEach((el) => {
+    el.addEventListener("click", toggleVoiceNote);
+  });
+
   updateMusicUI();
 }
 function go(screen, event = "screen_view", option = "") {
@@ -474,8 +592,29 @@ function act(action, value) {
     state.moodChosen = true;
     go("moodConfirm", changed ? "mood_changed" : "mood_selected", value);
   } else if (action === "yes") {
+    state.evasionStage = 0;
     track("final_yes", state.screen, value);
     go("yes", "screen_view", value);
+  } else if (action === "rejectAttempt") {
+    if (state.evasionStage === 0) {
+      state.evasionStage = 1;
+      toast("Arre ruko ruko! Itna jaldi friendzone? Ek baar aur socho 😂");
+      track("evasion_triggered", "finalAttempt", "reject_attempt_1");
+      render();
+    } else if (state.evasionStage === 1) {
+      state.evasionStage = 2;
+      toast("Button bhaag raha hai, sign samjho! 🏃💨😂");
+      track("evasion_teleport", "finalAttempt", "reject_attempt_2");
+      render();
+    } else {
+      state.evasionStage = 3;
+      track("evasion_error_modal", "finalAttempt", "reject_attempt_3");
+      render();
+    }
+  } else if (action === "forceDecline") {
+    state.evasionStage = 0;
+    track("best_friend_result", "finalAttempt", "force_decline");
+    go("decline", "screen_view", "decline");
   } else if (action === "decline") {
     track("best_friend_result", "finalAttempt", value);
     go("decline", "screen_view", value);
