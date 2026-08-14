@@ -88,8 +88,9 @@ body {
    Premium Center Glass Card Container
    -------------------------------------------------------------------------- */
 .invite-card {
-  width: min(540px, calc(100vw - 32px));
-  margin: auto;
+  width: 100%;
+  max-width: min(580px, 92vw);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -97,16 +98,13 @@ body {
   text-align: center;
   position: relative;
   z-index: 2;
-  padding: clamp(32px, 5vw, 46px) clamp(22px, 5vw, 38px);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 32px;
-  box-shadow:
-    0 24px 70px rgba(255, 94, 126, 0.12),
-    0 4px 18px rgba(40, 30, 35, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   animation: card-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 

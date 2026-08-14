@@ -6,7 +6,18 @@ const toggle=(label,path,value)=>`<label class="toggle"><input data-path="${path
 const featureInfo={Mascots:['🐻','Display adorable mascots throughout the invitation.'],'Tiny Mode':['⌗','Enable a compact and minimal layout for a cute vibe.'],'Cute-item collection':['♡','Show a collection of cute items to charm your recipient.'],Confetti:['⌁','Celebrate moments with a burst of confetti.'],'Funny Back buttons':['‹','Replace standard back buttons with fun alternatives.']};
 const featureToggle=(label,path,value)=>{const [icon,description]=featureInfo[label];return `<label class="feature-toggle"><i>${icon}</i><span><b>${label}</b><small>${description}</small></span><input data-path="${path}" type="checkbox" ${value?'checked':''}><em aria-hidden="true"></em></label>`;};
 
-fetch(`/api/invitations/${id}`).then(r=>r.json()).then(data=>{state=data;render();if(new URLSearchParams(location.search).has('created'))toast('Invitation created 🎉 — customize or publish when ready.');});
+fetch(`/api/invitations/${id}`)
+  .then(r => {
+    if (r.status === 401) { window.location.href = '/login'; return null; }
+    return r.json();
+  })
+  .then(data => {
+    if (!data || data.error || !data.content) { if (data?.error) toast(data.error); return; }
+    state = data;
+    render();
+    if (new URLSearchParams(location.search).has('created')) toast('Invitation created 🎉 — customize or publish when ready.');
+  })
+  .catch(err => console.error('Failed to load invitation data:', err));
 function render(){
   const c=state.content,s=c.screens,t=state.theme,f=state.features;
   const editableScreens=Object.entries(s).filter(([key])=>!['nickname','analysis'].includes(key));

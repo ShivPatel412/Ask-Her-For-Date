@@ -70,10 +70,45 @@ function verifySessionState(tokenStr) {
 }
 
 class SQLiteSessionStore extends session.Store {
-  get(sid, callback) { try { const row=db.prepare('SELECT data_json FROM web_sessions WHERE sid=? AND expires_at>?').get(sid,Date.now()); callback(null,row?JSON.parse(row.data_json):null); } catch(error){ callback(error); } }
-  set(sid, value, callback=()=>{}) { try { const expires=value.cookie?.expires?new Date(value.cookie.expires).getTime():Date.now()+43_200_000; db.prepare('INSERT INTO web_sessions(sid,data_json,expires_at) VALUES(?,?,?) ON CONFLICT(sid) DO UPDATE SET data_json=excluded.data_json,expires_at=excluded.expires_at').run(sid,JSON.stringify(value),expires); callback(); } catch(error){ callback(error); } }
-  destroy(sid, callback=()=>{}) { try { db.prepare('DELETE FROM web_sessions WHERE sid=?').run(sid); callback(); } catch(error){ callback(error); } }
-  touch(sid, value, callback=()=>{}) { try { const expires=value.cookie?.expires?new Date(value.cookie.expires).getTime():Date.now()+43_200_000; db.prepare('UPDATE web_sessions SET expires_at=? WHERE sid=?').run(expires,sid); callback(); } catch(error){ callback(error); } }
+  get(sid, callback) {
+    try {
+      const row = db.prepare('SELECT data_json FROM web_sessions WHERE sid=? AND expires_at>?').get(sid, Date.now());
+      if (!row) return callback(null, null);
+      const data = JSON.parse(row.data_json);
+      if (data.cookie && data.cookie.expires) {
+        data.cookie.expires = new Date(data.cookie.expires);
+      }
+      callback(null, data);
+    } catch (error) {
+      callback(error);
+    }
+  }
+  set(sid, value, callback = () => {}) {
+    try {
+      const expires = value.cookie?.expires ? new Date(value.cookie.expires).getTime() : Date.now() + (1000 * 60 * 60 * 24 * 30);
+      db.prepare('INSERT INTO web_sessions(sid,data_json,expires_at) VALUES(?,?,?) ON CONFLICT(sid) DO UPDATE SET data_json=excluded.data_json,expires_at=excluded.expires_at').run(sid, JSON.stringify(value), expires);
+      callback();
+    } catch (error) {
+      callback(error);
+    }
+  }
+  destroy(sid, callback = () => {}) {
+    try {
+      db.prepare('DELETE FROM web_sessions WHERE sid=?').run(sid);
+      callback();
+    } catch (error) {
+      callback(error);
+    }
+  }
+  touch(sid, value, callback = () => {}) {
+    try {
+      const expires = value.cookie?.expires ? new Date(value.cookie.expires).getTime() : Date.now() + (1000 * 60 * 60 * 24 * 30);
+      db.prepare('UPDATE web_sessions SET expires_at=? WHERE sid=?').run(expires, sid);
+      callback();
+    } catch (error) {
+      callback(error);
+    }
+  }
 }
 const app = express();
 const production = process.env.NODE_ENV === 'production';
