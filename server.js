@@ -90,8 +90,8 @@ app.use(express.urlencoded({ extended: false, limit: '15mb' }));
 app.use(session({
   store: new SQLiteSessionStore(),
   name: 'heartlink.sid', secret: SESSION_SECRET,
-  resave: false, saveUninitialized: false, rolling: true,
-  cookie: { httpOnly: true, sameSite: 'lax', secure: 'auto', maxAge: 1000 * 60 * 60 * 12 }
+  resave: true, saveUninitialized: true, rolling: true,
+  cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 1000 * 60 * 60 * 12 }
 }));
 
 app.use((req, res, next) => {
@@ -221,8 +221,14 @@ function landingPage(req) {
 }
 app.get('/', (req, res) => res.send(landingPage(req)));
 
-app.get('/register', (req, res) => res.send(authPage('Create your account', 'register', req)));
-app.get('/login', (req, res) => res.send(authPage('Welcome back', 'login', req)));
+app.get('/register', (req, res) => {
+  csrf(req);
+  req.session.save(() => res.send(authPage('Create your account', 'register', req)));
+});
+app.get('/login', (req, res) => {
+  csrf(req);
+  req.session.save(() => res.send(authPage('Welcome back', 'login', req)));
+});
 function authPage(title, mode, req, error = '', values = {}) {
   const register = mode === 'register';
   const username=escapeHtml(values.username||''),email=escapeHtml(values.email||''),whatsapp=escapeHtml(values.whatsapp||'');
