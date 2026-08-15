@@ -1,8 +1,8 @@
 const data = JSON.parse(document.querySelector("#invitation-data").textContent),
   app = document.querySelector("#app");
-const screens = data.content.screens,
-  features = data.features,
-  theme = data.theme;
+const screens = data.content?.screens || data.content || {},
+  features = data.features || {},
+  theme = data.theme || {};
 const state = {
   screen: "intro",
   previous: "",
