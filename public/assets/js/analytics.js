@@ -14,5 +14,15 @@ async function load(){
 }
 
 document.querySelector('#refresh').onclick=load;
-document.querySelector('#reset').onclick=async()=>{if(!confirm('Clear all analytics for this invitation? This cannot be undone.'))return;await fetch(`/api/invitations/${id}/analytics`,{method:'DELETE',headers:{'x-csrf-token':csrf}});load();};
+document.querySelector('#reset').onclick=async()=>{
+  if(!confirm('Clear all analytics for this invitation? This cannot be undone.'))return;
+  const res = await fetch(`/api/invitations/${id}/analytics`,{method:'DELETE',headers:{'x-csrf-token':csrf}});
+  if (!res.ok) {
+    let out = {};
+    try { out = await res.json(); } catch {}
+    alert(out.error || 'Failed to clear analytics.');
+    return;
+  }
+  load();
+};
 load();setInterval(load,15000);

@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "start:express": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:mysql": "node --test test/mysql.test.js"
   },
   "engines": {
     "node": ">=20"

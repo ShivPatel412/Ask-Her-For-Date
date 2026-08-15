@@ -177,21 +177,59 @@ Ask-Her-Out/
 | --------------- | -------------------------------------------------------- |
 | `npm run dev`   | Starts the Next.js development server with hot reloading |
 | `npm run build` | Builds the production bundle                             |
-| `npm start`     | Starts the built production server                       |
-| `npm test`      | Runs the full integration test suite                     |
+## 🛠 Production Architecture & Database
+
+* **Production Stack**: **Vercel** + **Hostinger MySQL** + `express-mysql-session`
+* **Local Development**: SQLite (or MySQL when configured)
+* **Session Persistence**: Sessions are stored persistently in the MySQL `web_sessions` table, guaranteeing user logins remain active across Vercel cold starts.
+* **Health Check**: `GET /health` returns JSON reporting system health, database driver connectivity, environment mode, and missing tables.
+
+### Required Production Environment Variables
+
+Configure these in **Vercel Settings ➔ Environment Variables**:
+
+| Variable | Purpose | Example |
+| :--- | :--- | :--- |
+| `NODE_ENV` | Environment mode | `production` |
+| `SESSION_SECRET` | Cryptographic session signing key | `random-32+-character-secret` |
+| `DATABASE_HOST` | Hostinger MySQL hostname / IP | `srv1947.hstgr.io` |
+| `DATABASE_PORT` | MySQL port | `3306` |
+| `DATABASE_NAME` | MySQL database name | `u165370995_Sastatengo` |
+| `DATABASE_USER` | MySQL username | `u165370995_Sastatengo` |
+| `DATABASE_PASSWORD` | MySQL password | `your_secure_db_password` |
+
+---
+
+## 🧪 Testing & Verification
+
+| Command | Action |
+| :--- | :--- |
+| `npm test` | Runs the full offline unit & integration test suite |
+| `npm run test:mysql` | Runs MySQL integration tests targeting the MySQL connection layer |
+
+### Production Manual Smoke Test Protocol
+
+After every production deployment:
+
+1. Open `/register` in incognito ➔ Create a new test user.
+2. Verify redirect to `/dashboard`.
+3. Log out ➔ Log in using Email ➔ Log out ➔ Log in using Username.
+4. Open `/dashboard` ➔ Click **Create Invitation**.
+5. Customize invitation copy, fonts, colors, and upload music/voice note.
+6. Click **Publish Invitation** ➔ Click **Copy Link**.
+7. Open public `/i/:token` link in an incognito window.
+8. Verify recipient interaction flow, music playback, and submission.
+9. Return to `/dashboard` ➔ Click **Analytics** ➔ Verify interaction journey and event timeline.
 
 ---
 
 ## 🔒 Security & Privacy
 
-* Passwords are securely hashed using `bcryptjs`.
-* Session cookies are signed and stored persistently.
-* Write requests require CSRF token validation.
-* SQLite queries use parameterized statements to reduce SQL injection risks.
-* Security-related activity can be recorded in `user_logs` for auditability.
-* Uploaded files are stored separately from source code.
-* Secrets and environment-specific configuration should be provided through environment variables.
-* Production deployments should use HTTPS and secure cookie configuration.
+* Passwords are securely hashed using `bcryptjs` (cost factor 12).
+* Sessions are stored in MySQL (`web_sessions`) with `HttpOnly`, `SameSite=Lax`, and `Secure` HTTPS cookies.
+* Write requests require CSRF token validation with timing-safe comparison.
+* MySQL queries use parameterized statements (`?`) to prevent SQL injection.
+* Production startup requires explicit MySQL credentials; fallback to SQLite is blocked in production mode (`NODE_ENV=production`).
 
 ### Sensitive Files
 

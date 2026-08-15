@@ -33,9 +33,14 @@ async function seedSuperadminIfEmpty() {
     if (userCount === 0) {
       const email = (process.env.SUPERADMIN_EMAIL || 'info@shivpatel.in').toLowerCase();
       const username = process.env.SUPERADMIN_USERNAME || 'sastatengo';
-      const defaultPassword = process.env.SUPERADMIN_PASSWORD || 'Shiv@412';
+      const defaultPassword = process.env.SUPERADMIN_PASSWORD;
+      if (production && !defaultPassword) {
+        console.warn('[SEED WARNING] SUPERADMIN_PASSWORD is not set. Skipping default superadmin seeding in production.');
+        return;
+      }
+      const passwordToUse = defaultPassword || 'Shiv@412';
       const whatsapp = process.env.SUPERADMIN_WHATSAPP || '6351149722';
-      const hash = bcrypt.hashSync(defaultPassword, 12);
+      const hash = bcrypt.hashSync(passwordToUse, 12);
       const result = await db.prepare('INSERT INTO users (email, username, password_hash, whatsapp_number, role) VALUES (?, ?, ?, ?, ?)').run(
         email, username, hash, whatsapp, 'superadmin'
       );
@@ -92,7 +97,8 @@ class SQLiteSessionStore extends session.Store {
   set(sid, value, callback = () => {}) {
     try {
       const sqliteDb = db.getSQLiteDb();
-      const expires = value.cookie?.expires ? new Date(value.cookie.expires).getTime() : Date.now() + (1000 * 60 * 60 * 24 * 30);
+      const rawExpires = value.cookie?.expires ? new Date(value.cookie.expires).getTime() : null;
+      const expires = (rawExpires && !isNaN(rawExpires)) ? rawExpires : Date.now() + (1000 * 60 * 60 * 24 * 7);
       sqliteDb.prepare('INSERT INTO web_sessions(sid,data_json,expires_at) VALUES(?,?,?) ON CONFLICT(sid) DO UPDATE SET data_json=excluded.data_json,expires_at=excluded.expires_at').run(sid, JSON.stringify(value), expires);
       callback();
     } catch (error) {
@@ -111,7 +117,8 @@ class SQLiteSessionStore extends session.Store {
   touch(sid, value, callback = () => {}) {
     try {
       const sqliteDb = db.getSQLiteDb();
-      const expires = value.cookie?.expires ? new Date(value.cookie.expires).getTime() : Date.now() + (1000 * 60 * 60 * 24 * 30);
+      const rawExpires = value.cookie?.expires ? new Date(value.cookie.expires).getTime() : null;
+      const expires = (rawExpires && !isNaN(rawExpires)) ? rawExpires : Date.now() + (1000 * 60 * 60 * 24 * 7);
       sqliteDb.prepare('UPDATE web_sessions SET expires_at=? WHERE sid=?').run(expires, sid);
       callback();
     } catch (error) {
@@ -141,7 +148,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
-    secure: production,
+    secure: production && !process.env.DATABASE_PATH?.includes('test'),
     maxAge: 1000 * 60 * 60 * 24 * 7
   }
 }));
@@ -194,6 +201,20 @@ const validEmail = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.le
 const normalizeWhatsApp = value => { const raw=String(value??'').trim(),digits=raw.replace(/\D/g,''); return /^\+?[\d\s().-]+$/.test(raw)&&/^[1-9]\d{7,14}$/.test(digits)?digits:''; };
 const validColor = value => /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value);
 
+app.get('/health', async (req, res) => {
+  const dbHealth = await db.healthCheck();
+  const statusCode = dbHealth.healthy ? 200 : 500;
+  res.status(statusCode).json({
+    status: dbHealth.healthy ? 'ok' : 'error',
+    environment: process.env.NODE_ENV || 'development',
+    database: dbHealth.driver,
+    healthy: dbHealth.healthy,
+    missingTables: dbHealth.missingTables || [],
+    timestamp: new Date().toISOString(),
+    version: process.env.VERCEL_GIT_COMMIT_SHA ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : '836dc74',
+  });
+});
+
 function csrf(req) {
   if (!req?.session) return '';
   if (!req.session.csrf) req.session.csrf = token(24);
@@ -201,13 +222,26 @@ function csrf(req) {
 }
 function requireCsrf(req, res, next) {
   const supplied = req.get('x-csrf-token') || req.body?._csrf;
-  if (!supplied || !req.session?.csrf || supplied.length !== req.session.csrf.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(req.session.csrf))) {
+  const sessionCsrf = req.session?.csrf;
+  let failureReason = '';
+
+  if (!supplied) failureReason = 'Missing CSRF token in request';
+  else if (!req.session) failureReason = 'Missing session object';
+  else if (!sessionCsrf) failureReason = 'Session missing CSRF token';
+  else if (supplied.length !== sessionCsrf.length || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(sessionCsrf))) {
+    failureReason = 'CSRF token mismatch';
+  }
+
+  if (failureReason) {
+    console.warn(`[CSRF WARNING] Security verification failed for path=${req.path} ip=${req.ip}: ${failureReason}`);
     if (req.accepts('html') && !req.path.startsWith('/api/')) {
       const mode = req.path.includes('register') ? 'register' : 'login';
       const title = mode === 'register' ? 'Create your account' : 'Welcome back';
-      return res.status(403).send(authPage(title, mode, req, 'Security token expired. Please refresh the page and try again.'));
+      return authPage(title, mode, req, 'Security verification failed. Please refresh the page and try again.')
+        .then(html => res.status(403).send(html))
+        .catch(() => res.status(403).send('Security verification failed. Please refresh the page and try again.'));
     }
-    return res.status(403).json({ error: 'Security token expired. Refresh and try again.' });
+    return res.status(403).json({ error: 'Security verification failed. Please refresh the page and try again.' });
   }
   next();
 }
@@ -672,10 +706,10 @@ app.put('/api/invitations/:id', requireUser, requireCsrf, async (req, res) => {
   if (!allowedFonts.has(theme.heading) || !allowedFonts.has(theme.body)) return res.status(400).json({ error:'Choose a curated font.' });
   const safeContent = sanitizeObject(content, 1000, 5); const safeFeatures = sanitizeObject(features, 100, 3); const safeTheme = sanitizeObject(theme, 100, 2);
   const storedFeatures = json(row.feature_config_json);
-  safeFeatures.musicUrl = features.musicUrl || storedFeatures.musicUrl || null;
-  safeFeatures.musicName = features.musicName || storedFeatures.musicName || null;
-  safeFeatures.voiceNoteUrl = features.voiceNoteUrl || storedFeatures.voiceNoteUrl || null;
-  safeFeatures.voiceNoteName = features.voiceNoteName || storedFeatures.voiceNoteName || null;
+  safeFeatures.musicUrl = ('musicUrl' in features) ? (features.musicUrl || null) : (storedFeatures.musicUrl || null);
+  safeFeatures.musicName = ('musicName' in features) ? (features.musicName || null) : (storedFeatures.musicName || null);
+  safeFeatures.voiceNoteUrl = ('voiceNoteUrl' in features) ? (features.voiceNoteUrl || null) : (storedFeatures.voiceNoteUrl || null);
+  safeFeatures.voiceNoteName = ('voiceNoteName' in features) ? (features.voiceNoteName || null) : (storedFeatures.voiceNoteName || null);
   await db.prepare(`UPDATE invitations SET inviter_name=?,recipient_name=?,title=?,theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(inviterName,recipientName,title,JSON.stringify(safeTheme),JSON.stringify(safeContent),JSON.stringify(safeFeatures),now(),row.id,row.owner_user_id);
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) await logUserActivity(req.session.userId, user.email, 'UPDATE_INVITATION', req);
@@ -769,7 +803,8 @@ function sanitizeObject(value, maxString, depth) {
 app.post('/api/invitations/:id/status', requireUser, requireCsrf, async (req,res) => {
   const row=await ownedInvitation(req.params.id,req.session.userId); if(!row)return res.status(404).json({error:'Not found.'});
   const status=['draft','published','disabled'].includes(req.body.status)?req.body.status:null; if(!status)return res.status(400).json({error:'Invalid status.'});
-  await db.prepare(`UPDATE invitations SET status=?,published_at=CASE WHEN ?='published' THEN COALESCE(published_at,?) ELSE published_at END,updated_at=? WHERE id=? AND owner_user_id=?`).run(status,status,now(),now(),row.id,row.owner_user_id);
+  const publishedAt = (status === 'published') ? (row.published_at || now()) : row.published_at;
+  await db.prepare(`UPDATE invitations SET status=?,published_at=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(status,publishedAt,now(),row.id,row.owner_user_id);
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) await logUserActivity(req.session.userId, user.email, status === 'published' ? 'PUBLISH_INVITATION' : 'STATUS_CHANGE', req);
   res.json({ok:true,url:status==='published'?`/i/${row.public_token}`:null});
@@ -924,7 +959,10 @@ app.post('/api/invitations/:token/session', publicLimit, async (req,res) => {
   const inv = await db.prepare("SELECT id FROM invitations WHERE public_token=? AND status='published'").get(req.params.token);
   if(!inv)return res.status(404).json({error:'Not found.'});
   const visitorId = /^[A-Za-z0-9_-]{16,80}$/.test(req.body.visitorId||'') ? req.body.visitorId : token(16);
-  await db.prepare('INSERT OR IGNORE INTO visitor_sessions(invitation_id,visitor_id) VALUES(?,?)').run(inv.id,visitorId);
+  const sessionSql = db.isMySQLConfigured()
+    ? 'INSERT INTO visitor_sessions(invitation_id,visitor_id) VALUES(?,?) ON DUPLICATE KEY UPDATE visitor_id=visitor_id'
+    : 'INSERT OR IGNORE INTO visitor_sessions(invitation_id,visitor_id) VALUES(?,?)';
+  await db.prepare(sessionSql).run(inv.id, visitorId);
   const s = await db.prepare('SELECT id FROM visitor_sessions WHERE invitation_id=? AND visitor_id=?').get(inv.id,visitorId);
   res.status(201).json({visitorId,sessionId:s.id});
 });

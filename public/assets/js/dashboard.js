@@ -10,14 +10,16 @@ document.addEventListener('click', async event => {
     const url = copy.dataset.url;
     if (card && card.dataset.status !== 'published' && id) {
       try {
-        await fetch(`/api/invitations/${id}/status`, {
+        const res = await fetch(`/api/invitations/${id}/status`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
           body: JSON.stringify({ status: 'published' })
         });
-        card.dataset.status = 'published';
-        const badge = card.querySelector('.status');
-        if (badge) { badge.textContent = 'published'; badge.className = 'status published'; }
+        if (res.ok) {
+          card.dataset.status = 'published';
+          const badge = card.querySelector('.status');
+          if (badge) { badge.textContent = 'published'; badge.className = 'status published'; }
+        }
       } catch {}
     }
     const fullUrl = location.origin + url;
@@ -30,8 +32,16 @@ document.addEventListener('click', async event => {
   const action=button.dataset.action,id=button.dataset.id;
   if (action==='delete' && !confirm('Delete this invitation and all of its analytics? This cannot be undone.')) return;
   const options={headers:{'content-type':'application/json','x-csrf-token':csrf}};
-  if(action==='duplicate'){options.method='POST';await fetch(`/api/invitations/${id}/duplicate`,options);}
-  if(action==='toggle'){options.method='POST';options.body=JSON.stringify({status:button.textContent.includes('Enable')?'draft':'disabled'});await fetch(`/api/invitations/${id}/status`,options);}
-  if(action==='delete'){options.method='DELETE';await fetch(`/api/invitations/${id}`,options);}
+  let res;
+  if(action==='duplicate'){options.method='POST'; res = await fetch(`/api/invitations/${id}/duplicate`,options);}
+  if(action==='toggle'){options.method='POST';options.body=JSON.stringify({status:button.textContent.includes('Enable')?'draft':'disabled'}); res = await fetch(`/api/invitations/${id}/status`,options);}
+  if(action==='delete'){options.method='DELETE'; res = await fetch(`/api/invitations/${id}`,options);}
+  
+  if (res && !res.ok) {
+    let out = {};
+    try { out = await res.json(); } catch {}
+    alert(out.error || 'Operation failed. Please try again.');
+    return;
+  }
   location.reload();
 });
