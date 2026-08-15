@@ -9,3 +9,4 @@ start-error.log
 
 .vercel
 .env*
+*.sqlite

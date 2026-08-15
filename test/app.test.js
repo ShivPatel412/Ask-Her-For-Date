@@ -57,7 +57,7 @@ test('PHASE 3: Registration & Login security, validation, hashing, duplicate pre
   assert.ok(userCsrf, 'User successfully registered');
 
   // Verify password was securely hashed
-  const userRow = db.prepare('SELECT * FROM users WHERE email=?').get('alex@example.com');
+  const userRow = await db.prepare('SELECT * FROM users WHERE email=?').get('alex@example.com');
   assert.ok(userRow, 'User row created in DB');
   assert.notEqual(userRow.password_hash, 'strong-password-123');
   assert.ok(userRow.password_hash.startsWith('$2'), 'Bcrypt hash generated');
@@ -145,7 +145,7 @@ test('PHASE 4 & 18: Multi-user isolation & IDOR protection', async () => {
 test('PHASE 5, 6 & 7: Admin security, authorization, user history drilldown, and audit logging', async () => {
   const superadmin = browser();
   await register(superadmin, 'admin_master', 'admin_master@example.com');
-  db.prepare("UPDATE users SET role='superadmin' WHERE email=?").run('admin_master@example.com');
+  await db.prepare("UPDATE users SET role='superadmin' WHERE email=?").run('admin_master@example.com');
 
   // Superadmin accesses /admin
   const adminPage = await superadmin('/admin');
@@ -162,7 +162,7 @@ test('PHASE 5, 6 & 7: Admin security, authorization, user history drilldown, and
   assert.equal(normalAdmin.status, 403);
 
   // Superadmin drills down into user profile history (/admin/users/:id)
-  const targetUserRow = db.prepare('SELECT id FROM users WHERE email=?').get('sam@example.com');
+  const targetUserRow = await db.prepare('SELECT id FROM users WHERE email=?').get('sam@example.com');
   const userHistoryRes = await superadmin(`/admin/users/${targetUserRow.id}`);
   assert.equal(userHistoryRes.status, 200);
   const userHistoryHtml = await userHistoryRes.text();
@@ -341,7 +341,7 @@ test('NEW FEATURES: Voice Note, Playful Evasion, SMTP Email Alerts, and Admin Cl
   }
 
   // 5. Verify email notification recorded in database
-  const emailRow = db.prepare('SELECT * FROM email_notifications WHERE invitation_id=? ORDER BY id DESC LIMIT 1').get(invId);
+  const emailRow = await db.prepare('SELECT * FROM email_notifications WHERE invitation_id=? ORDER BY id DESC LIMIT 1').get(invId);
   assert.ok(emailRow, 'Email notification must be logged');
   assert.equal(emailRow.recipient_email, 'voice_creator@example.com');
   assert.match(emailRow.subject, /responded to your date invitation/);
@@ -352,9 +352,9 @@ test('NEW FEATURES: Voice Note, Playful Evasion, SMTP Email Alerts, and Admin Cl
   // 6. Superadmin inspection of user detail and full clickstream timeline
   const admin = browser();
   const adminCsrf = await register(admin, 'superadmin_tester', 'superadmin_feat@example.com');
-  db.prepare("UPDATE users SET role='superadmin' WHERE email='superadmin_feat@example.com'").run();
+  await db.prepare("UPDATE users SET role='superadmin' WHERE email='superadmin_feat@example.com'").run();
 
-  const creatorUser = db.prepare('SELECT id FROM users WHERE email=?').get('voice_creator@example.com');
+  const creatorUser = await db.prepare('SELECT id FROM users WHERE email=?').get('voice_creator@example.com');
   const userDetailRes = await admin(`/admin/users/${creatorUser.id}`);
   assert.equal(userDetailRes.status, 200);
   const detailHtml = await userDetailRes.text();
