@@ -1,8 +1,8 @@
 const data = JSON.parse(document.querySelector("#invitation-data").textContent),
   app = document.querySelector("#app");
-const screens = data.content.screens,
-  features = data.features,
-  theme = data.theme;
+const screens = data.content?.screens || data.content || {},
+  features = data.features || {},
+  theme = data.theme || {};
 const state = {
   screen: "intro",
   previous: "",
@@ -358,6 +358,7 @@ function finalAttemptScreen() {
 
   const fallback = isEvasion
     ? `<button class="fallback-friend-link" data-action="forceDecline" type="button">Sach me friendzone karna hai? Click here 🤝</button>`
+    : "";
   return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="promise"><span><b>🔍</b>You know me already</span><span><b>💬</b>You survive my bakwaas</span><span><b>🙌</b>We have fun together</span></div><h2 class="closing-question">${isEvasion ? "Saying YES is recommended 😌❤️" : "Final answer? 👀"}</h2><div class="action-stack"><button class="choice ${yesClass}" data-action="yes" type="button" ${yesStyle}>${text(s.primary)}</button>${btn(s.secondary, "mood")}<button class="choice ${rejectBtnClass}" data-action="${rejectBtnAction}" type="button">${text(rejectBtnText)}</button></div>${fallback}`;
 }
 function back(label) {

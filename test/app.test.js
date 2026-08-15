@@ -363,3 +363,52 @@ test('NEW FEATURES: Voice Note, Playful Evasion, SMTP Email Alerts, and Admin Cl
   assert.match(detailHtml, /Automated Email Alerts/);
 });
 
+test('REGRESSION TEST: P0 Invitation Rendering (content.screens structure, preview, and public page)', async () => {
+  const client = browser();
+  const userCsrf = await register(client, 'p0_user', 'p0_user@example.com');
+
+  const createRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'P0Inviter', recipientName: 'P0Recipient' })
+  });
+  assert.equal(createRes.status, 201);
+  const inv = await createRes.json();
+
+  // 1. Verify /api/invitations/:id returns data.content.screens and data.content.screens.intro
+  const getRes = await client(`/api/invitations/${inv.id}`);
+  assert.equal(getRes.status, 200);
+  const dto = await getRes.json();
+  assert.ok(dto.content, 'dto.content must exist');
+  assert.ok(dto.content.screens, 'dto.content.screens must exist');
+  assert.ok(dto.content.screens.intro, 'dto.content.screens.intro must exist');
+  assert.ok(Array.isArray(dto.content.moods), 'dto.content.moods must be an array');
+
+  // 2. Verify builder preview iframe HTML contains #invitation-data with valid screens structure
+  const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
+  assert.equal(previewRes.status, 200);
+  const previewHtml = await previewRes.text();
+  const previewMatch = previewHtml.match(/<script id="invitation-data" type="application\/json">([^<]+)<\/script>/);
+  assert.ok(previewMatch, 'Preview HTML must include #invitation-data script tag');
+  const previewData = JSON.parse(previewMatch[1]);
+  assert.ok(previewData.content.screens, 'Preview payload content.screens must exist');
+  assert.ok(previewData.content.screens.intro, 'Preview payload content.screens.intro must exist');
+
+  // 3. Publish invitation and verify public page payload
+  await client(`/api/invitations/${inv.id}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+
+  const publicRes = await fetch(`${origin}/i/${inv.token}`);
+  assert.equal(publicRes.status, 200);
+  const publicHtml = await publicRes.text();
+  const publicMatch = publicHtml.match(/<script id="invitation-data" type="application\/json">([^<]+)<\/script>/);
+  assert.ok(publicMatch, 'Public page HTML must include #invitation-data script tag');
+  const publicData = JSON.parse(publicMatch[1]);
+  assert.ok(publicData.content.screens, 'Public payload content.screens must exist');
+  assert.ok(publicData.content.screens.intro, 'Public payload content.screens.intro must exist');
+});
+
+

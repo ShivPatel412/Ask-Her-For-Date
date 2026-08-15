@@ -270,11 +270,32 @@ async function ownedInvitation(id, userId) {
     ? await db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=?').get(tokenStr)
     : await db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.owner_user_id=?').get(tokenStr, userId);
 }
+function normalizeInvitationContent(rawContent) {
+  const content = (rawContent && typeof rawContent === 'object') ? rawContent : {};
+  let screens = {};
+  if (content.screens && typeof content.screens === 'object') {
+    screens = { ...content.screens };
+  } else {
+    screens = { ...content };
+    delete screens.moods;
+  }
+  const fallbackScreens = defaultConfig('Inviter', 'Recipient').content;
+  screens = { ...fallbackScreens, ...screens };
+
+  const moods = Array.isArray(content.moods) ? content.moods : (Array.isArray(rawContent?.moods) ? rawContent.moods : []);
+  let favorite = moods.find(m => m.favorite);
+  if (!favorite) {
+    favorite = moods.find(m => m.title?.startsWith('Long Drive + Food'));
+    if (favorite) favorite.favorite = true;
+    else moods.unshift(structuredClone(favoriteMood));
+  }
+
+  return { screens, moods };
+}
 function invitationDTO(row) {
-  const content=json(row.content_config_json), moods=Array.isArray(content.moods)?content.moods:[];
-  let favorite=moods.find(m=>m.favorite); if(!favorite){favorite=moods.find(m=>m.title?.startsWith('Long Drive + Food'));if(favorite)favorite.favorite=true;else moods.unshift(structuredClone(favoriteMood));}
-  content.moods=moods;
-  return { id: row.id, token: row.public_token, templateKey: row.template_key, inviterName: row.inviter_name, recipientName: row.recipient_name, whatsappNumber: row.whatsapp_number || '', title: row.title, status: row.status, theme: json(row.theme_config_json), content, features: json(row.feature_config_json), createdAt: row.created_at, updatedAt: row.updated_at, publishedAt: row.published_at };
+  const rawContent = json(row.content_config_json);
+  const normalizedContent = normalizeInvitationContent(rawContent);
+  return { id: row.id, token: row.public_token, templateKey: row.template_key, inviterName: row.inviter_name, recipientName: row.recipient_name, whatsappNumber: row.whatsapp_number || '', title: row.title, status: row.status, theme: json(row.theme_config_json), content: normalizedContent, features: json(row.feature_config_json), createdAt: row.created_at, updatedAt: row.updated_at, publishedAt: row.published_at };
 }
 async function page(title, body, req, script = '') {
   const user = req.session?.userId ? await db.prepare('SELECT username, role FROM users WHERE id=?').get(req.session.userId) : null;
