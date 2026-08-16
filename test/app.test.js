@@ -490,15 +490,19 @@ test('PHASE B: Advanced Music Experience presets, volume, and playback payload',
   });
   const inv = await invRes.json();
 
-  // 1. GET /api/invitations/:id should return presets.music
+  // 1. GET /api/invitations/:id should return presets.music with moods
   const getRes = await client(`/api/invitations/${inv.id}`);
   assert.equal(getRes.status, 200);
   const dto = await getRes.json();
   assert.ok(Array.isArray(dto.presets.music), 'presets.music must be an array');
-  assert.ok(dto.presets.music.length >= 3, 'Must have at least 3 romantic music presets');
-  assert.equal(dto.presets.music[0].key, 'preset:lofi');
+  assert.ok(dto.presets.music.length >= 5, 'Must have at least 5 romantic music presets');
+  assert.ok(dto.presets.music.some(p => p.mood === 'romantic'), 'Must have romantic mood');
+  assert.ok(dto.presets.music.some(p => p.mood === 'latenight'), 'Must have latenight mood');
+  assert.ok(dto.presets.music.some(p => p.mood === 'funny'), 'Must have funny mood');
+  assert.ok(dto.presets.music.some(p => p.mood === 'emotional'), 'Must have emotional mood');
+  assert.ok(dto.presets.music.some(p => p.mood === 'dreamy'), 'Must have dreamy mood');
 
-  // 2. Select a preset track with custom default volume
+  // 2. Select a preset track with custom player style, start offset, and volume
   const updateRes = await client(`/api/invitations/${inv.id}`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
@@ -508,18 +512,29 @@ test('PHASE B: Advanced Music Experience presets, volume, and playback payload',
       title: 'For Juliet ❤️',
       features: {
         music: true,
-        musicUrl: 'preset:lofi',
-        musicName: 'Lo-fi Romance 🎧',
-        musicVolume: 45
+        musicUrl: 'preset:piano',
+        musicName: 'Piano Serenade 🎹',
+        musicVolume: 45,
+        musicMood: 'romantic',
+        musicPlayerStyle: 'glass',
+        musicStartOffset: 10
       }
     })
   });
   assert.equal(updateRes.status, 200);
 
-  // 3. Verify preview contains the updated music payload
+  // 3. Verify preview contains the updated music payload and player style
   const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
   const previewHtml = await previewRes.text();
-  assert.ok(previewHtml.includes('Lo-fi Romance'), 'Preview must reflect chosen preset name');
+  assert.ok(previewHtml.includes('Piano Serenade'), 'Preview must reflect chosen preset name');
+  assert.ok(previewHtml.includes('style-glass') || previewHtml.includes('glass'), 'Preview must include player style');
+
+  // 4. Delete music
+  const delRes = await client(`/api/invitations/${inv.id}/music`, {
+    method: 'DELETE',
+    headers: { 'x-csrf-token': userCsrf }
+  });
+  assert.equal(delRes.status, 200);
 });
 
 test('PHASE C: Our Memories timeline, scrapbook items, and preview rendering', async () => {

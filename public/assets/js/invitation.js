@@ -162,7 +162,9 @@ function playAmbientPreset(key, volume = 0.35) {
       "preset:acoustic": [[261.63, 329.63, 392.00], [196.00, 246.94, 293.66], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63]],
       "preset:piano": [[329.63, 392.00, 493.88, 587.33], [261.63, 329.63, 392.00, 523.25], [220.00, 261.63, 329.63, 440.00], [174.61, 220.00, 261.63, 349.23]],
       "preset:ukulele": [[261.63, 329.63, 392.00], [329.63, 392.00, 493.88], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63]],
-      "preset:jazz": [[261.63, 311.13, 392.00, 466.16], [196.00, 233.08, 293.66, 349.23], [174.61, 207.65, 261.63, 311.13], [220.00, 261.63, 329.63, 392.00]]
+      "preset:jazz": [[261.63, 311.13, 392.00, 466.16], [196.00, 233.08, 293.66, 349.23], [174.61, 207.65, 261.63, 311.13], [220.00, 261.63, 329.63, 392.00]],
+      "preset:ballad": [[220.00, 261.63, 329.63, 392.00], [174.61, 220.00, 261.63, 329.63], [130.81, 164.81, 196.00, 246.94], [146.83, 174.61, 220.00, 261.63]],
+      "preset:dreamy": [[369.99, 440.00, 554.37, 659.25], [293.66, 369.99, 440.00, 587.33], [246.94, 329.63, 369.99, 493.88], [277.18, 369.99, 440.00, 554.37]]
     };
     
     const chords = chordProgressions[key] || chordProgressions["preset:lofi"];
@@ -176,7 +178,7 @@ function playAmbientPreset(key, volume = 0.35) {
       currentNotes.forEach((freq, i) => {
         const osc = synthCtx.createOscillator();
         const noteGain = synthCtx.createGain();
-        osc.type = key === "preset:acoustic" || key === "preset:ukulele" ? "triangle" : "sine";
+        osc.type = key === "preset:acoustic" || key === "preset:ukulele" ? "triangle" : (key === "preset:dreamy" ? "sine" : "triangle");
         osc.frequency.setValueAtTime(freq, now + i * 0.08);
         
         noteGain.gain.setValueAtTime(0.0001, now + i * 0.08);
@@ -217,7 +219,9 @@ function setupMusic() {
   
   if (
     !features.musicUrl.startsWith("/media/") &&
-    !features.musicUrl.startsWith("data:audio/")
+    !features.musicUrl.startsWith("data:audio/") &&
+    !features.musicUrl.startsWith("http://") &&
+    !features.musicUrl.startsWith("https://")
   )
     return;
   musicAudio = document.createElement("audio");
@@ -225,6 +229,9 @@ function setupMusic() {
   musicAudio.loop = true;
   musicAudio.preload = "metadata";
   musicAudio.volume = savedMusicVolume;
+  if (features.musicStartOffset && Number(features.musicStartOffset) > 0) {
+    musicAudio.currentTime = Number(features.musicStartOffset);
+  }
   document.body.append(musicAudio);
   musicAudio.addEventListener("play", () => {
     state.musicPlaying = true;
@@ -331,22 +338,133 @@ function musicControl() {
   const empty = !musicAudio && !isPreset;
   if (empty && !(data.preview && features.music)) return "";
   const disabled = empty ? "disabled" : "";
-  return `<div class="music-player ${empty ? "music-empty" : ""} ${state.musicMinimized ? "minimized" : ""}" role="group" aria-label="Music player">
-  <div class="music-head">
-    <button class="music-minimize" data-music="minimize" aria-label="Minimize player"></button>
-      <span class="music-cover" aria-hidden="true">🎧</span>
-        <div class="music-meta"><b>${text(empty ? "Add a song in the editor" : features.musicName || "Romantic soundtrack")}</b>
-        <small>${empty ? "Music is enabled" : "Currently vibing"}</small></div><i class="music-bars" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
-        <button data-music="mute" aria-label="Mute music" ${disabled}>🔊</button></div>
-        <div class="music-progress"><time data-current>0:00</time><input data-music="seek" type="range" min="0" max="100" value="0" aria-label="Song progress" ${disabled || isPreset ? "disabled" : ""}><time data-duration>${empty || isPreset ? "--:--" : "0:00"}</time></div><div class="music-controls"><button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button><button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>▶</button><button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button><label class="music-volume"><span aria-hidden="true">🔉</span><input data-music="volume" type="range" min="0" max="100" value="${features.musicVolume || 35}" aria-label="Music volume" ${disabled}></label></div></div>`;
+  const style = features.musicPlayerStyle || "romantic";
+  const name = features.musicName || (isPreset ? "Romantic Ambient Soundtrack" : "Romantic soundtrack");
+
+  if (style === "ambient") {
+    return `
+      <div class="music-player style-ambient ${empty ? "music-empty" : ""}" role="group" aria-label="Ambient music">
+        <button class="ambient-music-btn" data-music="toggle" type="button" aria-label="${state.musicPlaying ? "Mute ambient music" : "Play ambient music"}" ${disabled}>
+          <span>${state.musicPlaying ? "♫" : "♪"}</span>
+        </button>
+      </div>
+    `;
+  }
+
+  if (style === "minimal") {
+    return `
+      <div class="music-player style-minimal ${empty ? "music-empty" : ""} ${state.musicPlaying ? "playing" : ""}" role="group" aria-label="Music player">
+        <button class="music-play minimal-play-btn" data-music="toggle" type="button" aria-label="${state.musicPlaying ? "Pause music" : "Play music"}" ${disabled}>
+          ${state.musicPlaying ? "❚❚" : "▶"}
+        </button>
+        <span class="minimal-title">${text(empty ? "No song selected" : name)}</span>
+        <button class="minimal-vol-btn" data-music="mute" type="button" aria-label="Toggle sound" ${disabled}>
+          ${musicAudio?.muted ? "🔇" : "🔊"}
+        </button>
+      </div>
+    `;
+  }
+
+  if (style === "floating") {
+    return `
+      <div class="music-player style-floating ${empty ? "music-empty" : ""} ${state.musicPlaying ? "playing" : ""}" role="group" aria-label="Floating music player">
+        <button class="floating-heart-btn" data-music="toggle" type="button" aria-label="${state.musicPlaying ? "Pause music" : "Play music"}" ${disabled}>
+          <span class="heart-icon">♥</span>
+        </button>
+        <span class="floating-tooltip">${text(empty ? "Music" : name)}</span>
+      </div>
+    `;
+  }
+
+  if (style === "glass") {
+    return `
+      <div class="music-player style-glass ${empty ? "music-empty" : ""} ${state.musicMinimized ? "minimized" : ""}" role="group" aria-label="Glass music player">
+        <div class="music-head">
+          <button class="music-minimize" data-music="minimize" aria-label="Minimize player">⌄</button>
+          <span class="music-cover" aria-hidden="true">✨</span>
+          <div class="music-meta">
+            <b>${text(empty ? "Add a song in editor" : name)}</b>
+            <small>${state.musicPlaying ? "Now playing" : "Paused"}</small>
+          </div>
+          <button data-music="mute" aria-label="Mute music" ${disabled}>${musicAudio?.muted ? "🔇" : "🔊"}</button>
+        </div>
+        <div class="music-progress">
+          <time data-current>0:00</time>
+          <input data-music="seek" type="range" min="0" max="100" value="0" aria-label="Song progress" ${disabled || isPreset ? "disabled" : ""}>
+          <time data-duration>${empty || isPreset ? "--:--" : "0:00"}</time>
+        </div>
+        <div class="music-controls">
+          <button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button>
+          <button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>${state.musicPlaying ? "❚❚" : "▶"}</button>
+          <button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button>
+          <label class="music-volume">
+            <span aria-hidden="true">🔉</span>
+            <input data-music="volume" type="range" min="0" max="100" value="${features.musicVolume || 35}" aria-label="Music volume" ${disabled}>
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  // Default: Romantic Vinyl Player
+  return `
+    <div class="music-player style-romantic ${empty ? "music-empty" : ""} ${state.musicMinimized ? "minimized" : ""}" role="group" aria-label="Romantic music player">
+      <div class="music-head">
+        <button class="music-minimize" data-music="minimize" aria-label="Minimize player">⌄</button>
+        <span class="music-cover vinyl-disc ${state.musicPlaying ? "spin" : ""}" aria-hidden="true">💿</span>
+        <div class="music-meta">
+          <b>${text(empty ? "Add a song in the editor" : name)}</b>
+          <small>${state.musicPlaying ? "Playing romantic vibes ❤️" : "Tap play to listen"}</small>
+        </div>
+        <i class="music-bars ${state.musicPlaying ? "animated" : ""}" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
+        <button data-music="mute" aria-label="Mute music" ${disabled}>${musicAudio?.muted ? "🔇" : "🔊"}</button>
+      </div>
+      <div class="music-progress">
+        <time data-current>0:00</time>
+        <input data-music="seek" type="range" min="0" max="100" value="0" aria-label="Song progress" ${disabled || isPreset ? "disabled" : ""}>
+        <time data-duration>${empty || isPreset ? "--:--" : "0:00"}</time>
+      </div>
+      <div class="music-controls">
+        <button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button>
+        <button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>${state.musicPlaying ? "❚❚" : "▶"}</button>
+        <button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button>
+        <label class="music-volume">
+          <span aria-hidden="true">🔉</span>
+          <input data-music="volume" type="range" min="0" max="100" value="${features.musicVolume || 35}" aria-label="Music volume" ${disabled}>
+        </label>
+      </div>
+    </div>
+  `;
 }
+
+function showAutoplayBanner() {
+  if (document.getElementById("autoplay-prompt") || state.musicPlaying) return;
+  const prompt = document.createElement("button");
+  prompt.id = "autoplay-prompt";
+  prompt.type = "button";
+  prompt.className = "autoplay-prompt-pill";
+  prompt.innerHTML = `<span>🎵 Tap to play romantic music ❤️</span>`;
+  prompt.addEventListener("click", () => {
+    startMusic();
+    prompt.remove();
+  });
+  document.body.appendChild(prompt);
+  setTimeout(() => {
+    if (prompt && !state.musicPlaying) {
+      prompt.classList.add("show");
+    }
+  }, 800);
+}
+
 function startMusic() {
   if (features.musicUrl && features.musicUrl.startsWith("preset:")) {
     if (!state.musicPlaying) playAmbientPreset(features.musicUrl, savedMusicVolume || 0.35);
     return;
   }
   if (!musicAudio || !musicAudio.paused) return;
-  musicAudio.play().catch(() => {});
+  musicAudio.play().catch(() => {
+    showAutoplayBanner();
+  });
 }
 function clock(seconds) {
   if (!Number.isFinite(seconds)) return "0:00";

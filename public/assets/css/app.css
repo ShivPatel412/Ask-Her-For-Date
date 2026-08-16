@@ -1133,6 +1133,42 @@ body {
     color: var(--color-text-muted);
 }
 
+.music-mood-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 10px;
+}
+
+.mood-filter-btn {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mood-filter-btn:hover, .mood-filter-btn.active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, white);
+}
+
+.music-preview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #faf8f6;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
 .memory-builder-item {
     border: 1px solid var(--line);
     border-radius: 12px;

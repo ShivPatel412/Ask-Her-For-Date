@@ -41,11 +41,13 @@ const moods = [
 ];
 
 const musicPresets = [
-  { key: 'preset:lofi', name: 'Lo-fi Romance 🎧', desc: 'Chill beats, warm vinyl, and cozy chords' },
-  { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸', desc: 'Warm fingerstyle acoustic melody' },
-  { key: 'preset:piano', name: 'Piano Serenade 🎹', desc: 'Soft emotive romantic piano' },
-  { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️', desc: 'Playful, sunny, cheerful vibe' },
-  { key: 'preset:jazz', name: 'Midnight Jazz 🎷', desc: 'Slow, smooth late-night jazz' }
+  { key: 'preset:piano', name: 'Piano Serenade 🎹', desc: 'Soft emotive romantic piano', mood: 'romantic' },
+  { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸', desc: 'Warm fingerstyle acoustic melody', mood: 'romantic' },
+  { key: 'preset:jazz', name: 'Midnight Jazz 🎷', desc: 'Slow, smooth late-night jazz', mood: 'latenight' },
+  { key: 'preset:lofi', name: 'Lo-fi Romance 🎧', desc: 'Chill beats, warm vinyl, and cozy chords', mood: 'latenight' },
+  { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️', desc: 'Playful, sunny, cheerful vibe', mood: 'funny' },
+  { key: 'preset:ballad', name: 'Emotional Strings 🎻', desc: 'Gentle, touching cello and violin', mood: 'emotional' },
+  { key: 'preset:dreamy', name: 'Celestial Starlight ✨', desc: 'Ethereal ambient pads and sparkle bells', mood: 'dreamy' }
 ];
 
 const invitationTemplates = {
@@ -149,7 +151,7 @@ function defaultConfig(inviterName = '', recipientName = '') {
   return {
     theme: { preset: 'strawberry', ...themes.strawberry, fontPreset: 'romantic', ...fonts.romantic },
     content: structuredClone(defaultContent),
-    features: { mascots: true, tinyMode: true, collection: true, confetti: true, funnyBack: true, music: false, musicUrl: null, musicName: null, musicVolume: 35, coverPhoto: false, coverPhotoUrl: null, coverPhotoCaption: null, coverPhotoStyle: 'polaroid', coverPhotoAlt: '', coverPhotoOverlay: 40, memories: false, memoriesList: [], mascotPack: 'original' },
+    features: { mascots: true, tinyMode: true, collection: true, confetti: true, funnyBack: true, music: false, musicUrl: null, musicName: null, musicVolume: 35, musicMood: 'romantic', musicPlayerStyle: 'romantic', musicStartOffset: 0, coverPhoto: false, coverPhotoUrl: null, coverPhotoCaption: null, coverPhotoStyle: 'polaroid', coverPhotoAlt: '', coverPhotoOverlay: 40, memories: false, memoriesList: [], mascotPack: 'original' },
     moods: structuredClone(moods),
     inviterName, recipientName, title: 'Something for you ❤️'
   };
