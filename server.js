@@ -937,79 +937,165 @@ app.delete('/api/invitations/:id', requireUser, requireCsrf, async (req,res) => 
   res.json({ok:true});
 });
 
+const userNotificationPreferences = new Map();
+const userReadNotifications = new Map();
+
+function getUserNotificationPrefs(userId) {
+  return userNotificationPreferences.get(userId) || {
+    email: true,
+    viewed: true,
+    completed: true,
+    yes: true,
+    dateConfirmed: true,
+    dashboard: true
+  };
+}
+
+function setUserNotificationPrefs(userId, prefs) {
+  const current = getUserNotificationPrefs(userId);
+  const updated = {
+    email: typeof prefs.email === 'boolean' ? prefs.email : current.email,
+    viewed: typeof prefs.viewed === 'boolean' ? prefs.viewed : current.viewed,
+    completed: typeof prefs.completed === 'boolean' ? prefs.completed : current.completed,
+    yes: typeof prefs.yes === 'boolean' ? prefs.yes : current.yes,
+    dateConfirmed: typeof prefs.dateConfirmed === 'boolean' ? prefs.dateConfirmed : current.dateConfirmed,
+    dashboard: typeof prefs.dashboard === 'boolean' ? prefs.dashboard : current.dashboard
+  };
+  userNotificationPreferences.set(userId, updated);
+  return updated;
+}
+
+app.get('/api/notifications/preferences', requireUser, (req, res) => {
+  res.json(getUserNotificationPrefs(req.session.userId));
+});
+
+app.put('/api/notifications/preferences', requireUser, requireCsrf, (req, res) => {
+  const updated = setUserNotificationPrefs(req.session.userId, req.body || {});
+  res.json({ ok: true, preferences: updated });
+});
+
+app.post('/api/notifications/read-all', requireUser, requireCsrf, (req, res) => {
+  const userRead = userReadNotifications.get(req.session.userId) || { lastReadAt: 0, readIds: new Set() };
+  userRead.lastReadAt = Date.now();
+  userReadNotifications.set(req.session.userId, userRead);
+  res.json({ ok: true });
+});
+
+app.post('/api/notifications/:id/read', requireUser, requireCsrf, (req, res) => {
+  const notifId = Number(req.params.id);
+  const userRead = userReadNotifications.get(req.session.userId) || { lastReadAt: 0, readIds: new Set() };
+  userRead.readIds.add(notifId);
+  userReadNotifications.set(req.session.userId, userRead);
+  res.json({ ok: true });
+});
+
 app.get('/api/notifications', requireUser, async (req, res) => {
   try {
+    const prefs = getUserNotificationPrefs(req.session.userId);
+    if (!prefs.dashboard) {
+      return res.json({ notifications: [], unreadCount: 0, preferences: prefs });
+    }
+
     const rawEvents = await db.prepare(`
       SELECT e.id, e.event_name, e.screen, e.option_value, e.created_at,
-             s.selected_nickname, s.final_result, s.completed,
+             s.id as session_id, s.selected_nickname, s.final_result, s.completed,
              i.id as invitation_id, i.recipient_name, i.title
       FROM events e
       JOIN visitor_sessions s ON s.id = e.session_id
       JOIN invitations i ON i.id = e.invitation_id
       WHERE i.owner_user_id = ?
       ORDER BY e.created_at DESC
-      LIMIT 35
+      LIMIT 60
     `).all(req.session.userId);
 
-    const formatted = rawEvents.map(e => {
+    const userRead = userReadNotifications.get(req.session.userId) || { lastReadAt: 0, readIds: new Set() };
+    const seenSessionEvents = new Set();
+    const formatted = [];
+
+    for (const e of rawEvents) {
       let icon = '🔔';
       let title = 'Activity on invitation';
       const name = e.selected_nickname || e.recipient_name || 'Someone';
       let message = `${name} interacted with your invitation`;
+      let type = 'interaction';
 
-      if (e.event_name === 'session_start' || e.screen === 'intro') {
+      if (e.event_name === 'session_start' || e.screen === 'intro' || e.event_name === 'invitation_opened') {
+        if (!prefs.viewed) continue;
         icon = '💌';
         title = 'Invitation Opened';
         message = `${name} just opened your invitation!`;
-      } else if (e.event_name === 'response_yes' || e.screen === 'yes') {
+        type = 'viewed';
+      } else if (e.event_name === 'response_yes' || e.screen === 'yes' || e.event_name === 'final_yes') {
+        if (!prefs.yes) continue;
         icon = '💖';
         title = 'She Said YES! 🎉';
         message = `${name} accepted your date invitation!`;
+        type = 'yes';
       } else if (e.screen === 'availability' || e.event_name === 'availability_selected') {
+        if (!prefs.dateConfirmed) continue;
         icon = '🗓️';
         title = 'Date & Time Confirmed';
         message = `${name} selected availability: ${e.option_value || 'Date selected'}`;
-      } else if (e.event_name === 'response_no' || e.screen === 'decline') {
+        type = 'dateConfirmed';
+      } else if (e.event_name === 'completion') {
+        if (!prefs.completed) continue;
+        icon = '✨';
+        title = 'Invitation Completed';
+        message = `${name} finished the entire invitation journey!`;
+        type = 'completed';
+      } else if (e.event_name === 'response_no' || e.screen === 'decline' || e.event_name === 'best_friend_result') {
         icon = '🤝';
         title = 'Best Friends Response';
         message = `${name} responded: ${e.option_value || 'Best friends forever'}`;
-      } else if (e.event_name === 'evasion_teleport') {
+        type = 'bestFriend';
+      } else if (e.event_name === 'evasion_teleport' || e.event_name === 'evasion_triggered') {
         icon = '🏃💨';
         title = 'Playful Evasion Triggered';
         message = `${name} tried tapping the No button! 😂`;
+        type = 'evasion';
       } else if (e.screen === 'memories') {
         icon = '📸';
-        title = 'Memories Viewed';
+        title = 'Our Story Viewed';
         message = `${name} is viewing your memories scrapbook ✨`;
-      } else if (e.event_name === 'music_played') {
-        icon = '♫';
-        title = 'Soundtrack Playing';
-        message = `${name} is listening to the romantic soundtrack 🎧`;
+        type = 'memories';
       } else if (e.event_name === 'voice_note_played') {
         icon = '🎙️';
         title = 'Voice Note Heard';
         message = `${name} played your personal voice note!`;
+        type = 'voiceNote';
       } else {
-        icon = '✨';
-        title = `Step: ${e.screen || 'Browse'}`;
-        message = `${name} viewed "${e.screen || e.event_name}"`;
+        // Skip minor step noise
+        continue;
       }
 
-      return {
+      // Deduplicate rapid repeat events for same session and event type
+      const dedupeKey = `${e.session_id}_${type}`;
+      if (seenSessionEvents.has(dedupeKey)) continue;
+      seenSessionEvents.add(dedupeKey);
+
+      const eventTime = new Date(e.created_at).getTime();
+      const isRead = eventTime <= userRead.lastReadAt || userRead.readIds.has(e.id);
+
+      formatted.push({
         id: e.id,
         icon,
         title,
         message,
+        type,
         invitationId: e.invitation_id,
         inviteTitle: e.title,
         recipientName: e.recipient_name,
-        time: e.created_at
-      };
-    });
+        time: e.created_at,
+        isRead
+      });
+    }
+
+    const unreadCount = formatted.filter(n => !n.isRead).length;
 
     res.json({
       notifications: formatted,
-      unreadCount: formatted.length
+      unreadCount,
+      preferences: prefs
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch notifications' });
@@ -1048,7 +1134,7 @@ function getMailer() {
   return mailTransporter;
 }
 
-async function sendInvitationEmailAlert(invitationId, sessionId) {
+async function sendInvitationEmailAlert(invitationId, sessionId, eventType) {
   try {
     const inv = await db.prepare(`
       SELECT i.*, u.email as owner_email, u.username as owner_username, u.id as owner_id
@@ -1057,6 +1143,13 @@ async function sendInvitationEmailAlert(invitationId, sessionId) {
       WHERE i.id = ?
     `).get(invitationId);
     if (!inv || !inv.owner_email) return;
+
+    const prefs = getUserNotificationPrefs(inv.owner_id);
+    if (!prefs.email) return;
+    if (eventType === 'viewed' && !prefs.viewed) return;
+    if (eventType === 'yes' && !prefs.yes) return;
+    if (eventType === 'completed' && !prefs.completed) return;
+    if (eventType === 'dateConfirmed' && !prefs.dateConfirmed) return;
 
     const sessionRow = await db.prepare('SELECT * FROM visitor_sessions WHERE id = ?').get(sessionId);
     if (!sessionRow) return;
@@ -1067,6 +1160,18 @@ async function sendInvitationEmailAlert(invitationId, sessionId) {
     const nickname = sessionRow.selected_nickname || inv.recipient_name || 'Recipient';
     const mood = sessionRow.selected_mood || 'Not specified';
     const dateVal = sessionRow.selected_date || 'Not specified';
+
+    // Deduplication check: Avoid sending duplicate emails within 15 minutes for the same session and event type
+    const recentEmail = await db.prepare(`
+      SELECT id FROM email_notifications
+      WHERE invitation_id = ? AND user_id = ? AND event_type = ?
+      ORDER BY created_at DESC LIMIT 1
+    `).get(inv.id, inv.owner_id, resultLabel);
+
+    if (recentEmail) {
+      // If already recorded for this resultLabel, skip duplicate email send
+      return;
+    }
 
     const timelineHtml = allEvents.map((e) => {
       const timeStr = new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1181,7 +1286,8 @@ app.post('/api/invitations/:token/events', publicLimit, async (req,res) => {
   else await db.prepare('UPDATE visitor_sessions SET last_activity_at=? WHERE id=?').run(now(),s.id);
   
   if (['final_yes', 'best_friend_result', 'completion', 'availability_selected'].includes(eventName)) {
-    sendInvitationEmailAlert(inv.id, s.id).catch(() => {});
+    const eventType = eventName === 'final_yes' ? 'yes' : eventName === 'availability_selected' ? 'dateConfirmed' : 'completed';
+    sendInvitationEmailAlert(inv.id, s.id, eventType).catch(() => {});
   }
   res.status(201).json({ok:true,sequence});
 });

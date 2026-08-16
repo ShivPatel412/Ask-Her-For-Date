@@ -733,13 +733,45 @@ test('PHASE E: In-App Notification Center and live visitor alerts', async () => 
   });
   assert.ok(evRes.status === 200 || evRes.status === 201, `Event submission returned status ${evRes.status}`);
 
-  // 3. User checks notifications endpoint
+  // 3. User checks notifications endpoint & preferences
+  const prefGetRes = await client('/api/notifications/preferences');
+  assert.equal(prefGetRes.status, 200);
+  const prefs = await prefGetRes.json();
+  assert.equal(prefs.email, true);
+
   const notifRes = await client('/api/notifications');
   assert.equal(notifRes.status, 200);
   const notifData = await notifRes.json();
   assert.ok(Array.isArray(notifData.notifications), 'notifications must be an array');
   assert.ok(notifData.notifications.length > 0, 'Must have at least 1 notification generated');
   assert.ok(notifData.notifications.some(n => n.title.includes('YES')), 'Should notify inviter of YES response');
+  assert.ok(notifData.unreadCount >= 1, 'Unread count should be at least 1');
+
+  // 4. Mark single notification as read
+  const notifId = notifData.notifications[0].id;
+  const markRes = await client(`/api/notifications/${notifId}/read`, {
+    method: 'POST',
+    headers: { 'x-csrf-token': userCsrf }
+  });
+  assert.equal(markRes.status, 200);
+
+  // 5. Mark all as read
+  const markAllRes = await client('/api/notifications/read-all', {
+    method: 'POST',
+    headers: { 'x-csrf-token': userCsrf }
+  });
+  assert.equal(markAllRes.status, 200);
+
+  const afterReadRes = await client('/api/notifications');
+  const afterReadData = await afterReadRes.json();
+  assert.equal(afterReadData.unreadCount, 0, 'Unread count should be 0 after marking all as read');
+
+  // 6. Verify multi-user isolation on notifications
+  const strangerClient = browser();
+  await register(strangerClient, `stranger_notif_${Date.now()}`, `stranger_notif_${Date.now()}@example.com`);
+  const strangerNotifs = await strangerClient('/api/notifications');
+  const strangerData = await strangerNotifs.json();
+  assert.equal(strangerData.notifications.length, 0, 'Stranger must have 0 notifications from other users');
 });
 
 test('PHASE G: Real Date Selection Flow, Calendar Sync and ICS export', async () => {

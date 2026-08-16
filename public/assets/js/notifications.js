@@ -7,7 +7,10 @@
 
   if (!toggleBtn || !dropdown) return;
 
-  let lastReadId = localStorage.getItem('last_read_notif_id') || 0;
+  function getCsrf() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
 
   async function fetchNotifications() {
     try {
@@ -15,22 +18,22 @@
       if (!res.ok) return;
       const data = await res.json();
       const notifs = data.notifications || [];
-      
-      const unread = notifs.filter(n => Number(n.id) > Number(lastReadId));
-      if (unread.length > 0) {
-        badge.textContent = unread.length > 99 ? '99+' : unread.length;
+      const unreadCount = data.unreadCount || 0;
+
+      if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
         badge.style.display = 'inline-flex';
       } else {
         badge.style.display = 'none';
       }
 
       if (notifs.length === 0) {
-        list.innerHTML = '<div class="notif-empty">No activity yet. Share your invitation link to see responses here!</div>';
+        list.innerHTML = '<div class="notif-empty">No new activity yet. Share your invitation to receive live updates! 💌</div>';
         return;
       }
 
       list.innerHTML = notifs.map(n => `
-        <a class="notif-item ${Number(n.id) > Number(lastReadId) ? 'unread' : ''}" href="/dashboard/invitations/${n.invitationId}/analytics">
+        <a class="notif-item ${n.isRead ? '' : 'unread'}" data-notif-id="${n.id}" href="/dashboard/invitations/${n.invitationId}/analytics">
           <span class="notif-item-icon">${n.icon}</span>
           <div class="notif-item-content">
             <b>${escapeHtml(n.title)}</b>
@@ -66,12 +69,27 @@
     }
   });
 
-  markReadBtn?.addEventListener('click', (e) => {
+  markReadBtn?.addEventListener('click', async (e) => {
     e.stopPropagation();
-    lastReadId = Date.now();
-    localStorage.setItem('last_read_notif_id', lastReadId);
-    badge.style.display = 'none';
-    list.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+    try {
+      await fetch('/api/notifications/read-all', {
+        method: 'POST',
+        headers: { 'x-csrf-token': getCsrf() }
+      });
+      badge.style.display = 'none';
+      list.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+    } catch {}
+  });
+
+  list.addEventListener('click', (e) => {
+    const item = e.target.closest('.notif-item');
+    if (item && item.dataset.notifId) {
+      fetch(`/api/notifications/${item.dataset.notifId}/read`, {
+        method: 'POST',
+        headers: { 'x-csrf-token': getCsrf() }
+      }).catch(() => {});
+      item.classList.remove('unread');
+    }
   });
 
   fetchNotifications();
