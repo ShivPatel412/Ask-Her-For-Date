@@ -466,6 +466,7 @@ function render() {
   }
   if (state.screen === "analysis") content = analysisScreen();
   if (state.screen === "main") content = mainScreen();
+  if (state.screen === "memories") content = memoriesScreen();
   if (state.screen === "thinking")
     content = `${back(s.eyebrow)}${copy({ ...s, eyebrow: "", body: "" })}<div class="talk-points"><span>🥹 Come on ${text(state.nickname)}… ek date hi toh maang raha hoon</span><span>✨ I promise, achhi jagah leke jaunga</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "convince")}${btn(s.quaternary, "finalAttempt")}</div>`;
   if (state.screen === "convince")
@@ -497,6 +498,21 @@ function render() {
     sessionStorage.setItem(`hl-confetti-${data.token}`, "1");
   }
 }
+function memoriesScreen() {
+  const list = features.memoriesList || [];
+  const cards = list.map((m, i) => `
+    <article class="memory-card" data-memory-idx="${i}">
+      ${m.photoUrl ? `<div class="memory-photo-wrap"><img src="${esc(m.photoUrl)}" alt="${esc(m.title || 'Memory')}" class="memory-img" loading="lazy"></div>` : ''}
+      <div class="memory-content">
+        ${m.date ? `<span class="memory-date-tag">🗓️ ${esc(m.date)}</span>` : ''}
+        <h3>${esc(m.title || `Moment #${i + 1}`)}</h3>
+        ${m.caption ? `<p>${esc(m.caption)}</p>` : ''}
+      </div>
+    </article>
+  `).join('');
+
+  return `${back("← Back to question")}<span class="eyebrow">Our Special Moments ✨</span><h1>Our Memories</h1><p class="body-copy">A few of the reasons why asking you feels so right. 😌❤️</p><div class="memories-scroller" role="region" aria-label="Our memories scrapbook">${cards || '<p class="body-copy">No memories added yet.</p>'}</div><div class="action-stack" style="margin-top:20px;">${btn("Haan, chalo 😌❤️", "yes", "primary")}${btn("← Back to question", "main")}</div>`;
+}
 function finalAttemptScreen() {
   const s = screens.finalAttempt;
   const isEvasion = state.evasionStage >= 1;
@@ -519,11 +535,15 @@ function finalAttemptScreen() {
   if (state.evasionStage >= 1) {
     rejectBtnClass = "respect evasion-teleport sneaky-slide";
   }
+  
+  const showDeclineLink = state.evasionStage >= 2;
+  const isFourthAttempt = state.evasionStage >= 4;
 
-  const fallback = isEvasion
-    ? `<button class="fallback-friend-link" data-action="forceDecline" type="button">Sach me friendzone karna hai? Click here 🤝</button>`
-    : "";
-  return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="promise"><span><b>🔍</b>You know me already</span><span><b>💬</b>You survive my bakwaas</span><span><b>🙌</b>We have fun together</span></div><h2 class="closing-question">${isEvasion ? "Saying YES is recommended 😌❤️" : "Final answer? 👀"}</h2><div class="action-stack"><button class="choice ${yesClass}" data-action="yes" type="button" ${yesStyle}>${text(s.primary)}</button>${btn(s.secondary, "mood")}<button class="choice ${rejectBtnClass}" data-action="${rejectBtnAction}" type="button">${text(rejectBtnText)}</button></div>${fallback}`;
+  if (isFourthAttempt) {
+    return `<div class="retro-error-card" role="alertdialog" aria-modal="true" aria-labelledby="retro-error-title"><div class="retro-error-head"><div class="retro-error-traffic"><span class="t-red"></span><span class="t-yellow"></span><span class="t-green"></span></div><span class="retro-error-badge">404 Exception</span></div><div class="retro-error-body"><span class="retro-error-code">404</span><h2 id="retro-error-title" class="retro-error-title">Button Disappeared! 🏃💨</h2><p class="retro-error-msg">The "No" button has officially evaporated from the space-time continuum. It was never meant to be clicked anyway. 😂</p><div class="retro-error-actions"><button class="choice primary retro-retry-btn" data-action="yes" type="button">Haan, theek hai maan gayi 😂❤️</button><button class="choice respect retro-besties-btn" data-action="forceDecline" type="button">Still Best Friends 🤝</button></div></div></div>`;
+  }
+
+  return `<span class="eyebrow">${text(s.eyebrow)}</span><h1 class="closing-question">${text(s.heading)}</h1><div class="copy-note"><span>🧸</span><div>${text(s.body)}</div></div><div class="question-actions evasion-container"><button class="choice ${yesClass}" data-action="yes" ${yesStyle}>${text(s.primary)}</button><button class="choice ${rejectBtnClass}" data-action="${rejectBtnAction}" type="button">${text(rejectBtnText)}</button>${showDeclineLink ? `<button class="fallback-friend-link" data-action="decline" type="button">Sach mein best friend hi rehna hai? 🤝</button>` : ""}</div>`;
 }
 function back(label) {
   return `<button class="back" data-action="main">${text(label)}</button>`;
@@ -541,7 +561,10 @@ function mainScreen() {
         `${state.nickname} reconsider kar rahi hain? 😌`,
         `Okay okay ${state.nickname}, take your time 😂`,
       ][Math.min(state.mainVisits - 1, 3)] || s.eyebrow;
-  return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>✉️</span><div>${text(s.body)}</div></div><div class="love-envelope" aria-hidden="true"><i></i><span>✦</span></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "thinking")}${btn(s.tertiary, "convince")}</div>`;
+  const memoriesBtn = (features.memories && features.memoriesList && features.memoriesList.length > 0)
+    ? btn(`📸 Our Memories (${features.memoriesList.length})`, "memories", "ghost")
+    : "";
+  return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>✉️</span><div>${text(s.body)}</div></div><div class="love-envelope" aria-hidden="true"><i></i><span>✦</span></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "thinking")}${btn(s.tertiary, "convince")}${memoriesBtn}</div>`;
 }
 function benefitsScreen() {
   const s = screens.benefits,
@@ -1207,6 +1230,8 @@ function act(action, value) {
   } else if (action === "decline") {
     track("best_friend_result", "finalAttempt", value);
     go("decline", "screen_view", value);
+  } else if (action === "memories") {
+    go("memories", "screen_view", "memories");
   } else if (action === "availability")
     go("availability", "button_clicked", value);
   else if (action === "calendarPrev" || action === "calendarNext") {

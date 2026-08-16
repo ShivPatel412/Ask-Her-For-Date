@@ -971,6 +971,21 @@ body {
     color: var(--color-text-muted);
 }
 
+.memory-builder-item {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    background: #faf8f6;
+}
+
+.memory-builder-item legend {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    padding: 0 6px;
+}
+
 .feature-toggle>i,
 .music-note {
     width: 42px;

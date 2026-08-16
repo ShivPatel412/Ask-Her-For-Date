@@ -501,4 +501,63 @@ test('PHASE B: Advanced Music Experience presets, volume, and playback payload',
   assert.ok(previewHtml.includes('Lo-fi Romance'), 'Preview must reflect chosen preset name');
 });
 
+test('PHASE C: Our Memories timeline, scrapbook items, and preview rendering', async () => {
+  const email = `memories_user_${Date.now()}@example.com`;
+  const username = `memories_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Jack', recipientName: 'Rose' })
+  });
+  const inv = await invRes.json();
+
+  // 1. Add memories list to invitation
+  const updateRes = await client(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      inviterName: 'Jack',
+      recipientName: 'Rose',
+      title: 'Our Journey 🚢❤️',
+      features: {
+        memories: true,
+        memoriesList: [
+          {
+            id: 'mem_1',
+            title: 'First Sunset Together 🌅',
+            date: 'Nov 2023',
+            caption: 'Standing at the bow watching the horizon.',
+            photoUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+          },
+          {
+            id: 'mem_2',
+            title: 'Late Night Hot Chocolate ☕',
+            date: 'Dec 2023',
+            caption: 'When we talked until 4am and forgot time existed.',
+            photoUrl: null
+          }
+        ]
+      }
+    })
+  });
+  assert.equal(updateRes.status, 200);
+
+  // 2. Fetch invitation and verify memoriesList is stored correctly
+  const getRes = await client(`/api/invitations/${inv.id}`);
+  assert.equal(getRes.status, 200);
+  const dto = await getRes.json();
+  assert.equal(dto.features.memories, true);
+  assert.equal(dto.features.memoriesList.length, 2);
+  assert.equal(dto.features.memoriesList[0].title, 'First Sunset Together 🌅');
+
+  // 3. Render preview and verify memories button and items are in the HTML payload
+  const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
+  const previewHtml = await previewRes.text();
+  assert.ok(previewHtml.includes('First Sunset Together'), 'Preview should contain memory title in initial payload');
+  assert.ok(previewHtml.includes('"memories":true'), 'Preview initial data should have memories enabled');
+});
+
 
