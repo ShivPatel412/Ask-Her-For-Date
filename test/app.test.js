@@ -456,4 +456,49 @@ test('PHASE A: Custom Cover Photo upload, validation, deletion, and rendering', 
   assert.equal(invalidRes.status, 400);
 });
 
+test('PHASE B: Advanced Music Experience presets, volume, and playback payload', async () => {
+  const email = `music_user_${Date.now()}@example.com`;
+  const username = `music_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Romeo', recipientName: 'Juliet' })
+  });
+  const inv = await invRes.json();
+
+  // 1. GET /api/invitations/:id should return presets.music
+  const getRes = await client(`/api/invitations/${inv.id}`);
+  assert.equal(getRes.status, 200);
+  const dto = await getRes.json();
+  assert.ok(Array.isArray(dto.presets.music), 'presets.music must be an array');
+  assert.ok(dto.presets.music.length >= 3, 'Must have at least 3 romantic music presets');
+  assert.equal(dto.presets.music[0].key, 'preset:lofi');
+
+  // 2. Select a preset track with custom default volume
+  const updateRes = await client(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      inviterName: 'Romeo',
+      recipientName: 'Juliet',
+      title: 'For Juliet ❤️',
+      features: {
+        music: true,
+        musicUrl: 'preset:lofi',
+        musicName: 'Lo-fi Romance 🎧',
+        musicVolume: 45
+      }
+    })
+  });
+  assert.equal(updateRes.status, 200);
+
+  // 3. Verify preview contains the updated music payload
+  const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
+  const previewHtml = await previewRes.text();
+  assert.ok(previewHtml.includes('Lo-fi Romance'), 'Preview must reflect chosen preset name');
+});
+
 

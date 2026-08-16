@@ -929,6 +929,48 @@ body {
     color: var(--muted);
 }
 
+.music-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    margin: 10px 0 14px;
+}
+
+.music-preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.music-preset-btn:hover {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 4%, white);
+}
+
+.music-preset-btn.active {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, white);
+    box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.music-preset-btn b {
+    font-size: 0.82rem;
+    color: var(--color-text);
+}
+
+.music-preset-btn small {
+    font-size: 0.68rem;
+    color: var(--color-text-muted);
+}
+
 .feature-toggle>i,
 .music-note {
     width: 42px;

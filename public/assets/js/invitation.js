@@ -134,11 +134,90 @@ function shell(content) {
 
   return `<main class="invite-shell screen-${state.screen}" style='${css}'><div class="ambient a"></div><div class="ambient b"></div>${musicControl()}${features.mascots && features.mascotPack !== "none" ? mascots() : ""}<section class="invite-card" aria-live="polite">${content}</section>${features.collection ? collectibles() : ""}<footer><button data-modal="privacy">Privacy</button><span>Cute things found: ${state.found.size}/5</span><small class="invite-credit">© ${new Date().getFullYear()} Ask Her Out · Designed and developed by <a href="https://shivpatel.in" target="_blank" rel="noopener noreferrer">SastaTengo</a></small></footer><div id="toast" role="status"></div>${modal("privacy", "Privacy", `This invitation records interactions within this website, such as which options are selected and date preferences. It does not access your contacts, precise location, camera, microphone, or browsing history.`, "Got it")}${modal("secret", screens.secret.heading, screens.secret.body, screens.secret.primary)}${modal404}</main>`;
 }
+let synthCtx = null;
+let synthGain = null;
+let synthTimer = null;
+
+function playAmbientPreset(key, volume = 0.35) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!synthCtx) synthCtx = new AudioCtx();
+    if (synthCtx.state === "suspended") synthCtx.resume();
+    
+    if (synthGain) {
+      synthGain.gain.setValueAtTime(volume, synthCtx.currentTime);
+      state.musicPlaying = true;
+      updateMusicUI();
+      return;
+    }
+    
+    synthGain = synthCtx.createGain();
+    synthGain.gain.setValueAtTime(0.001, synthCtx.currentTime);
+    synthGain.gain.exponentialRampToValueAtTime(Math.max(0.01, volume), synthCtx.currentTime + 1.2);
+    synthGain.connect(synthCtx.destination);
+    
+    const chordProgressions = {
+      "preset:lofi": [[261.63, 329.63, 392.00, 493.88], [220.00, 261.63, 329.63, 392.00], [174.61, 220.00, 261.63, 329.63], [196.00, 246.94, 293.66, 349.23]],
+      "preset:acoustic": [[261.63, 329.63, 392.00], [196.00, 246.94, 293.66], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63]],
+      "preset:piano": [[329.63, 392.00, 493.88, 587.33], [261.63, 329.63, 392.00, 523.25], [220.00, 261.63, 329.63, 440.00], [174.61, 220.00, 261.63, 349.23]],
+      "preset:ukulele": [[261.63, 329.63, 392.00], [329.63, 392.00, 493.88], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63]],
+      "preset:jazz": [[261.63, 311.13, 392.00, 466.16], [196.00, 233.08, 293.66, 349.23], [174.61, 207.65, 261.63, 311.13], [220.00, 261.63, 329.63, 392.00]]
+    };
+    
+    const chords = chordProgressions[key] || chordProgressions["preset:lofi"];
+    let step = 0;
+    
+    function playChord() {
+      if (!synthGain || !synthCtx || synthCtx.state === "closed") return;
+      const currentNotes = chords[step % chords.length];
+      const now = synthCtx.currentTime;
+      
+      currentNotes.forEach((freq, i) => {
+        const osc = synthCtx.createOscillator();
+        const noteGain = synthCtx.createGain();
+        osc.type = key === "preset:acoustic" || key === "preset:ukulele" ? "triangle" : "sine";
+        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+        
+        noteGain.gain.setValueAtTime(0.0001, now + i * 0.08);
+        noteGain.gain.linearRampToValueAtTime(0.07, now + i * 0.08 + 0.1);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 2.2);
+        
+        osc.connect(noteGain);
+        noteGain.connect(synthGain);
+        
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 2.4);
+      });
+      step++;
+      synthTimer = setTimeout(playChord, 2400);
+    }
+    playChord();
+    state.musicPlaying = true;
+    updateMusicUI();
+  } catch (err) {}
+}
+
+function stopAmbientPreset() {
+  if (synthTimer) clearTimeout(synthTimer);
+  if (synthGain && synthCtx) {
+    try {
+      synthGain.gain.setValueAtTime(0.0001, synthCtx.currentTime);
+    } catch {}
+  }
+  synthGain = null;
+  state.musicPlaying = false;
+  updateMusicUI();
+}
+
 function setupMusic() {
+  if (!features.music || !features.musicUrl) return;
+  savedMusicVolume = (features.musicVolume ? features.musicVolume / 100 : 0.35);
+  if (features.musicUrl.startsWith("preset:")) return;
+  
   if (
-    !features.music ||
-    (!features.musicUrl?.startsWith("/media/") &&
-      !features.musicUrl?.startsWith("data:audio/"))
+    !features.musicUrl.startsWith("/media/") &&
+    !features.musicUrl.startsWith("data:audio/")
   )
     return;
   musicAudio = document.createElement("audio");
@@ -200,11 +279,19 @@ function setupVoiceNote() {
   });
 }
 function duckMusic() {
+  if (features.musicUrl && features.musicUrl.startsWith("preset:") && synthGain && synthCtx) {
+    try { synthGain.gain.setValueAtTime(0.015, synthCtx.currentTime); } catch {}
+    return;
+  }
   if (!musicAudio) return;
   savedMusicVolume = musicAudio.volume || 0.35;
   musicAudio.volume = Math.min(0.08, savedMusicVolume * 0.25);
 }
 function restoreMusic() {
+  if (features.musicUrl && features.musicUrl.startsWith("preset:") && synthGain && synthCtx) {
+    try { synthGain.gain.setValueAtTime(savedMusicVolume || 0.35, synthCtx.currentTime); } catch {}
+    return;
+  }
   if (!musicAudio) return;
   musicAudio.volume = savedMusicVolume || 0.35;
 }
@@ -240,19 +327,24 @@ function voiceNoteWidget() {
   return `<div class="voice-note-card ${state.voicePlaying ? "playing" : ""}" id="voice-note-player" role="region" aria-label="Voice note player"><button class="voice-play-btn" data-voice="toggle" type="button" aria-label="Play voice note">${state.voicePlaying ? "⏸" : "▶"}</button><div class="voice-meta"><b>🎙️ Voice note from ${esc(data.inviterName)}</b><small class="voice-status">${statusText}</small></div><div class="voice-waveform" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></div></div>`;
 }
 function musicControl() {
-  const empty = !musicAudio;
+  const isPreset = Boolean(features.musicUrl && features.musicUrl.startsWith("preset:"));
+  const empty = !musicAudio && !isPreset;
   if (empty && !(data.preview && features.music)) return "";
   const disabled = empty ? "disabled" : "";
   return `<div class="music-player ${empty ? "music-empty" : ""} ${state.musicMinimized ? "minimized" : ""}" role="group" aria-label="Music player">
   <div class="music-head">
     <button class="music-minimize" data-music="minimize" aria-label="Minimize player"></button>
       <span class="music-cover" aria-hidden="true">🎧</span>
-        <div class="music-meta"><b>${text(empty ? "Add a song in the editor" : features.musicName || "Favorite song")}</b>
+        <div class="music-meta"><b>${text(empty ? "Add a song in the editor" : features.musicName || "Romantic soundtrack")}</b>
         <small>${empty ? "Music is enabled" : "Currently vibing"}</small></div><i class="music-bars" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
         <button data-music="mute" aria-label="Mute music" ${disabled}>🔊</button></div>
-        <div class="music-progress"><time data-current>0:00</time><input data-music="seek" type="range" min="0" max="100" value="0" aria-label="Song progress" ${disabled}><time data-duration>${empty ? "--:--" : "0:00"}</time></div><div class="music-controls"><button data-music="back" aria-label="Go back 10 seconds" ${disabled}>↶</button><button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>▶</button><button data-music="forward" aria-label="Go forward 10 seconds" ${disabled}>↷</button><label class="music-volume"><span aria-hidden="true">🔉</span><input data-music="volume" type="range" min="0" max="100" value="25" aria-label="Music volume" ${disabled}></label></div></div>`;
+        <div class="music-progress"><time data-current>0:00</time><input data-music="seek" type="range" min="0" max="100" value="0" aria-label="Song progress" ${disabled || isPreset ? "disabled" : ""}><time data-duration>${empty || isPreset ? "--:--" : "0:00"}</time></div><div class="music-controls"><button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button><button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>▶</button><button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button><label class="music-volume"><span aria-hidden="true">🔉</span><input data-music="volume" type="range" min="0" max="100" value="${features.musicVolume || 35}" aria-label="Music volume" ${disabled}></label></div></div>`;
 }
 function startMusic() {
+  if (features.musicUrl && features.musicUrl.startsWith("preset:")) {
+    if (!state.musicPlaying) playAmbientPreset(features.musicUrl, savedMusicVolume || 0.35);
+    return;
+  }
   if (!musicAudio || !musicAudio.paused) return;
   musicAudio.play().catch(() => {});
 }
@@ -265,38 +357,47 @@ function updateMusicUI() {
   if (!player) return;
   player.classList.toggle("minimized", state.musicMinimized);
   const minimize = player.querySelector('[data-music="minimize"]');
-  minimize.textContent = state.musicMinimized ? "⌃" : "⌄";
-  minimize.setAttribute(
-    "aria-label",
-    state.musicMinimized ? "Expand player" : "Minimize player",
-  );
-  if (!musicAudio) return;
+  if (minimize) {
+    minimize.textContent = state.musicMinimized ? "⌃" : "⌄";
+    minimize.setAttribute(
+      "aria-label",
+      state.musicMinimized ? "Expand player" : "Minimize player",
+    );
+  }
+  const isPreset = Boolean(features.musicUrl && features.musicUrl.startsWith("preset:"));
+  if (!musicAudio && !isPreset) return;
   player.classList.toggle("playing", Boolean(state.musicPlaying));
-  const play = player.querySelector('[data-music="toggle"]'),
-    mute = player.querySelector('[data-music="mute"]'),
-    seek = player.querySelector('[data-music="seek"]'),
-    volume = player.querySelector('[data-music="volume"]');
-  play.textContent = state.musicPlaying ? "❚❚" : "▶";
-  play.setAttribute(
-    "aria-label",
-    state.musicPlaying ? "Pause music" : "Play music",
-  );
-  mute.textContent = musicAudio.muted ? "🔇" : "🔊";
-  mute.setAttribute(
-    "aria-label",
-    musicAudio.muted ? "Unmute music" : "Mute music",
-  );
-  seek.value = musicAudio.duration
-    ? (musicAudio.currentTime / musicAudio.duration) * 100
-    : 0;
-  seek.style.setProperty("--music-progress", `${seek.value}%`);
-  volume.value = musicAudio.muted ? 0 : musicAudio.volume * 100;
-  player.querySelector("[data-current]").textContent = clock(
-    musicAudio.currentTime,
-  );
-  player.querySelector("[data-duration]").textContent = clock(
-    musicAudio.duration,
-  );
+  const play = player.querySelector('[data-music="toggle"]');
+  if (play) {
+    play.textContent = state.musicPlaying ? "❚❚" : "▶";
+    play.setAttribute(
+      "aria-label",
+      state.musicPlaying ? "Pause music" : "Play music",
+    );
+  }
+  if (musicAudio) {
+    const mute = player.querySelector('[data-music="mute"]'),
+      seek = player.querySelector('[data-music="seek"]'),
+      volume = player.querySelector('[data-music="volume"]');
+    if (mute) {
+      mute.textContent = musicAudio.muted ? "🔇" : "🔊";
+      mute.setAttribute(
+        "aria-label",
+        musicAudio.muted ? "Unmute music" : "Mute music",
+      );
+    }
+    if (seek) {
+      seek.value = musicAudio.duration
+        ? (musicAudio.currentTime / musicAudio.duration) * 100
+        : 0;
+      seek.style.setProperty("--music-progress", `${seek.value}%`);
+    }
+    if (volume) volume.value = musicAudio.muted ? 0 : musicAudio.volume * 100;
+    const cur = player.querySelector("[data-current]");
+    if (cur) cur.textContent = clock(musicAudio.currentTime);
+    const dur = player.querySelector("[data-duration]");
+    if (dur) dur.textContent = clock(musicAudio.duration);
+  }
 }
 function mascotPackData(pack = "original") {
   const packs = {
@@ -823,17 +924,31 @@ function bind() {
         state.musicMinimized = !state.musicMinimized;
         return updateMusicUI();
       }
-      if (el.dataset.music === "toggle")
-        musicAudio.paused
-          ? musicAudio.play().catch(() => {})
-          : musicAudio.pause();
-      if (el.dataset.music === "mute") {
-        musicAudio.muted = !musicAudio.muted;
-        updateMusicUI();
+      if (el.dataset.music === "toggle") {
+        if (features.musicUrl && features.musicUrl.startsWith("preset:")) {
+          if (state.musicPlaying) stopAmbientPreset();
+          else playAmbientPreset(features.musicUrl, savedMusicVolume || 0.35);
+          return;
+        }
+        if (musicAudio) {
+          musicAudio.paused ? musicAudio.play().catch(() => {}) : musicAudio.pause();
+        }
       }
-      if (el.dataset.music === "back")
+      if (el.dataset.music === "mute") {
+        if (features.musicUrl && features.musicUrl.startsWith("preset:") && synthGain && synthCtx) {
+          state.musicMuted = !state.musicMuted;
+          synthGain.gain.setValueAtTime(state.musicMuted ? 0.0001 : (savedMusicVolume || 0.35), synthCtx.currentTime);
+          el.textContent = state.musicMuted ? "🔇" : "🔊";
+          return;
+        }
+        if (musicAudio) {
+          musicAudio.muted = !musicAudio.muted;
+          updateMusicUI();
+        }
+      }
+      if (musicAudio && el.dataset.music === "back")
         musicAudio.currentTime = Math.max(0, musicAudio.currentTime - 10);
-      if (el.dataset.music === "forward")
+      if (musicAudio && el.dataset.music === "forward")
         musicAudio.currentTime = Math.min(
           musicAudio.duration || Infinity,
           musicAudio.currentTime + 10,

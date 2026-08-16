@@ -40,14 +40,22 @@ const moods = [
   { title: 'Surprise Me ✨', description: 'Dangerous amount of trust 👀' }
 ];
 
+const musicPresets = [
+  { key: 'preset:lofi', name: 'Lo-fi Romance 🎧', desc: 'Chill beats, warm vinyl, and cozy chords' },
+  { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸', desc: 'Warm fingerstyle acoustic melody' },
+  { key: 'preset:piano', name: 'Piano Serenade 🎹', desc: 'Soft emotive romantic piano' },
+  { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️', desc: 'Playful, sunny, cheerful vibe' },
+  { key: 'preset:jazz', name: 'Midnight Jazz 🎷', desc: 'Slow, smooth late-night jazz' }
+];
+
 function defaultConfig(inviterName = '', recipientName = '') {
   return {
     theme: { preset: 'strawberry', ...themes.strawberry, fontPreset: 'romantic', ...fonts.romantic },
     content: structuredClone(defaultContent),
-    features: { mascots: true, tinyMode: true, collection: true, confetti: true, funnyBack: true, music: false, musicUrl: null, musicName: null, coverPhoto: false, coverPhotoUrl: null, coverPhotoCaption: null, memories: false, memoriesList: [], mascotPack: 'original' },
+    features: { mascots: true, tinyMode: true, collection: true, confetti: true, funnyBack: true, music: false, musicUrl: null, musicName: null, musicVolume: 35, coverPhoto: false, coverPhotoUrl: null, coverPhotoCaption: null, memories: false, memoriesList: [], mascotPack: 'original' },
     moods: structuredClone(moods),
     inviterName, recipientName, title: 'Something for you ❤️'
   };
 }
 
-module.exports = { themes, fonts, favoriteMood, defaultConfig };
+module.exports = { themes, fonts, favoriteMood, musicPresets, defaultConfig };
