@@ -638,33 +638,39 @@ test('PHASE D: Curated Occasion Templates (romantic dinner, coffee, anniversary)
   });
   const inv = await invRes.json();
 
-  // 1. GET /api/invitations/:id should return presets.templates
+  // 1. GET /api/invitations/:id should return all 9 presets.templates
   const getRes = await client(`/api/invitations/${inv.id}`);
   assert.equal(getRes.status, 200);
   const dto = await getRes.json();
   assert.ok(dto.presets.templates, 'presets.templates must exist');
-  assert.ok(dto.presets.templates['romantic-dinner'], 'Romantic dinner template must exist');
-  assert.ok(dto.presets.templates['coffee-casual'], 'Coffee casual template must exist');
+  assert.ok(dto.presets.templates['classic'], 'Classic template must exist');
+  assert.ok(dto.presets.templates['best-friend-date'], 'Best friend template must exist');
+  assert.ok(dto.presets.templates['hinglish-proposal'], 'Hinglish proposal template must exist');
+  assert.ok(dto.presets.templates['funny-proposal'], 'Funny proposal template must exist');
+  assert.ok(dto.presets.templates['long-distance'], 'Long distance template must exist');
   assert.ok(dto.presets.templates['anniversary-special'], 'Anniversary template must exist');
+  assert.ok(dto.presets.templates['first-date'], 'First date template must exist');
+  assert.ok(dto.presets.templates['birthday-date'], 'Birthday date template must exist');
+  assert.ok(dto.presets.templates['valentines-day'], 'Valentine template must exist');
 
-  // 2. Apply romantic-dinner template
-  const dinnerTpl = dto.presets.templates['romantic-dinner'];
+  // 2. Apply hinglish-proposal template
+  const hinglishTpl = dto.presets.templates['hinglish-proposal'];
   const updateRes = await client(`/api/invitations/${inv.id}`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
     body: JSON.stringify({
       inviterName: 'Noah',
       recipientName: 'Allie',
-      title: 'Candlelight Dinner 🍷✨',
+      title: 'Hinglish Proposal 🇮🇳',
       content: {
-        screens: dinnerTpl.content,
-        moods: dinnerTpl.moods
+        screens: hinglishTpl.content,
+        moods: hinglishTpl.moods
       }
     })
   });
   assert.equal(updateRes.status, 200);
 
-  // 3. Publish and verify public invitation renders template copy
+  // 3. Publish and verify public invitation renders Hinglish copy
   const pubRes = await client(`/api/invitations/${inv.id}/status`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
@@ -675,7 +681,7 @@ test('PHASE D: Curated Occasion Templates (romantic dinner, coffee, anniversary)
   const publicRes = await client(`/i/${dto.token}`);
   assert.equal(publicRes.status, 200);
   const publicHtml = await publicRes.text();
-  assert.ok(publicHtml.includes('dinner'), 'Public invitation should reflect dinner template content');
+  assert.ok(publicHtml.includes('date pe chalogi') || publicHtml.includes('filmy style'), 'Public invitation should reflect Hinglish template content');
 });
 
 test('PHASE E: In-App Notification Center and live visitor alerts', async () => {
