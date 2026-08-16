@@ -647,18 +647,40 @@ function render() {
 }
 function memoriesScreen() {
   const list = features.memoriesList || [];
-  const cards = list.map((m, i) => `
-    <article class="memory-card" data-memory-idx="${i}">
-      ${m.photoUrl ? `<div class="memory-photo-wrap"><img src="${esc(m.photoUrl)}" alt="${esc(m.title || 'Memory')}" class="memory-img" loading="lazy"></div>` : ''}
-      <div class="memory-content">
-        ${m.date ? `<span class="memory-date-tag">🗓️ ${esc(m.date)}</span>` : ''}
-        <h3>${esc(m.title || `Moment #${i + 1}`)}</h3>
-        ${m.caption ? `<p>${esc(m.caption)}</p>` : ''}
+  const items = list.map((m, i) => `
+    <div class="story-timeline-item" data-memory-idx="${i}">
+      <div class="story-timeline-node" aria-hidden="true">
+        <span class="story-node-dot">💖</span>
+        ${i < list.length - 1 ? '<span class="story-node-line"></span>' : ''}
       </div>
-    </article>
+      <article class="story-timeline-card">
+        ${m.date ? `<time class="story-date-badge">🗓️ ${esc(m.date)}</time>` : ''}
+        ${m.photoUrl ? `
+          <div class="story-photo-frame">
+            <img src="${esc(m.photoUrl)}" alt="${esc(m.title || 'Memory photo')}" class="story-photo-img" loading="lazy" onerror="this.parentElement.style.display='none'">
+          </div>
+        ` : ''}
+        <div class="story-text-wrap">
+          <h3 class="story-title">${esc(m.title || `Moment #${i + 1}`)}</h3>
+          ${m.caption ? `<p class="story-description">${esc(m.caption)}</p>` : ''}
+        </div>
+      </article>
+    </div>
   `).join('');
 
-  return `${back("← Back to question")}<span class="eyebrow">Our Special Moments ✨</span><h1>Our Memories</h1><p class="body-copy">A few of the reasons why asking you feels so right. 😌❤️</p><div class="memories-scroller" role="region" aria-label="Our memories scrapbook">${cards || '<p class="body-copy">No memories added yet.</p>'}</div><div class="action-stack" style="margin-top:20px;">${btn("Haan, chalo 😌❤️", "yes", "primary")}${btn("← Back to question", "main")}</div>`;
+  return `
+    ${back("← Back to question")}
+    <span class="eyebrow">Our Special Journey ✨</span>
+    <h1>Our Story ❤️</h1>
+    <p class="body-copy">A few of the sweetest moments that make this invitation special. 😌❤️</p>
+    <div class="story-timeline-container" role="region" aria-label="Our story memory timeline">
+      ${items || '<p class="body-copy">No memories added yet.</p>'}
+    </div>
+    <div class="action-stack" style="margin-top:24px;">
+      ${btn("Haan, chalo 😌❤️", "yes", "primary")}
+      ${btn("← Back to question", "main")}
+    </div>
+  `;
 }
 function finalAttemptScreen() {
   const s = screens.finalAttempt;

@@ -728,7 +728,9 @@ app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
 app.get('/api/invitations/:id', requireUser, async (req, res) => { const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' }); res.json({ ...invitationDTO(row), presets: { themes, music: musicPresets, templates: invitationTemplates }, csrf: csrf(req) }); });
 app.put('/api/invitations/:id', requireUser, requireCsrf, async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' });
-  const inviterName = clean(req.body.inviterName,60), recipientName = clean(req.body.recipientName,60), title = clean(req.body.title,100);
+  const inviterName = clean(req.body.inviterName,60) || row.inviter_name;
+  const recipientName = clean(req.body.recipientName,60) || row.recipient_name;
+  const title = clean(req.body.title,100) || row.title;
   const theme = req.body.theme || {}, content = req.body.content || {}, features = req.body.features || {};
   if (!inviterName || !recipientName || !title) return res.status(400).json({ error:'Names and title are required.' });
   for (const key of ['background','primary','secondary','text','card']) if (theme[key] && !validColor(theme[key])) return res.status(400).json({ error:`Invalid ${key} color.` });
@@ -743,6 +745,7 @@ app.put('/api/invitations/:id', requireUser, requireCsrf, async (req, res) => {
   safeFeatures.musicName = ('musicName' in features) ? (features.musicName || null) : (storedFeatures.musicName || null);
   safeFeatures.voiceNoteUrl = ('voiceNoteUrl' in features) ? (features.voiceNoteUrl || null) : (storedFeatures.voiceNoteUrl || null);
   safeFeatures.voiceNoteName = ('voiceNoteName' in features) ? (features.voiceNoteName || null) : (storedFeatures.voiceNoteName || null);
+  safeFeatures.memoriesList = Array.isArray(features.memoriesList) ? features.memoriesList.slice(0, 12).map(m => sanitizeObject(m, 400, 2)) : (storedFeatures.memoriesList || []);
   await db.prepare(`UPDATE invitations SET inviter_name=?,recipient_name=?,title=?,theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`).run(inviterName,recipientName,title,JSON.stringify(safeTheme),JSON.stringify(safeContent),JSON.stringify(safeFeatures),now(),row.id,row.owner_user_id);
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) await logUserActivity(req.session.userId, user.email, 'UPDATE_INVITATION', req);

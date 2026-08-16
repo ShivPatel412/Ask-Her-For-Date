@@ -589,10 +589,39 @@ test('PHASE C: Our Memories timeline, scrapbook items, and preview rendering', a
   assert.equal(dto.features.memoriesList.length, 2);
   assert.equal(dto.features.memoriesList[0].title, 'First Sunset Together 🌅');
 
-  // 3. Render preview and verify memories button and items are in the HTML payload
+  // 3. Reorder memories (swap memory 1 and 2)
+  const reorderRes = await client(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      inviterName: 'Jack',
+      recipientName: 'Rose',
+      features: {
+        memories: true,
+        memoriesList: [dto.features.memoriesList[1], dto.features.memoriesList[0]]
+      }
+    })
+  });
+  assert.equal(reorderRes.status, 200);
+  const reorderedDto = await (await client(`/api/invitations/${inv.id}`)).json();
+  assert.equal(reorderedDto.features.memoriesList[0].title, 'Late Night Hot Chocolate ☕');
+
+  // 4. Verify IDOR protection on memories modification
+  const strangerClient = browser();
+  const strangerCsrf = await register(strangerClient, `stranger_${Date.now()}`, `stranger_${Date.now()}@example.com`);
+  const unauthorizedRes = await strangerClient(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': strangerCsrf },
+    body: JSON.stringify({
+      features: { memories: false, memoriesList: [] }
+    })
+  });
+  assert.equal(unauthorizedRes.status, 404, 'Non-owner must not modify invitation memories');
+
+  // 5. Render preview and verify memories payload and timeline classes
   const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
   const previewHtml = await previewRes.text();
-  assert.ok(previewHtml.includes('First Sunset Together'), 'Preview should contain memory title in initial payload');
+  assert.ok(previewHtml.includes('Late Night Hot Chocolate'), 'Preview should contain reordered memory title');
   assert.ok(previewHtml.includes('"memories":true'), 'Preview initial data should have memories enabled');
 });
 
