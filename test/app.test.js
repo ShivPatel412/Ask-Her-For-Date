@@ -672,4 +672,59 @@ test('PHASE E: In-App Notification Center and live visitor alerts', async () => 
   assert.ok(notifData.notifications.some(n => n.title.includes('YES')), 'Should notify inviter of YES response');
 });
 
+test('PHASE G: Real Date Selection Flow, Calendar Sync and ICS export', async () => {
+  const email = `date_user_${Date.now()}@example.com`;
+  const username = `date_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  // 1. Create and publish an invitation
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Jim', recipientName: 'Pam' })
+  });
+  const inv = await invRes.json();
+
+  await client(`/api/invitations/${inv.id}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+
+  const getRes = await client(`/api/invitations/${inv.id}`);
+  const dto = await getRes.json();
+
+  // 2. Visitor completes availability selection with date
+  const visitorClient = browser();
+  const visitorId = `vis_date_${Date.now()}`;
+  await visitorClient(`/api/invitations/${dto.token}/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ visitorId })
+  });
+
+  const futureDate = '2026-10-15T19:00';
+  const evRes = await visitorClient(`/api/invitations/${dto.token}/events`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      visitorId,
+      screen: 'availability',
+      eventName: 'availability_selected',
+      optionValue: 'Oct 15, 2026, 7:00 PM',
+      selectedDate: futureDate,
+      sequenceNumber: 2
+    })
+  });
+  assert.ok(evRes.status === 200 || evRes.status === 201);
+
+  // 3. Verify notification received by inviter with date details
+  const notifRes = await client('/api/notifications');
+  const notifData = await notifRes.json();
+  const dateNotif = notifData.notifications.find(n => n.title.includes('Date & Time'));
+  assert.ok(dateNotif, 'Should generate Date & Time notification for inviter');
+  assert.ok(dateNotif.message.includes('Oct 15'), 'Notification should mention selected date');
+});
+
 

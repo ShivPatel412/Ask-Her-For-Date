@@ -900,6 +900,56 @@ async function shareDateCard() {
     fallbackShare(shareText);
   }
 }
+function googleCalendarUrl(dateTimeStr, inviterName, mood) {
+  if (!dateTimeStr) return '#';
+  try {
+    const start = new Date(dateTimeStr);
+    const end = new Date(start.getTime() + 2 * 3600 * 1000);
+    const fmt = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const text = encodeURIComponent(`Date with ${inviterName || 'Someone'} ❤️ (${mood || 'Special Date'})`);
+    const details = encodeURIComponent(`Our special date! Vibe: ${mood || 'Fun + Food'}. Planned on Ask Her Out.`);
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fmt(start)}/${fmt(end)}&details=${details}`;
+  } catch {
+    return '#';
+  }
+}
+
+function downloadIcsFile() {
+  if (!state.date) return toast("No date selected to export.");
+  try {
+    const startDate = new Date(state.date);
+    const endDate = new Date(startDate.getTime() + 2 * 3600 * 1000);
+    const formatIcsDate = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Ask Her Out//Romantic Date Invitation//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `SUMMARY:Date with ${data.inviterName || 'Someone'} ❤️ (${state.mood || 'Special Date'})`,
+      `DESCRIPTION:Our date! Vibe: ${state.mood || 'Food + Fun'}. Planned with Ask Her Out.`,
+      `DTSTART:${formatIcsDate(startDate)}`,
+      `DTEND:${formatIcsDate(endDate)}`,
+      `DTSTAMP:${formatIcsDate(new Date())}`,
+      `STATUS:CONFIRMED`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `date-with-${(data.inviterName || 'date').toLowerCase().replace(/\s+/g, '-')}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    toast('📅 Calendar event (.ics) downloaded!');
+  } catch (err) {
+    toast('Could not generate calendar file.');
+  }
+}
+
 function successScreen() {
   const s = screens.success,
     when = state.date ? formatDateTime(state.date) : "We decide 😌",
@@ -908,7 +958,17 @@ function successScreen() {
     whatsapp = data.whatsappNumber
       ? `<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">Plan on WhatsApp 💬</a>`
       : "";
-  return `<div class="celebration-hero"><div class="celebration-heart-badge small" aria-hidden="true"><span class="heart-pulse">💖</span><span class="sparkle-orbit s1">✨</span><span class="sparkle-orbit s2">✨</span></div><span class="celebration-kicker">Date Planning Unlocked ✨</span><h1 class="celebration-title">${text(s.heading || "Baaki planning meri.")}</h1><p class="celebration-quote">“${text(s.body || "You picked the timing. You picked the vibe. You just have to show up. 😂❤️")}”</p></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}${voiceNoteWidget()}<div class="evidence-note">📸 Screenshot this. Evidence secured 😂</div><div class="action-stack"><button class="choice primary" data-action="downloadCard" type="button">Download Date Card 📸</button><button class="choice" data-action="shareCard" type="button">Share Date Card 💌</button>${whatsapp}<button class="choice ghost" data-modal="secret" type="button">One more thing… 👀</button></div>`;
+  const calButtons = state.date ? `
+    <div class="calendar-actions">
+      <a class="cal-action-btn cal-google" href="${googleCalendarUrl(state.date, data.inviterName, plan)}" target="_blank" rel="noopener noreferrer">
+        <span>📅</span> Add to Google Calendar
+      </a>
+      <button type="button" class="cal-action-btn cal-ics" data-action="downloadIcs">
+        <span>🍏</span> Add to Apple / Outlook (.ics)
+      </button>
+    </div>
+  ` : "";
+  return `<div class="celebration-hero"><div class="celebration-heart-badge small" aria-hidden="true"><span class="heart-pulse">💖</span><span class="sparkle-orbit s1">✨</span><span class="sparkle-orbit s2">✨</span></div><span class="celebration-kicker">Date Planning Unlocked ✨</span><h1 class="celebration-title">${text(s.heading || "Baaki planning meri.")}</h1><p class="celebration-quote">“${text(s.body || "You picked the timing. You picked the vibe. You just have to show up. 😂❤️")}”</p></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}${calButtons}${voiceNoteWidget()}<div class="evidence-note">📸 Screenshot this. Evidence secured 😂</div><div class="action-stack"><button class="choice primary" data-action="downloadCard" type="button">Download Date Card 📸</button><button class="choice" data-action="shareCard" type="button">Share Date Card 💌</button>${whatsapp}<button class="choice ghost" data-modal="secret" type="button">One more thing… 👀</button></div>`;
 }
 function declineScreen() {
   const s = screens.decline,
@@ -1256,6 +1316,8 @@ function act(action, value) {
     downloadDateCard();
   } else if (action === "shareCard") {
     shareDateCard();
+  } else if (action === "downloadIcs") {
+    downloadIcsFile();
   } else if (action === "success") go("success", "screen_view", value);
   else if (action === "complete" || action === "declineComplete") {
     track("completion", state.screen, value);

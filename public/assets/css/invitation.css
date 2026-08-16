@@ -1660,3 +1660,52 @@ dialog::backdrop { background: rgba(40, 30, 35, 0.45); backdrop-filter: blur(6px
     width: calc(100vw - 20px);
   }
 }
+
+/* --------------------------------------------------------------------------
+   Calendar Integration Actions
+   -------------------------------------------------------------------------- */
+.calendar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 440px;
+  width: 100%;
+  margin: 14px auto 6px;
+}
+
+.cal-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.cal-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.cal-action-btn.cal-google {
+  background: color-mix(in srgb, #4285f4 8%, var(--card));
+  border-color: color-mix(in srgb, #4285f4 30%, transparent);
+  color: #1a73e8;
+}
+
+.cal-action-btn.cal-ics {
+  background: color-mix(in srgb, var(--primary) 8%, var(--card));
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+  color: var(--primary);
+}
+
