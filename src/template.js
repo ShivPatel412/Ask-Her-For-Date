@@ -1,9 +1,9 @@
 const themes = {
-  strawberry: { name: 'Warm Minimal ✨', background: '#FCFAF6', primary: '#FF625F', secondary: '#F4E9DD', text: '#282223', muted: '#70686A', card: '#FFFFFFEE' },
-  blue: { name: 'Blue Trouble 💙', background: '#F4FAFF', primary: '#5BA7E1', secondary: '#E8DEFF', text: '#20242B', muted: '#65717B', card: '#FFFFFFD6' },
-  yellow: { name: 'Yellow Chaos 💛', background: '#FFFBEA', primary: '#E9A900', secondary: '#8FD3FF', text: '#2B2720', muted: '#756D55', card: '#FFFFFFD6' },
-  midnight: { name: 'Midnight Date 🌙', background: '#171329', primary: '#FF7EB3', secondary: '#725AC1', text: '#FFF7FC', muted: '#CBBFD0', card: '#2A2342E6' },
-  rose: { name: 'Rose Gold 🌹', background: '#FFF8F1', primary: '#C87986', secondary: '#F1D1C8', text: '#38272A', muted: '#80666A', card: '#FFFFFFD6' }
+  strawberry: { name: 'Warm Minimal ✨', background: '#FCFAF6', primary: '#E6496F', secondary: '#F4E9DD', accent: '#FF7B94', headingColor: '#20191B', text: '#282223', muted: '#70686A', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#EADFE1' },
+  blue: { name: 'Blue Trouble 💙', background: '#F4FAFF', primary: '#3B82F6', secondary: '#E8DEFF', accent: '#60A5FA', headingColor: '#0F172A', text: '#1E293B', muted: '#64748B', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#DCE7F5' },
+  yellow: { name: 'Yellow Chaos 💛', background: '#FFFDF2', primary: '#D97706', secondary: '#FEF3C7', accent: '#F59E0B', headingColor: '#1C1612', text: '#2D241E', muted: '#786959', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#F0E5D0' },
+  midnight: { name: 'Midnight Date 🌙', background: '#13111C', primary: '#F43F5E', secondary: '#312E4A', accent: '#FB7185', headingColor: '#FFFFFF', text: '#F1EDF7', muted: '#A59EB5', card: '#201C30EE', buttonText: '#FFFFFF', border: '#38324F' },
+  rose: { name: 'Rose Gold 🌹', background: '#FFF8F5', primary: '#C95A72', secondary: '#F9E4DE', accent: '#DE758C', headingColor: '#241418', text: '#332025', muted: '#7E676D', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#EBDCDD' }
 };
 
 const fonts = {

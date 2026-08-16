@@ -2,6 +2,76 @@
    Ask Her Out · Premium Interactive Invitation Stylesheet
    ========================================================================== */
 
+:root {
+  /* --------------------------------------------------------------------------
+     Romantic & Modern Design System Tokens
+     -------------------------------------------------------------------------- */
+  /* Colors */
+  --color-bg: #faf7f5;
+  --color-surface: #ffffff;
+  --color-surface-soft: #fff8f6;
+  --color-surface-tint: #f6efea;
+  --color-primary: #e6496f;
+  --color-primary-hover: #d0385e;
+  --color-primary-soft: #ffeef2;
+  --color-secondary: #f0e8f7;
+  --color-secondary-hover: #e3d7ee;
+  --color-text: #241a1e;
+  --color-text-muted: #736368;
+  --color-text-subtle: #9c8c92;
+  --color-border: #ede3df;
+  --color-border-hover: #dacdcb;
+  --color-border-subtle: #f5ece8;
+  --color-success: #288c56;
+  --color-warning: #b57414;
+  --color-danger: #c22e4d;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 6px rgba(43, 26, 32, 0.04), 0 1px 2px rgba(43, 26, 32, 0.02);
+  --shadow-md: 0 8px 20px rgba(43, 26, 32, 0.06), 0 2px 6px rgba(43, 26, 32, 0.03);
+  --shadow-lg: 0 18px 40px rgba(43, 26, 32, 0.08), 0 4px 12px rgba(43, 26, 32, 0.04);
+  --shadow-romantic: 0 18px 42px -6px rgba(230, 73, 111, 0.18), 0 6px 16px -2px rgba(43, 26, 32, 0.04);
+
+  /* Typography */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Accessibility: Visible Keyboard Focus */
+:focus-visible {
+  outline: 2px solid var(--primary, var(--color-primary)) !important;
+  outline-offset: 2px !important;
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 *, *:before, *:after {
   box-sizing: border-box;
 }
@@ -14,7 +84,7 @@ html, body, #app {
 }
 
 body {
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg, #fff6f2);
@@ -124,7 +194,7 @@ body {
    -------------------------------------------------------------------------- */
 h1, h2 {
   font-family: var(--heading), Georgia, serif;
-  color: var(--text);
+  color: var(--heading-color, var(--text));
   text-wrap: balance;
 }
 
@@ -153,9 +223,9 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--accent, var(--primary));
   padding: 6px 14px;
-  background: color-mix(in srgb, var(--primary) 10%, white);
+  background: color-mix(in srgb, var(--accent, var(--primary)) 10%, white);
   border-radius: 999px;
   margin-bottom: 6px;
 }
@@ -186,7 +256,7 @@ h2 {
   width: 100%;
   min-height: 56px;
   padding: 14px 22px;
-  border: 1.5px solid color-mix(in srgb, var(--primary) 22%, #e5ded8);
+  border: 1.5px solid var(--border, color-mix(in srgb, var(--primary) 22%, #e5ded8));
   border-radius: 18px;
   background: #ffffff;
   color: var(--text);
@@ -213,14 +283,14 @@ h2 {
 
 .choice.primary {
   border: none !important;
-  background: linear-gradient(135deg, #ff5e7e 0%, #ff7b94 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 10px 28px rgba(255, 94, 126, 0.36) !important;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent, var(--primary)) 100%) !important;
+  color: var(--button-text, #ffffff) !important;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 36%, transparent) !important;
 }
 
 .choice.primary:hover {
-  background: linear-gradient(135deg, #f0486a 0%, #ff6b87 100%) !important;
-  box-shadow: 0 14px 34px rgba(255, 94, 126, 0.44) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 90%, black) 0%, var(--primary) 100%) !important;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--primary) 44%, transparent) !important;
 }
 
 .choice.respect {
@@ -850,22 +920,62 @@ h2 {
 @keyframes voice-wave { 0% { height: 4px; } 100% { height: 15px; } }
 
 /* --------------------------------------------------------------------------
-   Playful Rejection Evasion & Physics
+   Sneaky Slide: Playful Evasive "No" Button
    -------------------------------------------------------------------------- */
+.choice.sneaky-slide,
 .evasion-teleport {
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
+  position: relative;
+  z-index: 5;
+  min-height: 48px;
+  max-width: 100%;
+  padding: 12px 22px;
+  border-radius: 9999px !important;
+  border: 1.5px solid color-mix(in srgb, var(--primary) 32%, #e8dde0) !important;
+  background: #ffffff !important;
+  color: var(--text) !important;
+  box-shadow: 0 4px 14px rgba(40, 30, 35, 0.06) !important;
+  font-size: clamp(0.92rem, 1.4vw, 1rem);
+  font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
+  will-change: transform;
+  transition: transform 0.32s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.25s ease, border-color 0.2s ease, background-color 0.2s ease !important;
 }
+
+.choice.sneaky-slide:hover,
+.evasion-teleport:hover {
+  border-color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 4%, #ffffff) !important;
+  box-shadow: 0 6px 18px rgba(40, 30, 35, 0.09) !important;
+}
+
+.choice.sneaky-slide:active,
+.evasion-teleport:active {
+  transform: scale(0.97);
+}
+
 .evasion-growing-yes {
   position: relative;
   z-index: 10;
-  transform: scale(var(--yes-scale, 1.1));
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 40%, transparent) !important;
-  animation: yes-heart-pulse 1.4s infinite ease-in-out !important;
+  transform: scale(var(--yes-scale, 1.08));
+  box-shadow: 0 14px 34px rgba(255, 94, 126, 0.38) !important;
+  animation: yes-heart-pulse 1.5s infinite ease-in-out !important;
 }
+
 @keyframes yes-heart-pulse {
-  0%, 100% { transform: scale(var(--yes-scale, 1.1)); }
-  50% { transform: scale(calc(var(--yes-scale, 1.1) + 0.05)); }
+  0%, 100% { transform: scale(var(--yes-scale, 1.08)); }
+  50% { transform: scale(calc(var(--yes-scale, 1.08) + 0.035)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice.sneaky-slide,
+  .evasion-teleport {
+    transform: none !important;
+    transition: none !important;
+  }
+  .evasion-growing-yes {
+    animation: none !important;
+  }
 }
 .fallback-friend-link {
   display: inline-block;
