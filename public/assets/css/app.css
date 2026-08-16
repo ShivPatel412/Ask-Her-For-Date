@@ -4474,3 +4474,113 @@ html {
     .whatsapp-setup{grid-template-columns:1fr}.whatsapp-setup .button{width:100%}
     .builder .builder-head { padding:16px }
 }
+
+/* --------------------------------------------------------------------------
+   QR Code & Share Modal
+   -------------------------------------------------------------------------- */
+.qr-share-modal {
+    border: none;
+    border-radius: var(--radius-xl);
+    padding: 0;
+    max-width: 420px;
+    width: 92vw;
+    background: #ffffff;
+    box-shadow: 0 25px 60px -15px rgba(40, 25, 30, 0.25);
+}
+
+.qr-share-modal::backdrop {
+    background: rgba(30, 20, 25, 0.45);
+    backdrop-filter: blur(6px);
+}
+
+.qr-modal-body {
+    position: relative;
+    padding: 32px 24px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.qr-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--color-border);
+    background: #ffffff;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.15s ease;
+}
+
+.qr-modal-close:hover {
+    background: var(--color-surface-soft);
+    color: var(--color-text);
+}
+
+.qr-header {
+    margin-bottom: 20px;
+}
+
+.qr-header h3 {
+    margin: 4px 0 2px;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: var(--color-text);
+}
+
+.qr-header p {
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--color-text-muted);
+}
+
+.qr-canvas-wrap {
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    display: inline-flex;
+}
+
+.qr-modal-link-wrap {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.qr-modal-link-wrap input {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-soft);
+    font-size: 0.82rem;
+    color: var(--color-text);
+}
+
+.qr-modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+}
+
+.qr-btn-wa {
+    background: #25d366 !important;
+    color: #ffffff !important;
+    border: none !important;
+    text-decoration: none;
+}
+

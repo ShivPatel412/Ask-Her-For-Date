@@ -727,4 +727,33 @@ test('PHASE G: Real Date Selection Flow, Calendar Sync and ICS export', async ()
   assert.ok(dateNotif.message.includes('Oct 15'), 'Notification should mention selected date');
 });
 
+test('PHASE H: Sharing, QR Code generator, and Dashboard Quick Actions', async () => {
+  const email = `share_user_${Date.now()}@example.com`;
+  const username = `share_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  // 1. Check QR code static script is served
+  const qrScriptRes = await client('/assets/js/qrcode.js');
+  assert.equal(qrScriptRes.status, 200);
+  const qrScriptText = await qrScriptRes.text();
+  assert.ok(qrScriptText.includes('QRCode'), 'qrcode.js should define QRCode');
+
+  // 2. Create invitation
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Romeo', recipientName: 'Juliet' })
+  });
+  assert.equal(invRes.status, 201);
+
+  // 3. Verify dashboard renders QR share modal and quick share buttons
+  const dashRes = await client('/dashboard');
+  assert.equal(dashRes.status, 200);
+  const dashHtml = await dashRes.text();
+  assert.ok(dashHtml.includes('qr-share-modal'), 'Dashboard must render QR share modal');
+  assert.ok(dashHtml.includes('share-btn'), 'Dashboard cards must render QR & Share quick button');
+  assert.ok(dashHtml.includes('qrcode.js'), 'Dashboard must load qrcode.js script');
+});
+
 
