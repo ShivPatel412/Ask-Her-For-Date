@@ -914,6 +914,9 @@ test('PHASE H: Sharing, QR Code generator, and Dashboard Quick Actions', async (
   assert.equal(dashRes.status, 200);
   const dashHtml = await dashRes.text();
   assert.ok(dashHtml.includes('qr-share-modal'), 'Dashboard must render QR share modal');
+  assert.ok(dashHtml.includes('Scan to reveal the surprise'), 'Dashboard modal must render headline');
+  assert.ok(dashHtml.includes('qr-modal-whatsapp'), 'Dashboard must render WhatsApp share');
+  assert.ok(dashHtml.includes('qr-modal-email'), 'Dashboard must render Email share');
   assert.ok(dashHtml.includes('share-btn'), 'Dashboard cards must render QR & Share quick button');
   assert.ok(dashHtml.includes('qrcode.js'), 'Dashboard must load qrcode.js script');
 });

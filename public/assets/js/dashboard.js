@@ -54,6 +54,13 @@ document.addEventListener('click', async event => {
       waBtn.href = `https://api.whatsapp.com/send?text=${waText}`;
     }
 
+    const emailBtn = modal.querySelector('#qr-modal-email');
+    if (emailBtn) {
+      const subject = encodeURIComponent(`A special romantic invitation for you ❤️`);
+      const body = encodeURIComponent(`Hey ${recipient}!\n\nI made something special for you… open this link: ${fullUrl}\n\nCan't wait to hear from you! ❤️`);
+      emailBtn.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+
     const canvas = modal.querySelector('#qr-modal-canvas');
     if (canvas && window.QRCode) {
       window.QRCode.render(canvas, fullUrl, { size: 220, colorDark: '#20191b' });
