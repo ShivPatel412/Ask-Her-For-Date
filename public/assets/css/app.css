@@ -892,7 +892,8 @@ body {
 .feature-toggle,
 .mascot-select,
 .music-enable,
-.music-current {
+.music-current,
+.cover-current {
     min-height: 72px;
     padding: 12px;
     display: flex !important;
@@ -901,6 +902,31 @@ body {
     border: 1px solid var(--line);
     border-radius: 13px;
     background: #fff
+}
+
+.cover-thumbnail {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+}
+
+.cover-meta {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.cover-meta b {
+    font-size: 0.84rem;
+    color: var(--text);
+}
+
+.cover-meta small {
+    font-size: 0.72rem;
+    color: var(--muted);
 }
 
 .feature-toggle>i,

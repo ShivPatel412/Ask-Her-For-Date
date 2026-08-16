@@ -194,12 +194,13 @@ function render(){
     <details><summary>2. Template</summary><div class="section-body"><div class="template-mini"><b>Best Friend → Date ❤️</b><span>Active template</span></div></div></details>
     <details open><summary>3. Theme Colors</summary><div class="section-body"><div class="theme-choices">${Object.entries(state.presets.themes).map(([k,v])=>`<button type="button" class="theme-choice ${t.preset===k?'active':''}" data-theme-preset="${k}"><i style="--swatch-a:${v.primary};--swatch-b:${v.secondary};--swatch-bg:${v.background}"></i><span>${v.name}</span></button>`).join('')}</div><p class="hint">Choose a preset or fine-tune the colors below.</p><div class="color-grid">${renderColorCards(t)}</div>${renderContrastAudit(t)}${renderLiveThemePreview(t)}</div></details>
     <details><summary>4. Questions & copy</summary><div class="section-body"><div class="flow-map">${editableScreens.map(([k])=>`<a href="#screen-${k}">${k.replace(/([A-Z])/g,' $1')}</a>`).join('<span>↓</span>')}</div>${editableScreens.map(([key,v])=>`<fieldset id="screen-${key}"><legend>${key.replace(/([A-Z])/g,' $1')}</legend>${Object.entries(v).map(([k,val])=>`<label>${k}<textarea data-path="content.screens.${key}.${k}" maxlength="1000">${esc(val)}</textarea></label>`).join('')}</fieldset>`).join('')}</div></details>
-    <details><summary>5. Date Options</summary><div class="section-body"><p class="hint">Choose one featured date idea. The recipient selects the exact date and time after saying yes.</p>${c.moods.map((m,i)=>`<fieldset class="${m.favorite?'favorite-field':''}"><legend>Option ${i+1}${m.favorite?' · My favorite':''}</legend>${field('Title',`content.moods.${i}.title`,m.title)}${field('Description',`content.moods.${i}.description`,m.description)}<button type="button" class="favorite-option ${m.favorite?'active':''}" data-favorite-index="${i}">${m.favorite?'★ Featured & selected':'☆ Make my favorite'}</button></fieldset>`).join('')}<button class="button ghost small add" data-list="moods">+ Add option</button></div></details>
-    <details class="feature-section"><summary>6. Cute Features <small>Playful touches for the invitation.</small></summary><div class="section-body feature-list">${[['Mascots','mascots'],['Tiny Mode','tinyMode'],['Cute-item collection','collection'],['Confetti','confetti'],['Funny Back buttons','funnyBack']].map(([l,k])=>featureToggle(l,`features.${k}`,f[k])).join('')}<label class="mascot-select"><span><b>Mascot pack</b><small>Choose the characters shown in the invitation.</small></span><select data-path="features.mascotPack">${['original','yellow','blue','pink','bears','cats','bunnies','none'].map(x=>`<option ${f.mascotPack===x?'selected':''} value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></label></div></details>
-    <details class="music-section"><summary>7. Music <small>Set the mood after they open the invitation.</small></summary><div class="section-body"><div class="music-enable">${toggle('Enable music','features.music',f.music)}<small>Play your selected song after the invitation is opened.</small></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload favorite song</b><small>MP3, M4A, OGG, or WAV · max 10 MB</small><span id="music-upload-copy" class="button primary small">Choose file</span><input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><p class="music-safety">♡ Your song never autoplays. It starts only after the recipient interacts.</p>${f.musicUrl?`<div class="music-current"><span class="music-note">♫</span><div><b>${esc(f.musicName||'Favorite song')}</b><small>Ready to play after “Open it”</small></div><label class="change-music button ghost small">Change<input class="music-replace" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><button id="remove-music" class="icon-button" aria-label="Remove song">×</button></div>`:''}<p class="music-tip"><b>♡ Tip</b><span>Keep it short and sweet—your favorite moment works beautifully.</span></p></div></details>
-    <details class="music-section"><summary>8. Personal Voice Note 🎙️ <small>Add your personal voice message.</small></summary><div class="section-body"><p class="hint">Record with your mic or upload an audio file. The background song will automatically duck when your voice note plays!</p><div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;"><button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button><span id="recording-timer" style="font-weight:700;font-size:0.85rem;display:none;color:#ff625f;">● 0:00</span></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload recorded voice note</b><small>MP3, M4A, OGG, WAV, or AAC · max 10 MB</small><span id="voice-upload-copy" class="button ghost small">Choose voice file</span><input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*"></label>${f.voiceNoteUrl?`<div class="music-current" style="margin-top:12px;"><span class="music-note">🎙️</span><div><b>${esc(f.voiceNoteName||'Personal Voice Note')}</b><small>Ready to play in invitation</small></div><button id="remove-voice" class="icon-button" type="button" aria-label="Remove voice note">×</button></div>`:''}</div></details>
-    <details><summary>9. Final Message</summary><div class="section-body">${field('Secret heading','content.screens.secret.heading',s.secret.heading)}<label>Secret message<textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret.body)}</textarea></label></div></details>
-    <details><summary>10. Publish</summary><div class="section-body"><p>Status: <b>${state.status}</b></p><button class="button primary" id="publish-inline">Publish Invitation ❤️</button>${state.status==='published'?`<div class="share-box"><input readonly value="${location.origin}/i/${state.token}"><button class="button small copy-link">Copy Link</button></div>`:''}</div></details>`;
+    <details class="cover-section"><summary>5. Cover Photo & Intro Visual 🖼️ <small>Add a personal photo on the first screen.</small></summary><div class="section-body">${toggle('Show cover photo on opening screen', 'features.coverPhoto', f.coverPhoto)}<label>Photo Caption (optional)<input data-path="features.coverPhotoCaption" value="${esc(f.coverPhotoCaption || '')}" placeholder="e.g. Our favorite memory ✨" maxlength="80"></label><label class="music-upload"><span class="upload-icon">🖼️</span><b>Upload cover photo</b><small>JPG, PNG, WebP or GIF · max 5 MB</small><span id="cover-upload-copy" class="button primary small">Choose photo</span><input id="cover-file" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*"></label>${f.coverPhotoUrl ? `<div class="cover-current"><img src="${esc(f.coverPhotoUrl)}" alt="Cover preview" class="cover-thumbnail"><div class="cover-meta"><b>Cover photo active</b><small>Visible on the opening screen</small></div><button id="remove-cover" class="icon-button" type="button" aria-label="Remove cover photo">×</button></div>` : ''}</div></details>
+    <details><summary>6. Date Options</summary><div class="section-body"><p class="hint">Choose one featured date idea. The recipient selects the exact date and time after saying yes.</p>${c.moods.map((m,i)=>`<fieldset class="${m.favorite?'favorite-field':''}"><legend>Option ${i+1}${m.favorite?' · My favorite':''}</legend>${field('Title',`content.moods.${i}.title`,m.title)}${field('Description',`content.moods.${i}.description`,m.description)}<button type="button" class="favorite-option ${m.favorite?'active':''}" data-favorite-index="${i}">${m.favorite?'★ Featured & selected':'☆ Make my favorite'}</button></fieldset>`).join('')}<button class="button ghost small add" data-list="moods">+ Add option</button></div></details>
+    <details class="feature-section"><summary>7. Cute Features <small>Playful touches for the invitation.</small></summary><div class="section-body feature-list">${[['Mascots','mascots'],['Tiny Mode','tinyMode'],['Cute-item collection','collection'],['Confetti','confetti'],['Funny Back buttons','funnyBack']].map(([l,k])=>featureToggle(l,`features.${k}`,f[k])).join('')}<label class="mascot-select"><span><b>Mascot pack</b><small>Choose the characters shown in the invitation.</small></span><select data-path="features.mascotPack">${['original','yellow','blue','pink','bears','cats','bunnies','none'].map(x=>`<option ${f.mascotPack===x?'selected':''} value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></label></div></details>
+    <details class="music-section"><summary>8. Music <small>Set the mood after they open the invitation.</small></summary><div class="section-body"><div class="music-enable">${toggle('Enable music','features.music',f.music)}<small>Play your selected song after the invitation is opened.</small></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload favorite song</b><small>MP3, M4A, OGG, or WAV · max 10 MB</small><span id="music-upload-copy" class="button primary small">Choose file</span><input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><p class="music-safety">♡ Your song never autoplays. It starts only after the recipient interacts.</p>${f.musicUrl?`<div class="music-current"><span class="music-note">♫</span><div><b>${esc(f.musicName||'Favorite song')}</b><small>Ready to play after “Open it”</small></div><label class="change-music button ghost small">Change<input class="music-replace" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><button id="remove-music" class="icon-button" aria-label="Remove song">×</button></div>`:''}<p class="music-tip"><b>♡ Tip</b><span>Keep it short and sweet—your favorite moment works beautifully.</span></p></div></details>
+    <details class="music-section"><summary>9. Personal Voice Note 🎙️ <small>Add your personal voice message.</small></summary><div class="section-body"><p class="hint">Record with your mic or upload an audio file. The background song will automatically duck when your voice note plays!</p><div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;"><button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button><span id="recording-timer" style="font-weight:700;font-size:0.85rem;display:none;color:#ff625f;">● 0:00</span></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload recorded voice note</b><small>MP3, M4A, OGG, WAV, or AAC · max 10 MB</small><span id="voice-upload-copy" class="button ghost small">Choose voice file</span><input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*"></label>${f.voiceNoteUrl?`<div class="music-current" style="margin-top:12px;"><span class="music-note">🎙️</span><div><b>${esc(f.voiceNoteName||'Personal Voice Note')}</b><small>Ready to play in invitation</small></div><button id="remove-voice" class="icon-button" type="button" aria-label="Remove voice note">×</button></div>`:''}</div></details>
+    <details><summary>10. Final Message</summary><div class="section-body">${field('Secret heading','content.screens.secret.heading',s.secret.heading)}<label>Secret message<textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret.body)}</textarea></label></div></details>
+    <details><summary>11. Publish</summary><div class="section-body"><p>Status: <b>${state.status}</b></p><button class="button primary" id="publish-inline">Publish Invitation ❤️</button>${state.status==='published'?`<div class="share-box"><input readonly value="${location.origin}/i/${state.token}"><button class="button small copy-link">Copy Link</button></div>`:''}</div></details>`;
 }
 function setPath(path,value){const bits=path.split('.');let obj=state;for(let i=0;i<bits.length-1;i++)obj=obj[bits[i]];obj[bits.at(-1)]=value;scheduleSave();}
 controls.addEventListener('input',e=>{
@@ -224,6 +225,7 @@ controls.addEventListener('input',e=>{
   }
 });
 controls.addEventListener('change',e=>{
+  if(e.target.id==='cover-file'&&e.target.files[0])uploadCoverPhoto(e.target.files[0]);
   if((e.target.id==='music-file'||e.target.classList.contains('music-replace'))&&e.target.files[0])uploadMusic(e.target.files[0]);
   if(e.target.id==='voice-file'&&e.target.files[0])uploadVoiceNote(e.target.files[0]);
 });
@@ -279,6 +281,7 @@ controls.addEventListener('click',e=>{
   if(favoriteButton){state.content.moods.forEach((m,i)=>m.favorite=i===Number(favoriteButton.dataset.favoriteIndex));render();scheduleSave();}
   if(add){e.preventDefault();if(add.dataset.list==='moods'&&state.content.moods.length<10)state.content.moods.push({title:'New date idea ✨',description:'Add a little description',favorite:false});render();scheduleSave();}
   if(remove){e.preventDefault();state.content[remove.dataset.list].splice(Number(remove.dataset.index),1);if(remove.dataset.list==='moods'&&state.content.moods.length&&!state.content.moods.some(m=>m.favorite))state.content.moods[0].favorite=true;render();scheduleSave();}
+  if(e.target.id==='remove-cover')removeCoverPhoto();
   if(e.target.id==='remove-music')removeMusic();
   if(e.target.id==='remove-voice')removeVoiceNote();
   if(e.target.id==='record-voice-btn')toggleRecordVoice();
@@ -451,6 +454,41 @@ async function removeVoiceNote() {
   render();
   preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
   toast('Voice note removed.');
+}
+
+async function uploadCoverPhoto(file) {
+  const copy = document.querySelector('#cover-upload-copy');
+  if (copy) copy.textContent = `Optimizing ${file.name}…`;
+  document.querySelector('#save-status').textContent = 'Uploading cover photo…';
+  try {
+    await saveQueue;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result;
+      Object.assign(state.features, { coverPhoto: true, coverPhotoUrl: dataUrl });
+      const savedOk = await save();
+      if (savedOk) {
+        document.querySelector('#save-status').textContent = 'Cover photo saved ✓';
+        render();
+        preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+        toast('Cover photo added 🖼️');
+      } else {
+        toast('Failed to save cover photo.');
+      }
+    };
+    reader.readAsDataURL(file);
+  } catch {
+    toast('Failed to upload cover photo.');
+  }
+}
+
+async function removeCoverPhoto() {
+  if (!confirm('Remove cover photo from the invitation?')) return;
+  Object.assign(state.features, { coverPhoto: false, coverPhotoUrl: null, coverPhotoCaption: null });
+  await save();
+  render();
+  preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+  toast('Cover photo removed.');
 }
 function scheduleSave(){document.querySelector('#save-status').textContent='Saving…';clearTimeout(timer);timer=setTimeout(save,650);}
 // Serialize autosaves: an older theme snapshot can never arrive after a newer one.

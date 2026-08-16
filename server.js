@@ -813,6 +813,63 @@ app.delete('/api/invitations/:id/music',requireUser,requireCsrf,async (req,res)=
   if (user) await logUserActivity(req.session.userId, user.email, 'DELETE_MUSIC', req);
   res.json({ok:true});
 });
+
+function detectImageType(req, buffer) {
+  if (!buffer || buffer.length < 12) return null;
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return { ext: 'jpg', mime: 'image/jpeg' };
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return { ext: 'png', mime: 'image/png' };
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) return { ext: 'gif', mime: 'image/gif' };
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 && buffer.slice(8, 12).toString() === 'WEBP') return { ext: 'webp', mime: 'image/webp' };
+  
+  const contentType = String(req.get('content-type') || '').toLowerCase();
+  if (contentType.includes('image/jpeg') || contentType.includes('image/jpg')) return { ext: 'jpg', mime: 'image/jpeg' };
+  if (contentType.includes('image/png')) return { ext: 'png', mime: 'image/png' };
+  if (contentType.includes('image/webp')) return { ext: 'webp', mime: 'image/webp' };
+  if (contentType.includes('image/gif')) return { ext: 'gif', mime: 'image/gif' };
+  return null;
+}
+
+const imageBody = express.raw({ type: () => true, limit: '8mb' });
+
+app.post('/api/invitations/:id/cover', requireUser, requireCsrf, imageBody, async (req, res) => {
+  const row = await ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+  let dataUri = '';
+  let caption = clean(decodeURIComponent(req.get('x-caption') || ''), 80) || '';
+  if (req.body && typeof req.body === 'object' && req.body.coverPhotoUrl) {
+    dataUri = String(req.body.coverPhotoUrl);
+    if (req.body.caption) caption = clean(req.body.caption, 80);
+  } else if (Buffer.isBuffer(req.body)) {
+    const type = detectImageType(req, req.body);
+    if (!type) return res.status(400).json({ error: 'Upload a valid JPG, PNG, WebP, or GIF image.' });
+    const mime = type.mime || 'image/jpeg';
+    dataUri = `data:${mime};base64,${req.body.toString('base64')}`;
+    try {
+      const filename = `${crypto.randomBytes(16).toString('hex')}.${type.ext}`;
+      await fs.promises.writeFile(path.join(uploadsPath, filename), req.body, { flag: 'wx' });
+    } catch (err) {}
+  }
+  if (!dataUri || (!dataUri.startsWith('data:image/') && !dataUri.startsWith('/media/'))) {
+    return res.status(400).json({ error: 'Upload a valid JPG, PNG, WebP, or GIF image.' });
+  }
+  const features = json(row.feature_config_json);
+  Object.assign(features, { coverPhoto: true, coverPhotoUrl: dataUri, coverPhotoCaption: caption });
+  await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
+  const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) await logUserActivity(req.session.userId, user.email, 'UPLOAD_COVER_PHOTO', req);
+  res.status(201).json({ url: dataUri, caption });
+});
+
+app.delete('/api/invitations/:id/cover', requireUser, requireCsrf, async (req, res) => {
+  const row = await ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+  const features = json(row.feature_config_json);
+  Object.assign(features, { coverPhoto: false, coverPhotoUrl: null, coverPhotoCaption: null });
+  await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
+  const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) await logUserActivity(req.session.userId, user.email, 'DELETE_COVER_PHOTO', req);
+  res.json({ ok: true });
+});
 function sanitizeObject(value, maxString, depth) {
   if (depth < 0) return null;
   if (Array.isArray(value)) return value.slice(0, 30).map(v => sanitizeObject(v, maxString, depth - 1));

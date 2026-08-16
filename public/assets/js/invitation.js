@@ -356,8 +356,13 @@ const copy = (obj, buttons = "") =>
 function render() {
   let content = "";
   const s = screens[state.screen] || screens.intro;
-  if (state.screen === "intro")
-    content = copy(s, btn(s.primary, "open", "primary"));
+  if (state.screen === "intro") {
+    let coverHtml = "";
+    if (features.coverPhoto && features.coverPhotoUrl) {
+      coverHtml = `<div class="intro-cover-frame"><img class="intro-cover-img" src="${esc(features.coverPhotoUrl)}" alt="Cover photo" loading="lazy" onerror="this.parentElement.style.display='none'">${features.coverPhotoCaption ? `<span class="intro-cover-caption">${text(features.coverPhotoCaption)}</span>` : ""}</div>`;
+    }
+    content = `${coverHtml}${copy(s, btn(s.primary, "open", "primary"))}`;
+  }
   if (state.screen === "analysis") content = analysisScreen();
   if (state.screen === "main") content = mainScreen();
   if (state.screen === "thinking")

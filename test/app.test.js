@@ -411,4 +411,49 @@ test('REGRESSION TEST: P0 Invitation Rendering (content.screens structure, previ
   assert.ok(publicData.content.screens.intro, 'Public payload content.screens.intro must exist');
 });
 
+test('PHASE A: Custom Cover Photo upload, validation, deletion, and rendering', async () => {
+  const email = `cover_user_${Date.now()}@example.com`;
+  const username = `cover_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Romeo', recipientName: 'Juliet' })
+  });
+  const inv = await invRes.json();
+
+  // 1. Upload valid cover photo data URI
+  const samplePhoto = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const uploadRes = await client(`/api/invitations/${inv.id}/cover`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ coverPhotoUrl: samplePhoto, caption: 'Our favorite memory ✨' })
+  });
+  assert.equal(uploadRes.status, 201);
+  const uploadData = await uploadRes.json();
+  assert.equal(uploadData.caption, 'Our favorite memory ✨');
+
+  // 2. Verify invitation payload in preview
+  const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
+  const previewHtml = await previewRes.text();
+  assert.ok(previewHtml.includes('Our favorite memory'), 'Preview must reflect cover photo caption');
+
+  // 3. Delete cover photo
+  const delRes = await client(`/api/invitations/${inv.id}/cover`, {
+    method: 'DELETE',
+    headers: { 'x-csrf-token': userCsrf }
+  });
+  assert.equal(delRes.status, 200);
+
+  // 4. Verify rejection of invalid image
+  const invalidRes = await client(`/api/invitations/${inv.id}/cover`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ coverPhotoUrl: 'invalid-data-string' })
+  });
+  assert.equal(invalidRes.status, 400);
+});
+
 

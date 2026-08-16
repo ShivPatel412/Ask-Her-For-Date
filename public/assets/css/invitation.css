@@ -228,6 +228,36 @@ h2 {
   background: color-mix(in srgb, var(--accent, var(--primary)) 10%, white);
   border-radius: 999px;
   margin-bottom: 6px;
+.intro-cover-frame {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto 16px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--primary) 28%, #ffffff);
+  box-shadow: 0 10px 28px rgba(40, 20, 30, 0.09);
+  background: #ffffff;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+.intro-cover-frame:hover {
+  transform: translateY(-2px);
+}
+.intro-cover-img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+.intro-cover-caption {
+  display: block;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--primary) 6%, #ffffff);
+  border-top: 1px dashed color-mix(in srgb, var(--primary) 18%, #eee);
+  text-align: center;
 }
 
 .body-copy, .invite-card > p {
