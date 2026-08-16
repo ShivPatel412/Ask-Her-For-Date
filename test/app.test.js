@@ -13,11 +13,12 @@ let server, origin;
 test.before(() => new Promise(resolve => { server = app.listen(0, '127.0.0.1', () => { origin = `http://127.0.0.1:${server.address().port}`; resolve(); }); }));
 test.after(() => new Promise(resolve => server.close(() => { db.close(); for (const suffix of ['', '-shm', '-wal']) fs.rmSync(dbPath + suffix, { force: true }); resolve(); })));
 
-function browser() {
+let ipCounter = 10;
+function browser(ip = `10.0.0.${++ipCounter}`) {
   let cookie = '';
   return async (url, options = {}) => {
     options.redirect ??= 'manual';
-    options.headers = { ...(options.headers || {}), ...(cookie ? { cookie } : {}) };
+    options.headers = { 'x-forwarded-for': ip, ...(options.headers || {}), ...(cookie ? { cookie } : {}) };
     const response = await fetch(origin + url, options);
     const setCookie = response.headers.get('set-cookie');
     if (setCookie) cookie = setCookie.split(';')[0];
@@ -558,6 +559,59 @@ test('PHASE C: Our Memories timeline, scrapbook items, and preview rendering', a
   const previewHtml = await previewRes.text();
   assert.ok(previewHtml.includes('First Sunset Together'), 'Preview should contain memory title in initial payload');
   assert.ok(previewHtml.includes('"memories":true'), 'Preview initial data should have memories enabled');
+});
+
+test('PHASE D: Curated Occasion Templates (romantic dinner, coffee, anniversary)', async () => {
+  const email = `templates_user_${Date.now()}@example.com`;
+  const username = `templates_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Noah', recipientName: 'Allie' })
+  });
+  const inv = await invRes.json();
+
+  // 1. GET /api/invitations/:id should return presets.templates
+  const getRes = await client(`/api/invitations/${inv.id}`);
+  assert.equal(getRes.status, 200);
+  const dto = await getRes.json();
+  assert.ok(dto.presets.templates, 'presets.templates must exist');
+  assert.ok(dto.presets.templates['romantic-dinner'], 'Romantic dinner template must exist');
+  assert.ok(dto.presets.templates['coffee-casual'], 'Coffee casual template must exist');
+  assert.ok(dto.presets.templates['anniversary-special'], 'Anniversary template must exist');
+
+  // 2. Apply romantic-dinner template
+  const dinnerTpl = dto.presets.templates['romantic-dinner'];
+  const updateRes = await client(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      inviterName: 'Noah',
+      recipientName: 'Allie',
+      title: 'Candlelight Dinner 🍷✨',
+      content: {
+        screens: dinnerTpl.content,
+        moods: dinnerTpl.moods
+      }
+    })
+  });
+  assert.equal(updateRes.status, 200);
+
+  // 3. Publish and verify public invitation renders template copy
+  const pubRes = await client(`/api/invitations/${inv.id}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+  assert.equal(pubRes.status, 200);
+
+  const publicRes = await client(`/i/${dto.token}`);
+  assert.equal(publicRes.status, 200);
+  const publicHtml = await publicRes.text();
+  assert.ok(publicHtml.includes('dinner'), 'Public invitation should reflect dinner template content');
 });
 
 

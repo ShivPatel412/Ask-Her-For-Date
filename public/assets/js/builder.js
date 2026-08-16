@@ -191,7 +191,13 @@ function render(){
   const editableScreens=Object.entries(s).filter(([key])=>!['nickname','analysis'].includes(key));
   controls.innerHTML=`
     <details open><summary>1. Basics</summary><div class="section-body">${field('Your Name','inviterName',state.inviterName)}${field('Recipient Name','recipientName',state.recipientName)}${field('Invitation Title','title',state.title)}</div></details>
-    <details><summary>2. Template</summary><div class="section-body"><div class="template-mini"><b>Best Friend → Date ❤️</b><span>Active template</span></div></div></details>
+    <details><summary>2. Occasion Template 📋 <small>Choose a curated story and vibe.</small></summary><div class="section-body"><p class="hint">Switching templates loads tailored copy, romantic questions, and mood options.</p><div class="template-picker-grid">${Object.entries(state.presets?.templates || {
+      'classic': { name: 'Classic Playful Invite ❤️', tagline: 'The viral romantic & playful banter experience' },
+      'romantic-dinner': { name: 'Candlelight Dinner 🍷✨', tagline: 'Intimate dinner date with soft romantic elegance' },
+      'coffee-casual': { name: 'Cozy Coffee & Conversations ☕🌿', tagline: 'Warm, relaxed coffee date with cozy aesthetic' },
+      'best-friend-date': { name: 'Best Friends Day Out 🍕🎈', tagline: 'High-energy, teasing Hinglish invite with food' },
+      'anniversary-special': { name: 'Anniversary Celebration 💍🥂', tagline: 'Heartfelt milestone invitation with romantic memories' }
+    }).map(([k,v]) => `<button type="button" class="template-card ${state.templateId === k ? 'active' : ''}" data-template-key="${k}"><b>${v.name}</b><small>${v.tagline}</small></button>`).join('')}</div></div></details>
     <details open><summary>3. Theme Colors</summary><div class="section-body"><div class="theme-choices">${Object.entries(state.presets.themes).map(([k,v])=>`<button type="button" class="theme-choice ${t.preset===k?'active':''}" data-theme-preset="${k}"><i style="--swatch-a:${v.primary};--swatch-b:${v.secondary};--swatch-bg:${v.background}"></i><span>${v.name}</span></button>`).join('')}</div><p class="hint">Choose a preset or fine-tune the colors below.</p><div class="color-grid">${renderColorCards(t)}</div>${renderContrastAudit(t)}${renderLiveThemePreview(t)}</div></details>
     <details><summary>4. Questions & copy</summary><div class="section-body"><div class="flow-map">${editableScreens.map(([k])=>`<a href="#screen-${k}">${k.replace(/([A-Z])/g,' $1')}</a>`).join('<span>↓</span>')}</div>${editableScreens.map(([key,v])=>`<fieldset id="screen-${key}"><legend>${key.replace(/([A-Z])/g,' $1')}</legend>${Object.entries(v).map(([k,val])=>`<label>${k}<textarea data-path="content.screens.${key}.${k}" maxlength="1000">${esc(val)}</textarea></label>`).join('')}</fieldset>`).join('')}</div></details>
     <details class="cover-section"><summary>5. Cover Photo & Intro Visual 🖼️ <small>Add a personal photo on the first screen.</small></summary><div class="section-body">${toggle('Show cover photo on opening screen', 'features.coverPhoto', f.coverPhoto)}<label>Photo Caption (optional)<input data-path="features.coverPhotoCaption" value="${esc(f.coverPhotoCaption || '')}" placeholder="e.g. Our favorite memory ✨" maxlength="80"></label><label class="music-upload"><span class="upload-icon">🖼️</span><b>Upload cover photo</b><small>JPG, PNG, WebP or GIF · max 5 MB</small><span id="cover-upload-copy" class="button primary small">Choose photo</span><input id="cover-file" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*"></label>${f.coverPhotoUrl ? `<div class="cover-current"><img src="${esc(f.coverPhotoUrl)}" alt="Cover preview" class="cover-thumbnail"><div class="cover-meta"><b>Cover photo active</b><small>Visible on the opening screen</small></div><button id="remove-cover" class="icon-button" type="button" aria-label="Remove cover photo">×</button></div>` : ''}</div></details>
@@ -290,6 +296,26 @@ controls.addEventListener('click',e=>{
       preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
       scheduleSave();
       toast('Memory photo removed.');
+    }
+    return;
+  }
+  const templateCard = e.target.closest('[data-template-key]');
+  if (templateCard) {
+    const key = templateCard.dataset.templateKey;
+    const tpl = state.presets?.templates?.[key];
+    if (tpl) {
+      if (confirm(`Apply "${tpl.name}" template? This will update questions, copy, and date options to match this occasion.`)) {
+        state.templateId = key;
+        if (tpl.content) state.content = structuredClone(tpl.content);
+        if (tpl.moods) state.content.moods = structuredClone(tpl.moods);
+        if (tpl.themePreset && state.presets?.themes?.[tpl.themePreset]) {
+          Object.assign(state.theme, state.presets.themes[tpl.themePreset], { preset: tpl.themePreset });
+        }
+        render();
+        preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+        scheduleSave();
+        toast(`Applied "${tpl.name}" template ✨`);
+      }
     }
     return;
   }

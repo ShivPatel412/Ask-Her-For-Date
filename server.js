@@ -10,7 +10,7 @@ const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const db = require('./lib/db');
 const { createSessionStore } = require('./lib/session');
-const { defaultConfig, themes, fonts, favoriteMood, musicPresets } = require('./src/template');
+const { defaultConfig, themes, fonts, favoriteMood, musicPresets, invitationTemplates } = require('./src/template');
 
 const root = process.cwd();
 const isVercel = !!(process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NOW_REGION);
@@ -721,7 +721,7 @@ app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
   res.send(await page('Edit invitation', `<main id="builder" class="builder" data-id="${row.id}"><header class="builder-head"><div><a href="/dashboard">← Dashboard</a><h1>${escapeHtml(row.recipient_name)}'s invitation <span aria-hidden="true">✎</span></h1><span id="save-status">✓ All changes saved</span></div><div class="actions"><a class="button ghost small" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a><button id="save-draft" class="button ghost small">▣ Save draft</button><button id="publish" class="button primary small">Publish Invitation ♥</button></div></header><div class="mobile-tabs"><button data-tab="edit" class="active">Edit</button><button data-tab="preview">Preview</button></div><div class="builder-grid"><section id="controls" class="controls"></section><aside id="preview-pane" class="preview-pane"><div class="preview-toolbar" aria-label="Preview size"><button class="active" data-viewport="mobile">▯ Mobile</button><button data-viewport="tablet">▯ Tablet</button><button data-viewport="desktop">▱ Desktop</button></div><div class="phone"><iframe title="Live invitation preview" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe></div><span class="preview-dots" aria-hidden="true">● ○ ○ ○ ○</span></aside></div></main>`, req, '/assets/js/builder.js'));
 });
 
-app.get('/api/invitations/:id', requireUser, async (req, res) => { const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' }); res.json({ ...invitationDTO(row), presets: { themes, music: musicPresets }, csrf: csrf(req) }); });
+app.get('/api/invitations/:id', requireUser, async (req, res) => { const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' }); res.json({ ...invitationDTO(row), presets: { themes, music: musicPresets, templates: invitationTemplates }, csrf: csrf(req) }); });
 app.put('/api/invitations/:id', requireUser, requireCsrf, async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' });
   const inviterName = clean(req.body.inviterName,60), recipientName = clean(req.body.recipientName,60), title = clean(req.body.title,100);

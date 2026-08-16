@@ -986,6 +986,50 @@ body {
     padding: 0 6px;
 }
 
+.template-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 10px 0 14px;
+}
+
+.template-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.template-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(230, 73, 111, 0.08);
+}
+
+.template-card.active {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 6%, white);
+    box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.template-card b {
+    font-size: 0.88rem;
+    color: var(--color-text);
+}
+
+.template-card small {
+    font-size: 0.74rem;
+    color: var(--color-text-muted);
+    line-height: 1.35;
+}
+
 .feature-toggle>i,
 .music-note {
     width: 42px;
