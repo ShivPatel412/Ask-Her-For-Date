@@ -1085,6 +1085,22 @@ h2 {
   100% { transform: translateY(-5px) rotate(25deg) scale(1.2); opacity: 1; }
 }
 
+.celebration-banner-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  background: color-mix(in srgb, var(--primary) 12%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  margin-bottom: 6px;
+}
+
 .celebration-kicker {
   display: inline-flex;
   align-items: center;
@@ -1105,9 +1121,16 @@ h2 {
   font-size: clamp(2.3rem, 6.4vw, 3.4rem) !important;
   line-height: 1.08;
   color: var(--heading-color, var(--text));
-  margin: 6px 0 10px !important;
+  margin: 6px 0 6px !important;
   font-weight: 400;
   text-wrap: balance;
+}
+
+.celebration-emoji-stage {
+  font-size: 1.6rem;
+  letter-spacing: 0.25em;
+  margin: 4px 0 8px;
+  filter: drop-shadow(0 2px 8px rgba(230, 73, 111, 0.25));
 }
 
 .celebration-quote {
@@ -1115,9 +1138,17 @@ h2 {
   font-size: clamp(0.96rem, 1.8vw, 1.12rem);
   color: var(--muted);
   line-height: 1.55;
-  margin: 0 auto 14px;
+  margin: 0 auto 6px;
   max-width: 440px;
   text-wrap: pretty;
+}
+
+.celebration-subquote {
+  font-size: clamp(0.95rem, 1.8vw, 1.08rem);
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0 auto 14px;
+  letter-spacing: 0.02em;
 }
 
 /* --------------------------------------------------------------------------

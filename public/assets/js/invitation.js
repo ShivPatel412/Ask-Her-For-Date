@@ -792,8 +792,32 @@ function moodReaction() {
 }
 function yesScreen() {
   const s = screens.yes;
-  const quote = s.body || "I knew you'd say yes. Okay wow, this actually worked 😂❤️";
-  return `<div class="celebration-hero"><div class="celebration-heart-badge" aria-hidden="true"><span class="heart-pulse">❤️</span><span class="sparkle-orbit s1">✨</span><span class="sparkle-orbit s2">✨</span><span class="sparkle-orbit s3">✨</span></div><span class="celebration-kicker">${state.nickname ? `${esc(state.nickname)}, IT’S OFFICIAL! 🥹❤️` : "SHE SAID YES! 🥹❤️"}</span><h1 class="celebration-title">${text(s.heading || "IT'S A DATE.")}</h1><p class="celebration-quote">“${text(quote)}”</p><div class="answer-chips"><span>👀 Sach mein, ${text(state.nickname)}?</span><span>✨ Actually yes! ❤️</span></div></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, state.mood || "Food + Fun + Unlimited Bakwaas", state.date ? formatDateTime(state.date) : "Pick date & time in next step 😌")}${voiceNoteWidget()}<div class="evidence-note">📸 Screenshot this. Evidence secured 😂</div><div class="action-stack">${btn(s.primary, "availability", "primary")}</div>`;
+  const quote = s.body || "I knew you would.";
+  return `
+    <div class="celebration-hero">
+      <div class="celebration-heart-badge" aria-hidden="true">
+        <span class="heart-pulse">❤️</span>
+        <span class="sparkle-orbit s1">✨</span>
+        <span class="sparkle-orbit s2">✨</span>
+        <span class="sparkle-orbit s3">✨</span>
+      </div>
+      <div class="celebration-banner-tag">✨ OFFICIAL CELEBRATION ✨</div>
+      <h1 class="celebration-title">${text(s.heading || "SHE SAID YES!")}</h1>
+      <div class="celebration-emoji-stage" aria-hidden="true">🥹 ❤️ ✨</div>
+      <p class="celebration-quote">“${text(quote)}”</p>
+      <p class="celebration-subquote">Our next chapter starts here. ✨</p>
+      <div class="answer-chips">
+        <span>👀 Sach mein, ${text(state.nickname || data.recipientName)}?</span>
+        <span>✨ 100% Yes! ❤️</span>
+      </div>
+    </div>
+    ${datePass("Official Date Pass", `${state.nickname || data.recipientName} + ${data.inviterName}`, state.mood || "Food + Fun + Unlimited Bakwaas", state.date ? formatDateTime(state.date) : "Pick date & time below 😌")}
+    ${voiceNoteWidget()}
+    <div class="evidence-note">📸 Screenshot this date pass · Evidence secured! 😂❤️</div>
+    <div class="action-stack" style="margin-top:16px;">
+      ${btn(s.primary || "It's a date ❤️", "availability", "primary")}
+    </div>
+  `;
 }
 function availabilityScreen() {
   const s = screens.availability;

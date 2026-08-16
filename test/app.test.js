@@ -766,12 +766,65 @@ test('PHASE E: In-App Notification Center and live visitor alerts', async () => 
   const afterReadData = await afterReadRes.json();
   assert.equal(afterReadData.unreadCount, 0, 'Unread count should be 0 after marking all as read');
 
-  // 6. Verify multi-user isolation on notifications
   const strangerClient = browser();
   await register(strangerClient, `stranger_notif_${Date.now()}`, `stranger_notif_${Date.now()}@example.com`);
   const strangerNotifs = await strangerClient('/api/notifications');
   const strangerData = await strangerNotifs.json();
   assert.equal(strangerData.notifications.length, 0, 'Stranger must have 0 notifications from other users');
+});
+
+test('PHASE F: Final YES Experience, emotional highlight, and date pass rendering', async () => {
+  const email = `yes_user_${Date.now()}@example.com`;
+  const username = `yes_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  // 1. Create and publish an invitation
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Jack', recipientName: 'Rose' })
+  });
+  const inv = await invRes.json();
+
+  await client(`/api/invitations/${inv.id}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+
+  const getRes = await client(`/api/invitations/${inv.id}`);
+  const dto = await getRes.json();
+
+  // 2. Render preview and public invitation page
+  const publicRes = await client(`/i/${dto.token}`);
+  assert.equal(publicRes.status, 200);
+  const publicHtml = await publicRes.text();
+
+  assert.ok(publicHtml.includes('invitation-data'), 'Should contain invitation configuration data');
+  assert.ok(publicHtml.includes('invitation.css'), 'Should link invitation stylesheet');
+  assert.ok(publicHtml.includes('invitation.js'), 'Should link invitation script');
+
+  // 3. Visitor triggers final YES event
+  const visitorClient = browser();
+  const visitorId = `vis_yes_${Date.now()}`;
+  await visitorClient(`/api/invitations/${dto.token}/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ visitorId })
+  });
+
+  const yesEventRes = await visitorClient(`/api/invitations/${dto.token}/events`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      visitorId,
+      screen: 'yes',
+      eventName: 'final_yes',
+      optionValue: 'Haan, chalo 😌❤️'
+    })
+  });
+  assert.equal(yesEventRes.status, 201);
 });
 
 test('PHASE G: Real Date Selection Flow, Calendar Sync and ICS export', async () => {
