@@ -614,4 +614,62 @@ test('PHASE D: Curated Occasion Templates (romantic dinner, coffee, anniversary)
   assert.ok(publicHtml.includes('dinner'), 'Public invitation should reflect dinner template content');
 });
 
+test('PHASE E: In-App Notification Center and live visitor alerts', async () => {
+  const email = `notif_user_${Date.now()}@example.com`;
+  const username = `notif_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  // 1. Create and publish an invitation
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Chandler', recipientName: 'Monica' })
+  });
+  const inv = await invRes.json();
+
+  await client(`/api/invitations/${inv.id}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+
+  const getRes = await client(`/api/invitations/${inv.id}`);
+  const dto = await getRes.json();
+
+  // 2. Simulate visitor interactions on public invitation
+  const visitorClient = browser();
+  const visitorId = `vis_${Date.now()}`;
+
+  // Start session
+  const sessRes = await visitorClient(`/api/invitations/${dto.token}/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ visitorId })
+  });
+  assert.equal(sessRes.status, 201);
+
+  // Track YES response event
+  const evRes = await visitorClient(`/api/invitations/${dto.token}/events`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      visitorId,
+      screen: 'yes',
+      eventName: 'final_yes',
+      optionValue: 'Haan, chalo 😌',
+      sequenceNumber: 1
+    })
+  });
+  assert.ok(evRes.status === 200 || evRes.status === 201, `Event submission returned status ${evRes.status}`);
+
+  // 3. User checks notifications endpoint
+  const notifRes = await client('/api/notifications');
+  assert.equal(notifRes.status, 200);
+  const notifData = await notifRes.json();
+  assert.ok(Array.isArray(notifData.notifications), 'notifications must be an array');
+  assert.ok(notifData.notifications.length > 0, 'Must have at least 1 notification generated');
+  assert.ok(notifData.notifications.some(n => n.title.includes('YES')), 'Should notify inviter of YES response');
+});
+
 

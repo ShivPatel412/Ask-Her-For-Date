@@ -300,8 +300,10 @@ function invitationDTO(row) {
 async function page(title, body, req, script = '') {
   const user = req.session?.userId ? await db.prepare('SELECT username, role FROM users WHERE id=?').get(req.session.userId) : null;
   const adminBtn = user?.role === 'superadmin' ? `<a class="button ghost small nav-admin" href="/admin" title="Admin Control Panel">👑 Admin</a>` : '';
-  const nav = user ? `<nav class="topbar app-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><a class="user-dashboard-link" href="/dashboard" aria-label="Open dashboard"><span class="user-avatar" aria-hidden="true">${escapeHtml(user.username.slice(0,1).toUpperCase())}</span><span class="nav-user">${escapeHtml(user.username)}</span><span class="nav-dashboard-label">Dashboard</span></a>${adminBtn}<form method="post" action="/logout"><input type="hidden" name="_csrf" value="${csrf(req)}"><button class="link-button">Log out</button></form></nav>` : `<nav class="topbar marketing-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><div class="marketing-links"><a href="/#how-it-works">How it works</a><a href="/#template">Template</a><a href="/#features">Features</a><a href="/#contact">Contact</a></div><div class="marketing-actions"><a class="nav-login" href="/login">Login</a><a class="nav-register" href="/register">Register</a></div></nav>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fff8f5"><meta name="csrf-token" content="${csrf(req)}"><title>${escapeHtml(title)} · Heartlink</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700&family=Nunito:wght@500;700&family=Playfair+Display:wght@600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/css/app.css"></head><body>${nav}${body}<footer class="site-credit">© ${new Date().getFullYear()} Ask Her Out · Designed and developed by <a href="https://shivpatel.in" target="_blank" rel="noopener noreferrer">SastaTengo</a></footer>${script ? `<script src="${script}" defer></script>` : ''}</body></html>`;
+  const notifBtn = user ? `<div class="notif-bell-wrap" id="notif-center"><button type="button" class="notif-bell-btn" id="notif-toggle" aria-label="Notifications" aria-expanded="false"><span class="notif-icon">🔔</span><span class="notif-badge" id="notif-badge" style="display:none;">0</span></button><div class="notif-dropdown" id="notif-dropdown" hidden><div class="notif-header"><b>Notifications</b><button type="button" class="notif-clear-btn" id="notif-mark-read">Mark read</button></div><div class="notif-list" id="notif-list"><div class="notif-empty">No new activity yet</div></div></div></div>` : '';
+  const notifScript = user ? '<script src="/assets/js/notifications.js" defer></script>' : '';
+  const nav = user ? `<nav class="topbar app-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><a class="user-dashboard-link" href="/dashboard" aria-label="Open dashboard"><span class="user-avatar" aria-hidden="true">${escapeHtml(user.username.slice(0,1).toUpperCase())}</span><span class="nav-user">${escapeHtml(user.username)}</span><span class="nav-dashboard-label">Dashboard</span></a>${notifBtn}${adminBtn}<form method="post" action="/logout"><input type="hidden" name="_csrf" value="${csrf(req)}"><button class="link-button">Log out</button></form></nav>` : `<nav class="topbar marketing-topbar"><a class="brand" href="/">Ask Her Out <span>♡</span></a><div class="marketing-links"><a href="/#how-it-works">How it works</a><a href="/#template">Template</a><a href="/#features">Features</a><a href="/#contact">Contact</a></div><div class="marketing-actions"><a class="nav-login" href="/login">Login</a><a class="nav-register" href="/register">Register</a></div></nav>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fff8f5"><meta name="csrf-token" content="${csrf(req)}"><title>${escapeHtml(title)} · Heartlink</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700&family=Nunito:wght@500;700&family=Playfair+Display:wght@600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/css/app.css"></head><body>${nav}${body}<footer class="site-credit">© ${new Date().getFullYear()} Ask Her Out · Designed and developed by <a href="https://shivpatel.in" target="_blank" rel="noopener noreferrer">SastaTengo</a></footer>${notifScript}${script ? `<script src="${script}" defer></script>` : ''}</body></html>`;
 }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c])); }
 function safeJSON(value) { return JSON.stringify(value).replace(/</g, '\\u003c'); }
@@ -908,6 +910,85 @@ app.delete('/api/invitations/:id', requireUser, requireCsrf, async (req,res) => 
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) await logUserActivity(req.session.userId, user.email, 'DELETE_INVITATION', req);
   res.json({ok:true});
+});
+
+app.get('/api/notifications', requireUser, async (req, res) => {
+  try {
+    const rawEvents = await db.prepare(`
+      SELECT e.id, e.event_name, e.screen, e.option_value, e.created_at,
+             s.selected_nickname, s.final_result, s.completed,
+             i.id as invitation_id, i.recipient_name, i.title
+      FROM events e
+      JOIN visitor_sessions s ON s.id = e.session_id
+      JOIN invitations i ON i.id = e.invitation_id
+      WHERE i.owner_user_id = ?
+      ORDER BY e.created_at DESC
+      LIMIT 35
+    `).all(req.session.userId);
+
+    const formatted = rawEvents.map(e => {
+      let icon = '🔔';
+      let title = 'Activity on invitation';
+      const name = e.selected_nickname || e.recipient_name || 'Someone';
+      let message = `${name} interacted with your invitation`;
+
+      if (e.event_name === 'session_start' || e.screen === 'intro') {
+        icon = '💌';
+        title = 'Invitation Opened';
+        message = `${name} just opened your invitation!`;
+      } else if (e.event_name === 'response_yes' || e.screen === 'yes') {
+        icon = '💖';
+        title = 'She Said YES! 🎉';
+        message = `${name} accepted your date invitation!`;
+      } else if (e.screen === 'availability' || e.event_name === 'availability_selected') {
+        icon = '🗓️';
+        title = 'Date & Time Confirmed';
+        message = `${name} selected availability: ${e.option_value || 'Date selected'}`;
+      } else if (e.event_name === 'response_no' || e.screen === 'decline') {
+        icon = '🤝';
+        title = 'Best Friends Response';
+        message = `${name} responded: ${e.option_value || 'Best friends forever'}`;
+      } else if (e.event_name === 'evasion_teleport') {
+        icon = '🏃💨';
+        title = 'Playful Evasion Triggered';
+        message = `${name} tried tapping the No button! 😂`;
+      } else if (e.screen === 'memories') {
+        icon = '📸';
+        title = 'Memories Viewed';
+        message = `${name} is viewing your memories scrapbook ✨`;
+      } else if (e.event_name === 'music_played') {
+        icon = '♫';
+        title = 'Soundtrack Playing';
+        message = `${name} is listening to the romantic soundtrack 🎧`;
+      } else if (e.event_name === 'voice_note_played') {
+        icon = '🎙️';
+        title = 'Voice Note Heard';
+        message = `${name} played your personal voice note!`;
+      } else {
+        icon = '✨';
+        title = `Step: ${e.screen || 'Browse'}`;
+        message = `${name} viewed "${e.screen || e.event_name}"`;
+      }
+
+      return {
+        id: e.id,
+        icon,
+        title,
+        message,
+        invitationId: e.invitation_id,
+        inviteTitle: e.title,
+        recipientName: e.recipient_name,
+        time: e.created_at
+      };
+    });
+
+    res.json({
+      notifications: formatted,
+      unreadCount: formatted.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
 });
 
 app.get('/dashboard/invitations/:id/preview', requireUser, async (req,res) => {
