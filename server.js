@@ -133,8 +133,9 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: { directives: {
   defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-  fontSrc: ["'self'", 'https://fonts.gstatic.com'], imgSrc: ["'self'", 'data:'], mediaSrc: ["'self'", 'blob:', 'data:'],
-  connectSrc: ["'self'"], objectSrc: ["'none'"], baseUri: ["'self'"], frameAncestors: ["'self'"]
+  fontSrc: ["'self'", 'https://fonts.gstatic.com'], imgSrc: ["'self'", 'data:', 'https://*.scdn.co', 'https://*.spotifycdn.com'], mediaSrc: ["'self'", 'blob:', 'data:', 'https://*.spotifycdn.com'],
+  connectSrc: ["'self'"], objectSrc: ["'none'"], baseUri: ["'self'"], frameAncestors: ["'self'"],
+  frameSrc: ["'self'", 'https://open.spotify.com']
 } } }));
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: false, limit: '15mb' }));
@@ -813,12 +814,162 @@ app.post('/api/invitations/:id/music', requireUser, requireCsrf, audioBody, asyn
 });
 app.delete('/api/invitations/:id/music',requireUser,requireCsrf,async (req,res)=>{
   const row=await ownedInvitation(req.params.id,req.session.userId);if(!row)return res.status(404).json({error:'Not found.'});
-  const features=json(row.feature_config_json),oldUrl=features.musicUrl;Object.assign(features,{music:false,musicUrl:null,musicName:null});
+  const features=json(row.feature_config_json),oldUrl=features.musicUrl;Object.assign(features,{music:false,musicUrl:null,musicName:null,playlist:[]});
   await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features),now(),row.id,row.owner_user_id);
   await removeUnusedMusic(oldUrl,row.id);
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) await logUserActivity(req.session.userId, user.email, 'DELETE_MUSIC', req);
   res.json({ok:true});
+});
+
+function parseSpotifyUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return null;
+  const str = urlStr.trim();
+  const webMatch = str.match(/^https?:\/\/open\.spotify\.com\/(?:intl-[a-z]{2,5}\/)?(track|album|playlist|episode|show)\/([a-zA-Z0-9]{15,35})(?:\?.*)?$/i);
+  if (webMatch) {
+    const type = webMatch[1].toLowerCase();
+    const id = webMatch[2];
+    return {
+      type,
+      id,
+      embedUrl: `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`,
+      originalUrl: `https://open.spotify.com/${type}/${id}`
+    };
+  }
+  const uriMatch = str.match(/^spotify:(track|album|playlist|episode|show):([a-zA-Z0-9]{15,35})$/i);
+  if (uriMatch) {
+    const type = uriMatch[1].toLowerCase();
+    const id = uriMatch[2];
+    return {
+      type,
+      id,
+      embedUrl: `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`,
+      originalUrl: `https://open.spotify.com/${type}/${id}`
+    };
+  }
+  return null;
+}
+
+app.post('/api/invitations/:id/spotify', requireUser, requireCsrf, async (req, res) => {
+  const row = await ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+  const rawUrl = clean(req.body?.spotifyUrl, 300);
+  const parsed = parseSpotifyUrl(rawUrl);
+  if (!parsed) {
+    return res.status(400).json({ error: 'Please enter a valid Spotify track, album, or playlist URL (e.g. https://open.spotify.com/track/...)' });
+  }
+  const features = json(row.feature_config_json);
+  features.music = true;
+  features.musicSource = 'spotify';
+  features.musicPlayerStyle = 'spotify';
+  features.spotify = {
+    url: parsed.originalUrl,
+    embedUrl: parsed.embedUrl,
+    type: parsed.type,
+    id: parsed.id
+  };
+  await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
+  const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) await logUserActivity(req.session.userId, user.email, 'UPDATE_SPOTIFY_MUSIC', req);
+  res.status(200).json({ ok: true, spotify: features.spotify });
+});
+
+app.delete('/api/invitations/:id/spotify', requireUser, requireCsrf, async (req, res) => {
+  const row = await ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+  const features = json(row.feature_config_json);
+  features.spotify = null;
+  features.musicSource = 'upload';
+  if (!features.musicUrl && (!features.playlist || !features.playlist.length)) {
+    features.music = false;
+  }
+  await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
+  const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+  if (user) await logUserActivity(req.session.userId, user.email, 'DELETE_SPOTIFY_MUSIC', req);
+  res.json({ ok: true });
+});
+
+app.post('/api/invitations/:id/playlist/song', requireUser, requireCsrf, async (req, res) => {
+  const row = await ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+  const name = clean(req.body?.name, 100) || 'Favorite Song';
+  const artist = clean(req.body?.artist, 80) || '';
+  const mood = clean(req.body?.mood, 30) || 'romantic';
+  const url = clean(req.body?.url, 5000000) || '';
+  if (!url || (!url.startsWith('data:audio/') && !url.startsWith('/media/') && !url.startsWith('preset:'))) {
+    return res.status(400).json({ error: 'Valid audio URL or preset required.' });
+  }
+  const features = json(row.feature_config_json);
+  if (!Array.isArray(features.playlist)) features.playlist = [];
+  if (features.playlist.length >= 10) {
+    return res.status(400).json({ error: 'Maximum 10 playlist songs allowed.' });
+  }
+  const newSong = {
+    id: `song_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+    name,
+    artist,
+    mood,
+    url,
+    enabled: true,
+    default: features.playlist.length === 0
+  };
+  features.playlist.push(newSong);
+  features.music = true;
+  features.musicSource = 'upload';
+  if (newSong.default) {
+    features.musicUrl = newSong.url;
+    features.musicName = newSong.name;
+  }
+  await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
+  res.status(201).json({ ok: true, song: newSong, playlist: features.playlist });
+});
+
+app.put('/api/invitations/:id/playlist', requireUser, requireCsrf, async (req, res) => {
+  const row = await ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+  const playlist = Array.isArray(req.body?.playlist) ? req.body.playlist.slice(0, 10) : [];
+  const features = json(row.feature_config_json);
+  features.playlist = playlist.map(s => ({
+    id: clean(s.id, 60) || `song_${Date.now()}`,
+    name: clean(s.name, 100) || 'Favorite Song',
+    artist: clean(s.artist, 80) || '',
+    mood: clean(s.mood, 30) || 'romantic',
+    url: clean(s.url, 5000000) || '',
+    enabled: s.enabled !== false,
+    default: Boolean(s.default)
+  }));
+  const defaultSong = features.playlist.find(s => s.default) || features.playlist[0];
+  if (defaultSong) {
+    features.musicUrl = defaultSong.url;
+    features.musicName = defaultSong.name;
+  }
+  await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
+  res.json({ ok: true, playlist: features.playlist });
+});
+
+app.delete('/api/invitations/:id/playlist/:songId', requireUser, requireCsrf, async (req, res) => {
+  const row = await ownedInvitation(req.params.id, req.session.userId);
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+  const songId = clean(req.params.songId, 60);
+  const features = json(row.feature_config_json);
+  if (Array.isArray(features.playlist)) {
+    const deleted = features.playlist.find(s => s.id === songId);
+    features.playlist = features.playlist.filter(s => s.id !== songId);
+    if (deleted && deleted.url) {
+      await removeUnusedMusic(deleted.url, row.id);
+    }
+  }
+  if (features.playlist && features.playlist.length > 0) {
+    const active = features.playlist.find(s => s.default) || features.playlist[0];
+    features.musicUrl = active.url;
+    features.musicName = active.name;
+  } else {
+    features.musicUrl = null;
+    features.musicName = null;
+    if (features.musicSource !== 'spotify') features.music = false;
+  }
+  await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
+  res.json({ ok: true, playlist: features.playlist || [] });
 });
 
 function detectImageType(req, buffer) {

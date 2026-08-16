@@ -523,13 +523,83 @@ test('PHASE B: Advanced Music Experience presets, volume, and playback payload',
   });
   assert.equal(updateRes.status, 200);
 
-  // 3. Verify preview contains the updated music payload and player style
+  // 3. Add songs to multiple songs playlist
+  const song1Res = await client(`/api/invitations/${inv.id}/playlist/song`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      name: 'Perfect',
+      artist: 'Ed Sheeran',
+      mood: 'romantic',
+      url: 'preset:acoustic'
+    })
+  });
+  assert.equal(song1Res.status, 201);
+  const song1Data = await song1Res.json();
+  assert.equal(song1Data.song.name, 'Perfect');
+  assert.equal(song1Data.song.default, true);
+
+  const song2Res = await client(`/api/invitations/${inv.id}/playlist/song`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      name: 'Night Changes',
+      artist: 'One Direction',
+      mood: 'latenight',
+      url: 'preset:lofi'
+    })
+  });
+  assert.equal(song2Res.status, 201);
+
+  // 4. Reorder songs and set song 2 as default
+  const updatePlaylistRes = await client(`/api/invitations/${inv.id}/playlist`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      playlist: [
+        { ...song1Data.song, default: false },
+        { id: 'song_2', name: 'Night Changes', artist: 'One Direction', mood: 'latenight', url: 'preset:lofi', default: true }
+      ]
+    })
+  });
+  assert.equal(updatePlaylistRes.status, 200);
+
+  // 5. Connect Spotify Track URL
+  const spotifyTrackRes = await client(`/api/invitations/${inv.id}/spotify`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      spotifyUrl: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT'
+    })
+  });
+  assert.equal(spotifyTrackRes.status, 200);
+  const spotifyData = await spotifyTrackRes.json();
+  assert.equal(spotifyData.spotify.type, 'track');
+  assert.ok(spotifyData.spotify.embedUrl.includes('open.spotify.com/embed/track/'));
+
+  // 6. Reject invalid Spotify URL
+  const invalidSpotifyRes = await client(`/api/invitations/${inv.id}/spotify`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      spotifyUrl: 'https://malicious-site.com/track/12345'
+    })
+  });
+  assert.equal(invalidSpotifyRes.status, 400, 'Invalid Spotify URL domain must be rejected');
+
+  // 7. Verify preview renders Spotify embed
   const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
   const previewHtml = await previewRes.text();
-  assert.ok(previewHtml.includes('Piano Serenade'), 'Preview must reflect chosen preset name');
-  assert.ok(previewHtml.includes('style-glass') || previewHtml.includes('glass'), 'Preview must include player style');
+  assert.ok(previewHtml.includes('spotify.com/embed/track/'), 'Preview should contain Spotify embed iframe');
 
-  // 4. Delete music
+  // 8. Remove Spotify
+  const removeSpotifyRes = await client(`/api/invitations/${inv.id}/spotify`, {
+    method: 'DELETE',
+    headers: { 'x-csrf-token': userCsrf }
+  });
+  assert.equal(removeSpotifyRes.status, 200);
+
+  // 9. Delete music
   const delRes = await client(`/api/invitations/${inv.id}/music`, {
     method: 'DELETE',
     headers: { 'x-csrf-token': userCsrf }

@@ -204,7 +204,7 @@ function render(){
     <details class="memories-section"><summary>6. Our Story & Memories 📸 <small>Add romantic scrapbook moments & timeline.</small></summary><div class="section-body">${toggle('Enable Our Story section', 'features.memories', f.memories)}<p class="hint">Showcase sweet photos, milestone dates, and memories that make asking them out special.</p><div class="memories-builder-list">${(f.memoriesList || []).map((m, idx) => `<fieldset class="memory-builder-item"><legend>Memory #${idx + 1} ${m.title ? `· ${esc(m.title)}` : ''}</legend><div style="display:grid;gap:8px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">Position #${idx + 1}</span><div style="display:flex;gap:4px;"><button type="button" class="button ghost small move-memory" data-memory-move="up" data-memory-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.4;"' : ''}>▲ Up</button><button type="button" class="button ghost small move-memory" data-memory-move="down" data-memory-idx="${idx}" ${idx === (f.memoriesList.length - 1) ? 'disabled style="opacity:0.4;"' : ''}>▼ Down</button></div></div><label>Title<input data-memory-idx="${idx}" data-memory-field="title" value="${esc(m.title || '')}" placeholder="e.g. First Meeting" maxlength="80"></label><label>Date / Milestone (optional)<input data-memory-idx="${idx}" data-memory-field="date" value="${esc(m.date || '')}" placeholder="e.g. 12 March 2024" maxlength="50"></label><label>Caption / Note<textarea data-memory-idx="${idx}" data-memory-field="caption" placeholder="The day everything started..." maxlength="400">${esc(m.caption || '')}</textarea></label><label class="music-upload" style="margin:4px 0;"><span class="upload-icon">📷</span><b>${m.photoUrl ? 'Replace Memory Photo' : 'Upload Memory Photo'}</b><small>JPG, PNG, WebP or GIF · max 5 MB</small><input class="memory-photo-file" data-memory-idx="${idx}" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*"></label>${m.photoUrl ? `<div class="cover-current"><img src="${esc(m.photoUrl)}" alt="Memory" class="cover-thumbnail"><div class="cover-meta"><b>Photo Attached</b><small>Visible in Our Story timeline</small></div><button class="icon-button remove-memory-photo" data-memory-idx="${idx}" type="button" aria-label="Remove photo">×</button></div>` : ''}<button class="button danger small remove-memory" data-memory-idx="${idx}" type="button" style="margin-top:6px;">Delete Memory</button></div></fieldset>`).join('')}<button class="button ghost small add-memory" type="button" ${(f.memoriesList || []).length >= 12 ? 'disabled' : ''}>+ Add Memory ${(f.memoriesList || []).length >= 12 ? '(Max 12)' : ''}</button></div></div></details>
     <details><summary>7. Date Options</summary><div class="section-body"><p class="hint">Choose one featured date idea. The recipient selects the exact date and time after saying yes.</p>${c.moods.map((m,i)=>`<fieldset class="${m.favorite?'favorite-field':''}"><legend>Option ${i+1}${m.favorite?' · My favorite':''}</legend>${field('Title',`content.moods.${i}.title`,m.title)}${field('Description',`content.moods.${i}.description`,m.description)}<button type="button" class="favorite-option ${m.favorite?'active':''}" data-favorite-index="${i}">${m.favorite?'★ Featured & selected':'☆ Make my favorite'}</button></fieldset>`).join('')}<button class="button ghost small add" data-list="moods">+ Add option</button></div></details>
     <details class="feature-section"><summary>8. Cute Features <small>Playful touches for the invitation.</small></summary><div class="section-body feature-list">${[['Mascots','mascots'],['Tiny Mode','tinyMode'],['Cute-item collection','collection'],['Confetti','confetti'],['Funny Back buttons','funnyBack']].map(([l,k])=>featureToggle(l,`features.${k}`,f[k])).join('')}<label class="mascot-select"><span><b>Mascot pack</b><small>Choose the characters shown in the invitation.</small></span><select data-path="features.mascotPack">${['original','yellow','blue','pink','bears','cats','bunnies','none'].map(x=>`<option ${f.mascotPack===x?'selected':''} value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></label></div></details>
-    <details class="music-section"><summary>9. Music ♫ <small>Set the mood with preset soundscapes or your custom song.</small></summary><div class="section-body"><div class="music-enable">${toggle('Enable music','features.music',f.music)}<small>Play your selected song after the invitation is opened.</small></div><p class="hint" style="margin:8px 0 4px;">Choose from romantic soundscape moods or upload your custom song:</p><div class="music-mood-filters"><button type="button" class="mood-filter-btn active" data-music-filter="all">All</button><button type="button" class="mood-filter-btn" data-music-filter="romantic">❤️ Romantic</button><button type="button" class="mood-filter-btn" data-music-filter="latenight">🌙 Late Night</button><button type="button" class="mood-filter-btn" data-music-filter="funny">😂 Cute/Funny</button><button type="button" class="mood-filter-btn" data-music-filter="emotional">💔 Emotional</button><button type="button" class="mood-filter-btn" data-music-filter="dreamy">✨ Dreamy</button></div><div class="music-preset-grid">${(state.presets?.music || [{key:'preset:piano',name:'Piano Serenade 🎹',desc:'Soft emotive romantic piano',mood:'romantic'},{key:'preset:acoustic',name:'Acoustic Sunset 🎸',desc:'Warm fingerstyle acoustic melody',mood:'romantic'},{key:'preset:jazz',name:'Midnight Jazz 🎷',desc:'Slow, smooth late-night jazz',mood:'latenight'},{key:'preset:lofi',name:'Lo-fi Romance 🎧',desc:'Chill beats, warm vinyl, and cozy chords',mood:'latenight'},{key:'preset:ukulele',name:'Sweet Ukulele ☀️',desc:'Playful, sunny, cheerful vibe',mood:'funny'},{key:'preset:ballad',name:'Emotional Strings 🎻',desc:'Gentle, touching cello and violin',mood:'emotional'},{key:'preset:dreamy',name:'Celestial Starlight ✨',desc:'Ethereal ambient pads and sparkle bells',mood:'dreamy'}]).map(p=>`<button type="button" class="music-preset-btn ${f.musicUrl===p.key?'active':''}" data-music-preset="${p.key}" data-music-name="${esc(p.name)}" data-preset-mood="${p.mood||'romantic'}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}</div><label><span><b>Music Player Style</b><small>Choose how the audio player appears to the recipient.</small></span><select data-path="features.musicPlayerStyle"><option value="romantic" ${(f.musicPlayerStyle||'romantic')==='romantic'?'selected':''}>💿 Romantic Vinyl (Animated disc & full player)</option><option value="glass" ${f.musicPlayerStyle==='glass'?'selected':''}>💎 Glassmorphism (Frosted floating bar)</option><option value="minimal" ${f.musicPlayerStyle==='minimal'?'selected':''}>💊 Minimal Pill (Compact play/mute)</option><option value="floating" ${f.musicPlayerStyle==='floating'?'selected':''}>💖 Floating Heart FAB (Corner pulsating button)</option><option value="ambient" ${f.musicPlayerStyle==='ambient'?'selected':''}>🌌 Hidden / Ambient (Discreet background sound)</option></select></label><label><span><b>Start Position Offset</b><small>Skip intro silence if uploading custom song.</small></span><select data-path="features.musicStartOffset"><option value="0" ${!f.musicStartOffset || f.musicStartOffset === 0 ? 'selected' : ''}>0 seconds (Start from beginning)</option><option value="5" ${f.musicStartOffset === 5 ? 'selected' : ''}>5 seconds in</option><option value="10" ${f.musicStartOffset === 10 ? 'selected' : ''}>10 seconds in</option><option value="15" ${f.musicStartOffset === 15 ? 'selected' : ''}>15 seconds in</option><option value="30" ${f.musicStartOffset === 30 ? 'selected' : ''}>30 seconds in (Direct chorus)</option></select></label><label class="music-upload"><span class="upload-icon">↥</span><b>Or upload custom song</b><small>MP3, M4A, OGG, or WAV · max 10 MB</small><span id="music-upload-copy" class="button ghost small">${f.musicUrl && !f.musicUrl.startsWith('preset:') ? 'Replace custom song' : 'Choose custom file'}</span><input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:14px;"><span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;"><b>Default Volume</b><span id="music-vol-label">${f.musicVolume || 35}%</span></span><input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume || 35}"></label><p class="music-safety">♡ Your song never forcefully autoplays. It starts only after the recipient interacts or taps to play.</p>${f.musicUrl?`<div class="music-current"><span class="music-note">♫</span><div><b>${esc(f.musicName||'Selected soundtrack')}</b><small>Ready to play after “Open it” · Style: ${f.musicPlayerStyle || 'romantic'}</small></div><button id="remove-music" class="icon-button" aria-label="Remove song">×</button></div>`:''}</div></details>
+    <details class="music-section"><summary>9. Music & Soundtrack ♫ <small>Add romantic playlists, soundscapes, or Spotify.</small></summary><div class="section-body"><div class="music-enable">${toggle('Enable music','features.music',f.music)}<small>Play your selected song or Spotify track when the invitation is opened.</small></div><div class="music-source-tabs" style="display:flex;gap:6px;margin:10px 0 12px;"><button type="button" class="button small ${(f.musicSource || 'upload') === 'upload' ? 'primary' : 'ghost'} set-music-source" data-source="upload">♫ Upload / Presets</button><button type="button" class="button small ${f.musicSource === 'spotify' ? 'primary' : 'ghost'} set-music-source" data-source="spotify">🟢 Spotify</button></div>${f.musicSource === 'spotify' ? `<div class="spotify-builder-panel" style="display:grid;gap:10px;padding:12px;background:rgba(29,185,84,0.06);border:1.5px solid rgba(29,185,84,0.3);border-radius:14px;"><label><span><b>Paste Spotify Link</b><small>Track, Album, or Playlist URL</small></span><div style="display:flex;gap:6px;margin-top:4px;"><input id="spotify-url-input" value="${esc(f.spotify?.url || '')}" placeholder="https://open.spotify.com/track/..." style="flex:1;"><button type="button" class="button primary small" id="apply-spotify-btn">Link</button></div></label>${f.spotify?.embedUrl ? `<div class="spotify-preview-card" style="margin-top:6px;"><iframe src="${esc(f.spotify.embedUrl)}" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="border-radius:12px;border:none;"></iframe><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;"><small style="color:var(--muted);">✓ Spotify embed connected</small><button type="button" class="button danger small" id="remove-spotify-btn">Remove Spotify</button></div></div>` : ''}</div>` : `<div class="playlist-builder-panel"><label class="music-upload" style="margin-bottom:12px;"><span class="upload-icon">↥</span><b>Upload custom song to playlist</b><small>MP3, M4A, OGG, or WAV · max 10 MB</small><span id="music-upload-copy" class="button ghost small">+ Add custom file</span><input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><div class="playlist-items-list" style="display:grid;gap:8px;margin-bottom:14px;">${((f.playlist && f.playlist.length) ? f.playlist : (f.musicUrl ? [{id:'default',name:f.musicName||'Selected Song',artist:'Romantic soundtrack',mood:'romantic',url:f.musicUrl,default:true,enabled:true}] : [])).map((song, idx, arr) => `<div class="playlist-item-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #e8e3dc;border-radius:12px;background:#fff;"><span style="font-size:1.1rem;">${song.mood === 'latenight' ? '🌙' : song.mood === 'funny' ? '😂' : song.mood === 'emotional' ? '💔' : song.mood === 'dreamy' ? '✨' : '❤️'}</span><div style="flex:1;min-width:0;"><b style="display:block;font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(song.name)}</b><small style="color:var(--muted);font-size:0.7rem;">${esc(song.artist || 'Romantic soundtrack')}${song.default ? ' · ★ Default track' : ''}</small></div><div style="display:flex;gap:4px;"><button type="button" class="button ghost small playlist-move-btn" data-playlist-move="up" data-playlist-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button><button type="button" class="button ghost small playlist-move-btn" data-playlist-move="down" data-playlist-idx="${idx}" ${idx === arr.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button><button type="button" class="button ghost small playlist-default-btn ${song.default ? 'primary' : ''}" data-playlist-idx="${idx}" title="Set as default song">★</button><button type="button" class="icon-button playlist-delete-btn" data-playlist-idx="${idx}" aria-label="Remove song">×</button></div></div>`).join('')}</div><p class="hint" style="margin:8px 0 4px;">Or add romantic preset soundscapes:</p><div class="music-mood-filters"><button type="button" class="mood-filter-btn active" data-music-filter="all">All</button><button type="button" class="mood-filter-btn" data-music-filter="romantic">❤️ Romantic</button><button type="button" class="mood-filter-btn" data-music-filter="latenight">🌙 Late Night</button><button type="button" class="mood-filter-btn" data-music-filter="funny">😂 Cute/Funny</button><button type="button" class="mood-filter-btn" data-music-filter="emotional">💔 Emotional</button><button type="button" class="mood-filter-btn" data-music-filter="dreamy">✨ Dreamy</button></div><div class="music-preset-grid">${(state.presets?.music || [{key:'preset:piano',name:'Piano Serenade 🎹',desc:'Soft emotive romantic piano',mood:'romantic'},{key:'preset:acoustic',name:'Acoustic Sunset 🎸',desc:'Warm fingerstyle acoustic melody',mood:'romantic'},{key:'preset:jazz',name:'Midnight Jazz 🎷',desc:'Slow, smooth late-night jazz',mood:'latenight'},{key:'preset:lofi',name:'Lo-fi Romance 🎧',desc:'Chill beats, warm vinyl, and cozy chords',mood:'latenight'},{key:'preset:ukulele',name:'Sweet Ukulele ☀️',desc:'Playful, sunny, cheerful vibe',mood:'funny'},{key:'preset:ballad',name:'Emotional Strings 🎻',desc:'Gentle, touching cello and violin',mood:'emotional'},{key:'preset:dreamy',name:'Celestial Starlight ✨',desc:'Ethereal ambient pads and sparkle bells',mood:'dreamy'}]).map(p=>`<button type="button" class="music-preset-btn ${f.musicUrl===p.key?'active':''}" data-music-preset="${p.key}" data-music-name="${esc(p.name)}" data-preset-mood="${p.mood||'romantic'}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}</div></div>`}<label style="margin-top:10px;"><span><b>Music Player Style</b><small>Choose how the audio player appears to the recipient.</small></span><select data-path="features.musicPlayerStyle"><option value="romantic" ${(f.musicPlayerStyle||'romantic')==='romantic'?'selected':''}>💿 Romantic Vinyl (Animated disc & full player)</option><option value="glass" ${f.musicPlayerStyle==='glass'?'selected':''}>💎 Glassmorphism (Frosted floating bar)</option><option value="minimal" ${f.musicPlayerStyle==='minimal'?'selected':''}>💊 Minimal Pill (Compact play/mute)</option><option value="floating" ${f.musicPlayerStyle==='floating'?'selected':''}>💖 Floating Heart FAB (Corner pulsating button)</option><option value="ambient" ${f.musicPlayerStyle==='ambient'?'selected':''}>🌌 Hidden / Ambient (Discreet background sound)</option><option value="spotify" ${f.musicPlayerStyle==='spotify'?'selected':''}>🟢 Spotify Card</option></select></label><label><span><b>Start Position Offset</b><small>Skip intro silence if uploading custom song.</small></span><select data-path="features.musicStartOffset"><option value="0" ${!f.musicStartOffset || f.musicStartOffset === 0 ? 'selected' : ''}>0 seconds (Start from beginning)</option><option value="5" ${f.musicStartOffset === 5 ? 'selected' : ''}>5 seconds in</option><option value="10" ${f.musicStartOffset === 10 ? 'selected' : ''}>10 seconds in</option><option value="15" ${f.musicStartOffset === 15 ? 'selected' : ''}>15 seconds in</option><option value="30" ${f.musicStartOffset === 30 ? 'selected' : ''}>30 seconds in (Direct chorus)</option></select></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:14px;"><span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;"><b>Default Volume</b><span id="music-vol-label">${f.musicVolume || 35}%</span></span><input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume || 35}"></label><p class="music-safety">♡ Your song never forcefully autoplays. It starts only after the recipient interacts or taps to play.</p></div></details>
     <details class="music-section"><summary>10. Personal Voice Note 🎙️ <small>Add your personal voice message.</small></summary><div class="section-body"><p class="hint">Record with your mic or upload an audio file. The background song will automatically duck when your voice note plays!</p><div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;"><button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button><span id="recording-timer" style="font-weight:700;font-size:0.85rem;display:none;color:#ff625f;">● 0:00</span></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload recorded voice note</b><small>MP3, M4A, OGG, WAV, or AAC · max 10 MB</small><span id="voice-upload-copy" class="button ghost small">Choose voice file</span><input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*"></label>${f.voiceNoteUrl?`<div class="music-current" style="margin-top:12px;"><span class="music-note">🎙️</span><div><b>${esc(f.voiceNoteName||'Personal Voice Note')}</b><small>Ready to play in invitation</small></div><button id="remove-voice" class="icon-button" type="button" aria-label="Remove voice note">×</button></div>`:''}</div></details>
     <details><summary>11. Final Message</summary><div class="section-body">${field('Secret heading','content.screens.secret.heading',s.secret.heading)}<label>Secret message<textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret.body)}</textarea></label></div></details>
     <details><summary>12. Publish</summary><div class="section-body"><p>Status: <b>${state.status}</b></p><button class="button primary" id="publish-inline">Publish Invitation ❤️</button>${state.status==='published'?`<div class="share-box"><input readonly value="${location.origin}/i/${state.token}"><button class="button small copy-link">Copy Link</button></div>`:''}</div></details>`;
@@ -406,6 +406,88 @@ controls.addEventListener('click',e=>{
       return;
     }
   }
+  const sourceTab = e.target.closest('.set-music-source');
+  if (sourceTab) {
+    const src = sourceTab.dataset.source;
+    state.features.musicSource = src;
+    if (src === 'spotify') {
+      state.features.musicPlayerStyle = 'spotify';
+    } else if (state.features.musicPlayerStyle === 'spotify') {
+      state.features.musicPlayerStyle = 'romantic';
+    }
+    render();
+    preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+    scheduleSave();
+    return;
+  }
+  if (e.target.id === 'apply-spotify-btn') {
+    const input = controls.querySelector('#spotify-url-input');
+    if (input) applySpotify(input.value);
+    return;
+  }
+  if (e.target.id === 'remove-spotify-btn') {
+    removeSpotify();
+    return;
+  }
+  const playlistMoveBtn = e.target.closest('.playlist-move-btn');
+  if (playlistMoveBtn) {
+    const dir = playlistMoveBtn.dataset.playlistMove;
+    const idx = Number(playlistMoveBtn.dataset.playlistIdx);
+    const list = state.features.playlist || [];
+    if (dir === 'up' && idx > 0) {
+      const temp = list[idx];
+      list[idx] = list[idx - 1];
+      list[idx - 1] = temp;
+    } else if (dir === 'down' && idx < list.length - 1) {
+      const temp = list[idx];
+      list[idx] = list[idx + 1];
+      list[idx + 1] = temp;
+    }
+    state.features.playlist = list;
+    render();
+    preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+    scheduleSave();
+    return;
+  }
+  const playlistDefaultBtn = e.target.closest('.playlist-default-btn');
+  if (playlistDefaultBtn) {
+    const idx = Number(playlistDefaultBtn.dataset.playlistIdx);
+    const list = state.features.playlist || [];
+    list.forEach((s, i) => {
+      s.default = (i === idx);
+    });
+    if (list[idx]) {
+      state.features.musicUrl = list[idx].url;
+      state.features.musicName = list[idx].name;
+    }
+    state.features.playlist = list;
+    render();
+    preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+    scheduleSave();
+    toast(`Set "${list[idx]?.name}" as default track ★`);
+    return;
+  }
+  const playlistDelBtn = e.target.closest('.playlist-delete-btn');
+  if (playlistDelBtn) {
+    const idx = Number(playlistDelBtn.dataset.playlistIdx);
+    const list = state.features.playlist || [];
+    const removed = list.splice(idx, 1)[0];
+    if (list.length > 0 && !list.some(s => s.default)) {
+      list[0].default = true;
+      state.features.musicUrl = list[0].url;
+      state.features.musicName = list[0].name;
+    } else if (list.length === 0) {
+      state.features.musicUrl = null;
+      state.features.musicName = null;
+      state.features.music = false;
+    }
+    state.features.playlist = list;
+    render();
+    preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+    scheduleSave();
+    toast(`Removed ${removed?.name || 'song'}`);
+    return;
+  }
   if(themeButton){Object.assign(state.theme,state.presets.themes[themeButton.dataset.themePreset],{preset:themeButton.dataset.themePreset});render();updateThemePreview();scheduleSave();}
   if(favoriteButton){state.content.moods.forEach((m,i)=>m.favorite=i===Number(favoriteButton.dataset.favoriteIndex));render();scheduleSave();}
   if(add){e.preventDefault();if(add.dataset.list==='moods'&&state.content.moods.length<10)state.content.moods.push({title:'New date idea ✨',description:'Add a little description',favorite:false});render();scheduleSave();}
@@ -507,8 +589,58 @@ async function compressAudioFile(file) {
   }
 }
 
-async function uploadMusic(file){const copy=document.querySelector('#music-upload-copy');copy.textContent=`Optimizing ${file.name}…`;document.querySelector('#save-status').textContent='Uploading music…';try{await saveQueue;const dataUrl=await compressAudioFile(file);let r=await fetch(`/api/invitations/${id}/music`,{method:'POST',headers:{'content-type':'application/json','x-csrf-token':csrf},body:JSON.stringify({musicUrl:dataUrl,name:file.name})});let out={};try{out=await r.json();}catch{}if(!r.ok){Object.assign(state.features,{music:true,musicUrl:dataUrl,musicName:file.name});const savedOk=await save();if(!savedOk){copy.textContent=out.error||'Could not upload song.';document.querySelector('#save-status').textContent='Upload failed';return toast(copy.textContent);}}else{Object.assign(state.features,{music:true,musicUrl:out.url||dataUrl,musicName:out.name||file.name});}document.querySelector('#save-status').textContent='Music saved ✓';render();preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;toast('Favorite song added ♫');}catch{copy.textContent='Upload failed. Check file.';document.querySelector('#save-status').textContent='Upload failed';toast(copy.textContent);}}
-async function removeMusic(){if(!confirm('Remove this song from the invitation?'))return;const r=await fetch(`/api/invitations/${id}/music`,{method:'DELETE',headers:{'x-csrf-token':csrf}});if(r.ok){Object.assign(state.features,{music:false,musicUrl:null,musicName:null});render();preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;toast('Song removed.');}}
+async function uploadMusic(file){const copy=document.querySelector('#music-upload-copy');copy.textContent=`Optimizing ${file.name}…`;document.querySelector('#save-status').textContent='Uploading music…';try{await saveQueue;const dataUrl=await compressAudioFile(file);let r=await fetch(`/api/invitations/${id}/music`,{method:'POST',headers:{'content-type':'application/json','x-csrf-token':csrf},body:JSON.stringify({musicUrl:dataUrl,name:file.name})});let out={};try{out=await r.json();}catch{}if(!r.ok){Object.assign(state.features,{music:true,musicUrl:dataUrl,musicName:file.name});const savedOk=await save();if(!savedOk){copy.textContent=out.error||'Could not upload song.';document.querySelector('#save-status').textContent='Upload failed';return toast(copy.textContent);}}else{Object.assign(state.features,{music:true,musicUrl:out.url||dataUrl,musicName:out.name||file.name});}if(!Array.isArray(state.features.playlist))state.features.playlist=[];state.features.playlist.push({id:`song_${Date.now()}`,name:out.name||file.name,artist:'Custom upload',mood:'romantic',url:out.url||dataUrl,default:state.features.playlist.length===0,enabled:true});document.querySelector('#save-status').textContent='Music saved ✓';render();preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;toast('Favorite song added ♫');}catch{copy.textContent='Upload failed. Check file.';document.querySelector('#save-status').textContent='Upload failed';toast(copy.textContent);}}
+async function removeMusic(){if(!confirm('Remove this song from the invitation?'))return;const r=await fetch(`/api/invitations/${id}/music`,{method:'DELETE',headers:{'x-csrf-token':csrf}});if(r.ok){Object.assign(state.features,{music:false,musicUrl:null,musicName:null,playlist:[]});render();preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;toast('Song removed.');}}
+
+async function applySpotify(spotifyUrl) {
+  if (!spotifyUrl || !spotifyUrl.trim()) return toast('Please enter a Spotify URL.');
+  document.querySelector('#save-status').textContent = 'Connecting Spotify…';
+  try {
+    const res = await fetch(`/api/invitations/${id}/spotify`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+      body: JSON.stringify({ spotifyUrl: spotifyUrl.trim() })
+    });
+    const out = await res.json();
+    if (!res.ok) {
+      document.querySelector('#save-status').textContent = 'Spotify link failed';
+      return toast(out.error || 'Invalid Spotify URL.');
+    }
+    state.features.music = true;
+    state.features.musicSource = 'spotify';
+    state.features.musicPlayerStyle = 'spotify';
+    state.features.spotify = out.spotify;
+    document.querySelector('#save-status').textContent = 'Spotify linked ✓';
+    render();
+    preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+    toast('Spotify music connected 🟢');
+  } catch {
+    toast('Failed to connect Spotify.');
+  }
+}
+
+async function removeSpotify() {
+  if (!confirm('Remove Spotify music from this invitation?')) return;
+  try {
+    const res = await fetch(`/api/invitations/${id}/spotify`, {
+      method: 'DELETE',
+      headers: { 'x-csrf-token': csrf }
+    });
+    if (res.ok) {
+      state.features.spotify = null;
+      state.features.musicSource = 'upload';
+      state.features.musicPlayerStyle = 'romantic';
+      if (!state.features.musicUrl && (!state.features.playlist || !state.features.playlist.length)) {
+        state.features.music = false;
+      }
+      render();
+      preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+      toast('Spotify music removed.');
+    }
+  } catch {
+    toast('Failed to remove Spotify music.');
+  }
+}
 
 let mediaRecorder = null;
 let audioChunks = [];

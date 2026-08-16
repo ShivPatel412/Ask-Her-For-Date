@@ -212,39 +212,119 @@ function stopAmbientPreset() {
   updateMusicUI();
 }
 
+function getPlaylist() {
+  if (features.playlist && Array.isArray(features.playlist) && features.playlist.length > 0) {
+    return features.playlist.filter(s => s.enabled !== false);
+  }
+  if (features.musicUrl) {
+    return [{
+      id: 'default',
+      name: features.musicName || 'Romantic soundtrack',
+      artist: 'Romantic soundtrack',
+      mood: features.musicMood || 'romantic',
+      url: features.musicUrl,
+      default: true
+    }];
+  }
+  return [];
+}
+
+function getCurrentSong() {
+  const list = getPlaylist();
+  if (!list.length) return null;
+  if (state.playlistIndex === undefined || state.playlistIndex < 0 || state.playlistIndex >= list.length) {
+    const defIdx = list.findIndex(s => s.default);
+    state.playlistIndex = defIdx >= 0 ? defIdx : 0;
+  }
+  return list[state.playlistIndex];
+}
+
+function playNextSong() {
+  const list = getPlaylist();
+  if (!list.length) return;
+  state.playlistIndex = ((state.playlistIndex || 0) + 1) % list.length;
+  const song = list[state.playlistIndex];
+  if (song && song.url) {
+    if (song.url.startsWith("preset:")) {
+      playAmbientPreset(song.url, savedMusicVolume || 0.35);
+    } else if (musicAudio) {
+      musicAudio.src = song.url;
+      musicAudio.currentTime = 0;
+      musicAudio.play().catch(() => {});
+    }
+    updateMusicUI();
+    render();
+  }
+}
+
+function playPrevSong() {
+  const list = getPlaylist();
+  if (!list.length) return;
+  state.playlistIndex = (state.playlistIndex || 0) - 1;
+  if (state.playlistIndex < 0) state.playlistIndex = list.length - 1;
+  const song = list[state.playlistIndex];
+  if (song && song.url) {
+    if (song.url.startsWith("preset:")) {
+      playAmbientPreset(song.url, savedMusicVolume || 0.35);
+    } else if (musicAudio) {
+      musicAudio.src = song.url;
+      musicAudio.currentTime = 0;
+      musicAudio.play().catch(() => {});
+    }
+    updateMusicUI();
+    render();
+  }
+}
+
 function setupMusic() {
-  if (!features.music || !features.musicUrl) return;
+  if (!features.music) return;
   savedMusicVolume = (features.musicVolume ? features.musicVolume / 100 : 0.35);
-  if (features.musicUrl.startsWith("preset:")) return;
+  if (features.musicSource === 'spotify') return;
+
+  const song = getCurrentSong();
+  if (!song || !song.url) return;
+  if (song.url.startsWith("preset:")) return;
   
   if (
-    !features.musicUrl.startsWith("/media/") &&
-    !features.musicUrl.startsWith("data:audio/") &&
-    !features.musicUrl.startsWith("http://") &&
-    !features.musicUrl.startsWith("https://")
+    !song.url.startsWith("/media/") &&
+    !song.url.startsWith("data:audio/") &&
+    !song.url.startsWith("http://") &&
+    !song.url.startsWith("https://")
   )
     return;
-  musicAudio = document.createElement("audio");
-  musicAudio.src = features.musicUrl;
-  musicAudio.loop = true;
+
+  if (!musicAudio) {
+    musicAudio = document.createElement("audio");
+    document.body.append(musicAudio);
+    musicAudio.addEventListener("play", () => {
+      state.musicPlaying = true;
+      updateMusicUI();
+      track("music_play");
+    });
+    musicAudio.addEventListener("pause", () => {
+      state.musicPlaying = false;
+      updateMusicUI();
+      track("music_pause");
+    });
+    musicAudio.addEventListener("ended", () => {
+      const list = getPlaylist();
+      if (list.length > 1) {
+        playNextSong();
+      } else {
+        musicAudio.currentTime = 0;
+        musicAudio.play().catch(() => {});
+      }
+    });
+    musicAudio.addEventListener("timeupdate", updateMusicUI);
+    musicAudio.addEventListener("loadedmetadata", updateMusicUI);
+  }
+
+  musicAudio.src = song.url;
   musicAudio.preload = "metadata";
   musicAudio.volume = savedMusicVolume;
   if (features.musicStartOffset && Number(features.musicStartOffset) > 0) {
     musicAudio.currentTime = Number(features.musicStartOffset);
   }
-  document.body.append(musicAudio);
-  musicAudio.addEventListener("play", () => {
-    state.musicPlaying = true;
-    updateMusicUI();
-    track("music_play");
-  });
-  musicAudio.addEventListener("pause", () => {
-    state.musicPlaying = false;
-    updateMusicUI();
-    track("music_pause");
-  });
-  musicAudio.addEventListener("timeupdate", updateMusicUI);
-  musicAudio.addEventListener("loadedmetadata", updateMusicUI);
 }
 function setupVoiceNote() {
   if (
@@ -334,12 +414,40 @@ function voiceNoteWidget() {
   return `<div class="voice-note-card ${state.voicePlaying ? "playing" : ""}" id="voice-note-player" role="region" aria-label="Voice note player"><button class="voice-play-btn" data-voice="toggle" type="button" aria-label="Play voice note">${state.voicePlaying ? "⏸" : "▶"}</button><div class="voice-meta"><b>🎙️ Voice note from ${esc(data.inviterName)}</b><small class="voice-status">${statusText}</small></div><div class="voice-waveform" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></div></div>`;
 }
 function musicControl() {
-  const isPreset = Boolean(features.musicUrl && features.musicUrl.startsWith("preset:"));
-  const empty = !musicAudio && !isPreset;
+  if (features.musicSource === 'spotify' && features.spotify?.embedUrl) {
+    return `
+      <div class="music-player style-spotify" role="region" aria-label="Spotify music player">
+        <div class="spotify-embed-wrapper">
+          <iframe
+            style="border-radius:12px;border:none;"
+            src="${esc(features.spotify.embedUrl)}"
+            width="100%"
+            height="152"
+            frameborder="0"
+            allowfullscreen=""
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            title="Spotify Music">
+          </iframe>
+        </div>
+        <div class="spotify-fallback-row">
+          <a href="${esc(features.spotify.url || 'https://open.spotify.com')}" target="_blank" rel="noopener noreferrer" class="spotify-open-link">
+            <span>Listen on Spotify ❤️</span>
+          </a>
+        </div>
+      </div>
+    `;
+  }
+
+  const playlist = getPlaylist();
+  const currentSong = getCurrentSong();
+  const isPreset = Boolean(currentSong?.url && currentSong.url.startsWith("preset:"));
+  const empty = !musicAudio && !isPreset && !currentSong;
   if (empty && !(data.preview && features.music)) return "";
   const disabled = empty ? "disabled" : "";
   const style = features.musicPlayerStyle || "romantic";
-  const name = features.musicName || (isPreset ? "Romantic Ambient Soundtrack" : "Romantic soundtrack");
+  const name = currentSong?.name || features.musicName || (isPreset ? "Romantic Ambient Soundtrack" : "Romantic soundtrack");
+  const hasMultiple = playlist.length > 1;
 
   if (style === "ambient") {
     return `
@@ -354,9 +462,11 @@ function musicControl() {
   if (style === "minimal") {
     return `
       <div class="music-player style-minimal ${empty ? "music-empty" : ""} ${state.musicPlaying ? "playing" : ""}" role="group" aria-label="Music player">
+        ${hasMultiple ? `<button class="minimal-nav-btn" data-music="prev" type="button" aria-label="Previous track" style="border:none;background:transparent;cursor:pointer;font-size:0.85rem;">⏮</button>` : ''}
         <button class="music-play minimal-play-btn" data-music="toggle" type="button" aria-label="${state.musicPlaying ? "Pause music" : "Play music"}" ${disabled}>
           ${state.musicPlaying ? "❚❚" : "▶"}
         </button>
+        ${hasMultiple ? `<button class="minimal-nav-btn" data-music="next" type="button" aria-label="Next track" style="border:none;background:transparent;cursor:pointer;font-size:0.85rem;">⏭</button>` : ''}
         <span class="minimal-title">${text(empty ? "No song selected" : name)}</span>
         <button class="minimal-vol-btn" data-music="mute" type="button" aria-label="Toggle sound" ${disabled}>
           ${musicAudio?.muted ? "🔇" : "🔊"}
@@ -384,7 +494,7 @@ function musicControl() {
           <span class="music-cover" aria-hidden="true">✨</span>
           <div class="music-meta">
             <b>${text(empty ? "Add a song in editor" : name)}</b>
-            <small>${state.musicPlaying ? "Now playing" : "Paused"}</small>
+            <small>${state.musicPlaying ? (hasMultiple ? `${(state.playlistIndex || 0) + 1}/${playlist.length} · Now playing` : "Now playing") : "Paused"}</small>
           </div>
           <button data-music="mute" aria-label="Mute music" ${disabled}>${musicAudio?.muted ? "🔇" : "🔊"}</button>
         </div>
@@ -394,9 +504,9 @@ function musicControl() {
           <time data-duration>${empty || isPreset ? "--:--" : "0:00"}</time>
         </div>
         <div class="music-controls">
-          <button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button>
+          ${hasMultiple ? `<button data-music="prev" aria-label="Previous song">⏮</button>` : `<button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button>`}
           <button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>${state.musicPlaying ? "❚❚" : "▶"}</button>
-          <button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button>
+          ${hasMultiple ? `<button data-music="next" aria-label="Next song">⏭</button>` : `<button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button>`}
           <label class="music-volume">
             <span aria-hidden="true">🔉</span>
             <input data-music="volume" type="range" min="0" max="100" value="${features.musicVolume || 35}" aria-label="Music volume" ${disabled}>
@@ -414,7 +524,7 @@ function musicControl() {
         <span class="music-cover vinyl-disc ${state.musicPlaying ? "spin" : ""}" aria-hidden="true">💿</span>
         <div class="music-meta">
           <b>${text(empty ? "Add a song in the editor" : name)}</b>
-          <small>${state.musicPlaying ? "Playing romantic vibes ❤️" : "Tap play to listen"}</small>
+          <small>${state.musicPlaying ? (hasMultiple ? `${(state.playlistIndex || 0) + 1}/${playlist.length} · Playing vibes ❤️` : "Playing romantic vibes ❤️") : "Tap play to listen"}</small>
         </div>
         <i class="music-bars ${state.musicPlaying ? "animated" : ""}" aria-hidden="true"><b></b><b></b><b></b><b></b></i>
         <button data-music="mute" aria-label="Mute music" ${disabled}>${musicAudio?.muted ? "🔇" : "🔊"}</button>
@@ -425,9 +535,9 @@ function musicControl() {
         <time data-duration>${empty || isPreset ? "--:--" : "0:00"}</time>
       </div>
       <div class="music-controls">
-        <button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button>
+        ${hasMultiple ? `<button data-music="prev" aria-label="Previous song">⏮</button>` : `<button data-music="back" aria-label="Go back 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↶</button>`}
         <button class="music-play" data-music="toggle" aria-label="Play music" ${disabled}>${state.musicPlaying ? "❚❚" : "▶"}</button>
-        <button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button>
+        ${hasMultiple ? `<button data-music="next" aria-label="Next song">⏭</button>` : `<button data-music="forward" aria-label="Go forward 10 seconds" ${disabled || isPreset ? "disabled" : ""}>↷</button>`}
         <label class="music-volume">
           <span aria-hidden="true">🔉</span>
           <input data-music="volume" type="range" min="0" max="100" value="${features.musicVolume || 35}" aria-label="Music volume" ${disabled}>
@@ -1270,6 +1380,12 @@ function bind() {
           musicAudio.muted = !musicAudio.muted;
           updateMusicUI();
         }
+      }
+      if (el.dataset.music === "prev") {
+        playPrevSong();
+      }
+      if (el.dataset.music === "next") {
+        playNextSong();
       }
       if (musicAudio && el.dataset.music === "back")
         musicAudio.currentTime = Math.max(0, musicAudio.currentTime - 10);
