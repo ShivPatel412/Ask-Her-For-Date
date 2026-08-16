@@ -48,7 +48,26 @@ const vars = (s) =>
   );
 const text = (s) => esc(vars(s)).replace(/\n/g, "<br>");
 const cleanFont = (f) => String(f ?? "").replace(/['"]/g, "");
-const css = `--bg:${theme.background || '#FCFAF6'};--primary:${theme.primary || '#E6496F'};--secondary:${theme.secondary || '#F4E9DD'};--accent:${theme.accent || theme.primary || '#FF7B94'};--text:${theme.text || '#282223'};--heading-color:${theme.headingColor || theme.heading_color || theme.text || '#20191B'};--muted:${theme.muted || '#70686A'};--card:${theme.card || '#FFFFFFEE'};--button-text:${theme.buttonText || '#FFFFFF'};--border:${theme.border || '#EADFE1'};--heading:'${cleanFont(theme.heading || 'DM Serif Display')}';--body:'${cleanFont(theme.body || 'Poppins')}'`;
+function getLuminance(hex) {
+  let c = String(hex || "").replace("#", "").trim();
+  if (c.length === 3 || c.length === 4) c = c.split("").map((x) => x + x).join("");
+  if (c.length >= 6) {
+    const r = parseInt(c.slice(0, 2), 16) || 0;
+    const g = parseInt(c.slice(2, 4), 16) || 0;
+    const b = parseInt(c.slice(4, 6), 16) || 0;
+    const a = [r / 255, g / 255, b / 255].map((v) =>
+      v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+    );
+    return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+  }
+  return 0.5;
+}
+function resolveReadableForeground(bgHex) {
+  return getLuminance(bgHex) > 0.55 ? "#1E1417" : "#FFFFFF";
+}
+const defaultBtnText = resolveReadableForeground(theme.primary || "#E6496F");
+const defaultHeadingColor = resolveReadableForeground(theme.background || "#FCFAF6");
+const css = `--bg:${theme.background || '#FCFAF6'};--primary:${theme.primary || '#E6496F'};--secondary:${theme.secondary || '#F4E9DD'};--accent:${theme.accent || theme.primary || '#FF7B94'};--text:${theme.text || '#282223'};--heading-color:${theme.headingColor || theme.heading_color || defaultHeadingColor};--muted:${theme.muted || '#70686A'};--card:${theme.card || '#FFFFFFEE'};--button-text:${theme.buttonText || defaultBtnText};--border:${theme.border || '#EADFE1'};--heading:'${cleanFont(theme.heading || 'DM Serif Display')}';--body:'${cleanFont(theme.body || 'Poppins')}'`;
 
 async function initialize() {
   setupMusic();
@@ -98,7 +117,7 @@ async function track(
   }
 }
 function shell(content) {
-  const modal404 = (state.screen === "finalAttempt" && state.evasionStage === 3)
+  const modal404 = (state.screen === "finalAttempt" && state.evasionStage >= 4)
     ? `<div class="evasion-modal-overlay">
         <div class="retro-error-card">
           <div class="retro-header"><b>⚠️ SYSTEM ERROR 404</b><span aria-hidden="true">[!]</span></div>
@@ -345,11 +364,19 @@ function finalAttemptScreen() {
   const yesClass = isEvasion ? "primary evasion-growing-yes" : "primary";
   const yesStyle = isEvasion ? `style="--yes-scale:${yesScale};"` : "";
   
-  let rejectBtnText = s.tertiary || "Nahi yaar 😜";
+  const progressiveLabels = [
+    s.tertiary || "Nahi yaar 😜",
+    "Are you sure? 🥺",
+    "Think again 😭",
+    "Nice try 😂🏃💨",
+    "Getting shy now 👀",
+    "Okay okay... 😌"
+  ];
+  
+  let rejectBtnText = progressiveLabels[Math.min(state.evasionStage, progressiveLabels.length - 1)];
   let rejectBtnClass = "respect";
   let rejectBtnAction = "rejectAttempt";
   if (state.evasionStage >= 1) {
-    rejectBtnText = "Nahi yaar 😜";
     rejectBtnClass = "respect evasion-teleport sneaky-slide";
   }
 
@@ -433,7 +460,8 @@ function moodReaction() {
 }
 function yesScreen() {
   const s = screens.yes;
-  return `<span class="eyebrow">${text(s.eyebrow)}</span><div class="answer-chips"><span>👀 Sach mein, ${text(state.nickname)}?</span><span>😂 Like… actually yes?</span></div><h1>${text(s.heading)}</h1><div class="celebration-pair" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, "Food + fun", "We decide")}${voiceNoteWidget()}<div class="evidence-note">Screenshot this. Evidence secured 😂</div>${btn(s.primary, "availability", "primary")}`;
+  const quote = s.body || "I knew you'd say yes. Okay wow, this actually worked 😂❤️";
+  return `<div class="celebration-hero"><div class="celebration-heart-badge" aria-hidden="true"><span class="heart-pulse">❤️</span><span class="sparkle-orbit s1">✨</span><span class="sparkle-orbit s2">✨</span><span class="sparkle-orbit s3">✨</span></div><span class="celebration-kicker">${state.nickname ? `${esc(state.nickname)}, IT’S OFFICIAL! 🥹❤️` : "SHE SAID YES! 🥹❤️"}</span><h1 class="celebration-title">${text(s.heading || "IT'S A DATE.")}</h1><p class="celebration-quote">“${text(quote)}”</p><div class="answer-chips"><span>👀 Sach mein, ${text(state.nickname)}?</span><span>✨ Actually yes! ❤️</span></div></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, state.mood || "Food + Fun + Unlimited Bakwaas", state.date ? formatDateTime(state.date) : "Pick date & time in next step 😌")}${voiceNoteWidget()}<div class="evidence-note">📸 Screenshot this. Evidence secured 😂</div><div class="action-stack">${btn(s.primary, "availability", "primary")}</div>`;
 }
 function availabilityScreen() {
   const s = screens.availability;
@@ -480,10 +508,13 @@ function datePass(title, people, plan, when) {
 }
 function successScreen() {
   const s = screens.success,
-    when = state.date ? formatDateTime(state.date) : "We decide",
-    plan = state.mood || "Food + fun";
-  const message=encodeURIComponent(`Hey ${data.inviterName}! I said yes 😌❤️ Let's plan it now. I chose ${plan} and ${when}.`),whatsapp=data.whatsappNumber?`<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">${text(s.primary)}</a>`:btn(s.primary,"complete","primary");
-  return `<span class="eyebrow">Perfect. Date planning unlocked ✨</span><h1>${text(s.heading)}</h1><div class="celebration-pair small" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><span>✦</span><span>●</span><span>✦</span></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}${voiceNoteWidget()}<div class="evidence-note">Screenshot this. Evidence secured 😂</div><div class="action-stack">${whatsapp}<button class="choice" data-modal="secret">One more thing… 👀</button></div>`;
+    when = state.date ? formatDateTime(state.date) : "We decide 😌",
+    plan = state.mood || "Food + Fun + Unlimited Bakwaas";
+  const message = encodeURIComponent(`Hey ${data.inviterName}! I said yes 😌❤️ Let's plan it now. I chose ${plan} and ${when}.`),
+    whatsapp = data.whatsappNumber
+      ? `<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">${text(s.primary)}</a>`
+      : btn(s.primary, "complete", "primary");
+  return `<div class="celebration-hero"><div class="celebration-heart-badge small" aria-hidden="true"><span class="heart-pulse">💖</span><span class="sparkle-orbit s1">✨</span><span class="sparkle-orbit s2">✨</span></div><span class="celebration-kicker">Date Planning Unlocked ✨</span><h1 class="celebration-title">${text(s.heading || "Baaki planning meri.")}</h1><p class="celebration-quote">“${text(s.body || "You picked the timing. You picked the vibe. You just have to show up. 😂❤️")}”</p></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}${voiceNoteWidget()}<div class="evidence-note">📸 Screenshot this. Evidence secured 😂</div><div class="action-stack">${whatsapp}<button class="choice" data-modal="secret" type="button">One more thing… 👀</button></div>`;
 }
 function declineScreen() {
   const s = screens.decline,
@@ -773,9 +804,14 @@ function act(action, value) {
       toast("Button bhaag raha hai, sign samjho! 🏃💨😂");
       track("evasion_teleport", "finalAttempt", "reject_attempt_2");
       render();
-    } else {
+    } else if (state.evasionStage === 2) {
       state.evasionStage = 3;
-      track("evasion_error_modal", "finalAttempt", "reject_attempt_3");
+      toast("Pakad ke dikhao! 😜🏃💨");
+      track("evasion_teleport", "finalAttempt", "reject_attempt_3");
+      render();
+    } else {
+      state.evasionStage = 4;
+      track("evasion_error_modal", "finalAttempt", "reject_attempt_4");
       render();
     }
   } else if (action === "forceDecline") {
@@ -851,14 +887,21 @@ function toast(message) {
   setTimeout(() => el.classList.remove("show"), 3200);
 }
 function confetti() {
-  const shapes = ["✦", "●", "▰"];
-  for (let i = 0; i < 22; i++) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const emojis = ["💖", "✨", "🎉", "💕", "✦", "🌸", "🧸", "❤️"];
+  const count = window.innerWidth < 600 ? 22 : 36;
+  for (let i = 0; i < count; i++) {
     const x = document.createElement("i");
-    x.className = `confetti confetti-${i % 4}`;
-    x.style.cssText = `--x:${Math.random() * 100}vw;--d:${2.2 + Math.random() * 2}s;--r:${Math.random() * 360}deg`;
-    x.textContent = shapes[i % shapes.length];
+    x.className = `confetti-particle p-${i % 4}`;
+    const left = (Math.random() * 96 + 2).toFixed(1);
+    const duration = (2.4 + Math.random() * 2.2).toFixed(2);
+    const delay = (Math.random() * 0.8).toFixed(2);
+    const rotation = (Math.random() * 360).toFixed(0);
+    const size = (0.9 + Math.random() * 0.7).toFixed(2);
+    x.style.cssText = `--x:${left}vw;--d:${duration}s;--delay:${delay}s;--r:${rotation}deg;--s:${size};`;
+    x.textContent = emojis[i % emojis.length];
     document.body.append(x);
-    setTimeout(() => x.remove(), 4500);
+    setTimeout(() => x.remove(), 4800);
   }
 }
 initialize();

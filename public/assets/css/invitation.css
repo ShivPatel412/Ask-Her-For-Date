@@ -746,7 +746,133 @@ h2 {
 }
 
 /* --------------------------------------------------------------------------
-   Date Pass & Envelope (Celebration)
+   Celebration Hero & Emotional Payoff
+   -------------------------------------------------------------------------- */
+.celebration-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.celebration-heart-badge {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent, #ff7b94) 100%);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 40%, transparent);
+  margin: 4px auto 14px;
+}
+
+.celebration-heart-badge.small {
+  width: 54px;
+  height: 54px;
+  margin-bottom: 10px;
+}
+
+.heart-pulse {
+  font-size: 1.9rem;
+  line-height: 1;
+  display: inline-block;
+  animation: romanticPulse 1.8s ease-in-out infinite;
+}
+
+.celebration-heart-badge.small .heart-pulse {
+  font-size: 1.5rem;
+}
+
+.sparkle-orbit {
+  position: absolute;
+  font-size: 1rem;
+  pointer-events: none;
+  animation: sparkleFloat 2.4s ease-in-out infinite alternate;
+}
+
+.sparkle-orbit.s1 { top: -6px; right: -4px; animation-delay: 0s; }
+.sparkle-orbit.s2 { bottom: -4px; left: -6px; animation-delay: 0.8s; }
+.sparkle-orbit.s3 { top: 40%; left: -14px; animation-delay: 1.4s; font-size: 0.85rem; }
+
+@keyframes romanticPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+
+@keyframes sparkleFloat {
+  0% { transform: translateY(0) rotate(0deg) scale(0.9); opacity: 0.7; }
+  100% { transform: translateY(-5px) rotate(25deg) scale(1.2); opacity: 1; }
+}
+
+.celebration-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--primary) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
+  color: var(--primary);
+  font-size: clamp(0.78rem, 1.4vw, 0.86rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.celebration-title {
+  font-size: clamp(2.3rem, 6.4vw, 3.4rem) !important;
+  line-height: 1.08;
+  color: var(--heading-color, var(--text));
+  margin: 6px 0 10px !important;
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+.celebration-quote {
+  font-style: italic;
+  font-size: clamp(0.96rem, 1.8vw, 1.12rem);
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0 auto 14px;
+  max-width: 440px;
+  text-wrap: pretty;
+}
+
+/* --------------------------------------------------------------------------
+   Celebration Particles (Confetti & Hearts)
+   -------------------------------------------------------------------------- */
+.confetti-particle {
+  position: fixed;
+  z-index: 9999;
+  top: -36px;
+  left: var(--x);
+  pointer-events: none;
+  user-select: none;
+  font-size: calc(1.35rem * var(--s, 1));
+  animation: confettiDrift var(--d, 3.2s) cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes confettiDrift {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(0.6);
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(105vh) rotate(var(--r, 360deg)) scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Date Pass Ticket & Envelope (Celebration)
    -------------------------------------------------------------------------- */
 .love-envelope {
   position: relative;
@@ -800,9 +926,9 @@ h2 {
   margin: 16px auto 20px;
   padding: 18px 22px;
   border: 1.5px solid color-mix(in srgb, var(--primary) 24%, #e8e3dc);
-  border-radius: 18px;
+  border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 8px 24px rgba(40, 30, 35, 0.05);
+  box-shadow: 0 10px 30px rgba(40, 30, 35, 0.06);
   text-align: left;
 }
 .pass-title {
@@ -810,8 +936,8 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1.5px dashed color-mix(in srgb, var(--primary) 25%, #e8e3dc);
+  padding-bottom: 12px;
+  border-bottom: 1.5px dashed color-mix(in srgb, var(--primary) 28%, #e8e3dc);
   color: var(--primary);
   font-size: 0.78rem;
   font-weight: 800;
@@ -820,7 +946,7 @@ h2 {
 }
 .pass-title small {
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   letter-spacing: 0.08em;
 }
 .date-pass > div:not(.pass-title) {
@@ -828,12 +954,12 @@ h2 {
   grid-template-columns: 34px 1fr;
   align-items: center;
   gap: 10px;
-  padding: 10px 4px;
+  padding: 11px 4px;
   border-bottom: 1px dashed color-mix(in srgb, var(--primary) 15%, #ece7e1);
 }
 .date-pass > div:last-child { border-bottom: 0; }
 .date-pass span { font-size: 1.15rem; }
-.date-pass b { font-size: 0.86rem; font-weight: 600; }
+.date-pass b { font-size: 0.88rem; font-weight: 600; color: var(--text); }
 
 /* --------------------------------------------------------------------------
    Calendar & Availability Picker
