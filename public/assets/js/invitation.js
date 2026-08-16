@@ -454,13 +454,43 @@ const btn = (label, action, kind = "") =>
   `<button class="choice ${kind}" data-action="${action}">${text(label)}</button>`;
 const copy = (obj, buttons = "") =>
   `<span class="eyebrow">${text(obj.eyebrow)}</span><h1>${text(obj.heading)}</h1>${obj.body ? `<div class="copy-note"><span>✦</span><div>${text(obj.body)}</div></div>` : ""}${buttons}`;
+function applyBackgroundCover() {
+  let bgCover = document.getElementById("bg-cover-layer");
+  if (features.coverPhoto && features.coverPhotoUrl && features.coverPhotoStyle === "full-bg") {
+    const opacity = (features.coverPhotoOverlay !== undefined ? features.coverPhotoOverlay : 40) / 100;
+    if (!bgCover) {
+      bgCover = document.createElement("div");
+      bgCover.id = "bg-cover-layer";
+      bgCover.className = "bg-cover-layer";
+      document.body.prepend(bgCover);
+    }
+    bgCover.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(0,0,0,${opacity}), rgba(0,0,0,${opacity})), url('${esc(features.coverPhotoUrl)}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: opacity 0.4s ease;
+    `;
+  } else if (bgCover) {
+    bgCover.remove();
+  }
+}
+
 function render() {
   let content = "";
   const s = screens[state.screen] || screens.intro;
+  applyBackgroundCover();
   if (state.screen === "intro") {
     let coverHtml = "";
-    if (features.coverPhoto && features.coverPhotoUrl) {
-      coverHtml = `<div class="intro-cover-frame"><img class="intro-cover-img" src="${esc(features.coverPhotoUrl)}" alt="Cover photo" loading="lazy" onerror="this.parentElement.style.display='none'">${features.coverPhotoCaption ? `<span class="intro-cover-caption">${text(features.coverPhotoCaption)}</span>` : ""}</div>`;
+    if (features.coverPhoto && features.coverPhotoUrl && features.coverPhotoStyle !== "full-bg") {
+      const style = features.coverPhotoStyle || "polaroid";
+      const alt = features.coverPhotoAlt || `Romantic photo for ${data.recipientName || "you"}`;
+      const caption = features.coverPhotoCaption ? `<span class="intro-cover-caption">${text(features.coverPhotoCaption)}</span>` : "";
+      coverHtml = `<div class="intro-cover-frame style-${esc(style)}"><div class="cover-img-wrap"><img class="intro-cover-img" src="${esc(features.coverPhotoUrl)}" alt="${esc(alt)}" loading="lazy" onerror="this.closest('.intro-cover-frame')?.remove()"></div>${caption}</div>`;
     }
     content = `${coverHtml}${copy(s, btn(s.primary, "open", "primary"))}`;
   }

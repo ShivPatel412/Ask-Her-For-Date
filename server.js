@@ -857,18 +857,38 @@ app.post('/api/invitations/:id/cover', requireUser, requireCsrf, imageBody, asyn
     return res.status(400).json({ error: 'Upload a valid JPG, PNG, WebP, or GIF image.' });
   }
   const features = json(row.feature_config_json);
-  Object.assign(features, { coverPhoto: true, coverPhotoUrl: dataUri, coverPhotoCaption: caption });
+  const style = ['polaroid', 'hero', 'full-bg', 'memory-card', 'circular'].includes(req.body?.coverPhotoStyle || req.get('x-style'))
+    ? (req.body?.coverPhotoStyle || req.get('x-style'))
+    : (features.coverPhotoStyle || 'polaroid');
+  const alt = clean(req.body?.coverPhotoAlt || decodeURIComponent(req.get('x-alt') || ''), 100) || '';
+  const overlay = Math.min(100, Math.max(0, parseInt(req.body?.coverPhotoOverlay || req.get('x-overlay') || '40', 10)));
+
+  Object.assign(features, {
+    coverPhoto: true,
+    coverPhotoUrl: dataUri,
+    coverPhotoCaption: caption,
+    coverPhotoStyle: style,
+    coverPhotoAlt: alt,
+    coverPhotoOverlay: overlay
+  });
   await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) await logUserActivity(req.session.userId, user.email, 'UPLOAD_COVER_PHOTO', req);
-  res.status(201).json({ url: dataUri, caption });
+  res.status(201).json({ url: dataUri, caption, style, alt, overlay });
 });
 
 app.delete('/api/invitations/:id/cover', requireUser, requireCsrf, async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId);
   if (!row) return res.status(404).json({ error: 'Not found.' });
   const features = json(row.feature_config_json);
-  Object.assign(features, { coverPhoto: false, coverPhotoUrl: null, coverPhotoCaption: null });
+  Object.assign(features, {
+    coverPhoto: false,
+    coverPhotoUrl: null,
+    coverPhotoCaption: null,
+    coverPhotoStyle: 'polaroid',
+    coverPhotoAlt: '',
+    coverPhotoOverlay: 40
+  });
   await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
   if (user) await logUserActivity(req.session.userId, user.email, 'DELETE_COVER_PHOTO', req);

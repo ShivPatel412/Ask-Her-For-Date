@@ -425,30 +425,50 @@ test('PHASE A: Custom Cover Photo upload, validation, deletion, and rendering', 
   });
   const inv = await invRes.json();
 
-  // 1. Upload valid cover photo data URI
+  // 1. Upload valid cover photo data URI with style, alt text, and overlay
   const samplePhoto = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   const uploadRes = await client(`/api/invitations/${inv.id}/cover`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
-    body: JSON.stringify({ coverPhotoUrl: samplePhoto, caption: 'Our favorite memory ✨' })
+    body: JSON.stringify({
+      coverPhotoUrl: samplePhoto,
+      caption: 'Our favorite memory ✨',
+      coverPhotoStyle: 'polaroid',
+      coverPhotoAlt: 'Us at the beach sunset',
+      coverPhotoOverlay: 45
+    })
   });
   assert.equal(uploadRes.status, 201);
   const uploadData = await uploadRes.json();
   assert.equal(uploadData.caption, 'Our favorite memory ✨');
+  assert.equal(uploadData.style, 'polaroid');
+  assert.equal(uploadData.alt, 'Us at the beach sunset');
 
-  // 2. Verify invitation payload in preview
+  // 2. Binary buffer upload with image/png magic bytes
+  const pngBuffer = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const bufferUploadRes = await client(`/api/invitations/${inv.id}/cover`, {
+    method: 'POST',
+    headers: { 'content-type': 'image/png', 'x-csrf-token': userCsrf, 'x-caption': encodeURIComponent('Sunset Drive 🚗'), 'x-style': 'circular', 'x-alt': encodeURIComponent('Driving together') },
+    body: pngBuffer
+  });
+  assert.equal(bufferUploadRes.status, 201);
+  const bufferData = await bufferUploadRes.json();
+  assert.equal(bufferData.caption, 'Sunset Drive 🚗');
+  assert.equal(bufferData.style, 'circular');
+
+  // 3. Verify invitation payload in preview
   const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
   const previewHtml = await previewRes.text();
-  assert.ok(previewHtml.includes('Our favorite memory'), 'Preview must reflect cover photo caption');
+  assert.ok(previewHtml.includes('Sunset Drive'), 'Preview must reflect updated cover photo caption');
 
-  // 3. Delete cover photo
+  // 4. Delete cover photo
   const delRes = await client(`/api/invitations/${inv.id}/cover`, {
     method: 'DELETE',
     headers: { 'x-csrf-token': userCsrf }
   });
   assert.equal(delRes.status, 200);
 
-  // 4. Verify rejection of invalid image
+  // 5. Verify rejection of invalid image
   const invalidRes = await client(`/api/invitations/${inv.id}/cover`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
