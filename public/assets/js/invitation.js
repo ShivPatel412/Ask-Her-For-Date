@@ -213,6 +213,9 @@ function stopAmbientPreset() {
 }
 
 function getPlaylist() {
+  if (features.tracks && Array.isArray(features.tracks) && features.tracks.length > 0) {
+    return features.tracks.filter(s => s.enabled !== false);
+  }
   if (features.playlist && Array.isArray(features.playlist) && features.playlist.length > 0) {
     return features.playlist.filter(s => s.enabled !== false);
   }
@@ -220,9 +223,12 @@ function getPlaylist() {
     return [{
       id: 'default',
       name: features.musicName || 'Romantic soundtrack',
+      title: features.musicName || 'Romantic soundtrack',
       artist: 'Romantic soundtrack',
       mood: features.musicMood || 'romantic',
       url: features.musicUrl,
+      startTime: features.musicStartOffset || 0,
+      endTime: null,
       default: true
     }];
   }
@@ -239,17 +245,18 @@ function getCurrentSong() {
   return list[state.playlistIndex];
 }
 
-function playNextSong() {
+function playSongAtIndex(idx) {
   const list = getPlaylist();
   if (!list.length) return;
-  state.playlistIndex = ((state.playlistIndex || 0) + 1) % list.length;
+  state.playlistIndex = (idx + list.length) % list.length;
   const song = list[state.playlistIndex];
   if (song && song.url) {
     if (song.url.startsWith("preset:")) {
       playAmbientPreset(song.url, savedMusicVolume || 0.35);
     } else if (musicAudio) {
       musicAudio.src = song.url;
-      musicAudio.currentTime = 0;
+      const start = Number(song.startTime) || 0;
+      musicAudio.currentTime = start;
       musicAudio.play().catch(() => {});
     }
     updateMusicUI();
@@ -257,22 +264,54 @@ function playNextSong() {
   }
 }
 
+function playNextSong() {
+  playSongAtIndex((state.playlistIndex || 0) + 1);
+}
+
 function playPrevSong() {
-  const list = getPlaylist();
-  if (!list.length) return;
-  state.playlistIndex = (state.playlistIndex || 0) - 1;
-  if (state.playlistIndex < 0) state.playlistIndex = list.length - 1;
-  const song = list[state.playlistIndex];
-  if (song && song.url) {
-    if (song.url.startsWith("preset:")) {
-      playAmbientPreset(song.url, savedMusicVolume || 0.35);
-    } else if (musicAudio) {
-      musicAudio.src = song.url;
-      musicAudio.currentTime = 0;
+  playSongAtIndex((state.playlistIndex || 0) - 1);
+}
+
+function handleTrackFinished() {
+  const mode = features.musicPlaybackMode || 'playlist';
+  const playlist = getPlaylist();
+  const currentSong = getCurrentSong();
+
+  if (mode === 'loop-track') {
+    if (musicAudio) {
+      musicAudio.currentTime = Number(currentSong?.startTime) || 0;
       musicAudio.play().catch(() => {});
     }
+    return;
+  }
+
+  if (mode === 'once') {
+    if (musicAudio) {
+      musicAudio.pause();
+      musicAudio.currentTime = Number(currentSong?.startTime) || 0;
+    }
+    state.musicPlaying = false;
     updateMusicUI();
-    render();
+    return;
+  }
+
+  if (playlist.length > 1) {
+    const isLast = (state.playlistIndex || 0) >= playlist.length - 1;
+    if (isLast && mode === 'playlist') {
+      if (musicAudio) {
+        musicAudio.pause();
+        musicAudio.currentTime = Number(currentSong?.startTime) || 0;
+      }
+      state.musicPlaying = false;
+      updateMusicUI();
+    } else {
+      playNextSong();
+    }
+  } else {
+    if (musicAudio) {
+      musicAudio.currentTime = Number(currentSong?.startTime) || 0;
+      musicAudio.play().catch(() => {});
+    }
   }
 }
 
@@ -307,24 +346,26 @@ function setupMusic() {
       track("music_pause");
     });
     musicAudio.addEventListener("ended", () => {
-      const list = getPlaylist();
-      if (list.length > 1) {
-        playNextSong();
-      } else {
-        musicAudio.currentTime = 0;
-        musicAudio.play().catch(() => {});
-      }
+      handleTrackFinished();
     });
-    musicAudio.addEventListener("timeupdate", updateMusicUI);
+    musicAudio.addEventListener("timeupdate", () => {
+      const curSong = getCurrentSong();
+      if (curSong && curSong.endTime !== undefined && curSong.endTime !== null && Number(curSong.endTime) > 0) {
+        if (musicAudio.currentTime >= Number(curSong.endTime)) {
+          handleTrackFinished();
+          return;
+        }
+      }
+      updateMusicUI();
+    });
     musicAudio.addEventListener("loadedmetadata", updateMusicUI);
   }
 
   musicAudio.src = song.url;
   musicAudio.preload = "metadata";
   musicAudio.volume = savedMusicVolume;
-  if (features.musicStartOffset && Number(features.musicStartOffset) > 0) {
-    musicAudio.currentTime = Number(features.musicStartOffset);
-  }
+  const start = Number(song.startTime) || (features.musicStartOffset ? Number(features.musicStartOffset) : 0);
+  musicAudio.currentTime = start;
 }
 function setupVoiceNote() {
   if (
@@ -516,6 +557,27 @@ function musicControl() {
     `;
   }
 
+  if (style === "compact") {
+    const artist = currentSong?.artist || "Romantic vibes";
+    return `
+      <div class="music-player style-compact ${empty ? "music-empty" : ""} ${state.musicPlaying ? "playing" : ""}" role="group" aria-label="Compact music player">
+        <span class="compact-disc ${state.musicPlaying ? "spin" : ""}" aria-hidden="true">♫</span>
+        <div class="compact-info">
+          <b class="compact-title">${text(empty ? "No song selected" : name)}</b>
+          <small class="compact-artist">${text(artist)}</small>
+        </div>
+        ${hasMultiple ? `<button class="compact-btn" data-music="prev" type="button" aria-label="Previous track">⏮</button>` : ''}
+        <button class="compact-btn music-play" data-music="toggle" type="button" aria-label="${state.musicPlaying ? "Pause music" : "Play music"}" ${disabled}>
+          ${state.musicPlaying ? "❚❚" : "▶"}
+        </button>
+        ${hasMultiple ? `<button class="compact-btn" data-music="next" type="button" aria-label="Next track">⏭</button>` : ''}
+        <button class="compact-btn" data-music="mute" type="button" aria-label="Mute sound" ${disabled}>
+          ${musicAudio?.muted ? "🔇" : "🔊"}
+        </button>
+      </div>
+    `;
+  }
+
   // Default: Romantic Vinyl Player
   return `
     <div class="music-player style-romantic ${empty ? "music-empty" : ""} ${state.musicMinimized ? "minimized" : ""}" role="group" aria-label="Romantic music player">
@@ -545,6 +607,88 @@ function musicControl() {
       </div>
     </div>
   `;
+}
+
+function initDraggableMusicPlayer() {
+  const player = document.querySelector('.music-player');
+  if (!player) return;
+
+  const pos = features.musicPlayerPosition || 'bottom-right';
+  const custom = features.musicCustomPosition;
+
+  player.classList.remove('pos-bottom-right', 'pos-bottom-left', 'pos-top-right', 'pos-top-left', 'pos-center-right', 'pos-center-left', 'pos-custom');
+  if (pos === 'custom' && custom && typeof custom.x === 'number' && typeof custom.y === 'number') {
+    player.classList.add('pos-custom');
+    const safeW = window.innerWidth - player.offsetWidth - 24;
+    const safeH = window.innerHeight - player.offsetHeight - 24;
+    const initX = 12 + custom.x * Math.max(0, safeW);
+    const initY = 12 + custom.y * Math.max(0, safeH);
+    player.style.left = `${Math.round(initX)}px`;
+    player.style.top = `${Math.round(initY)}px`;
+    player.style.right = 'auto';
+    player.style.bottom = 'auto';
+  } else {
+    player.classList.add(`pos-${pos}`);
+  }
+
+  let isDragging = false;
+  let startX = 0, startY = 0;
+  let elemLeft = 0, elemTop = 0;
+
+  const onPointerDown = (e) => {
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('a') || e.target.closest('iframe')) {
+      return;
+    }
+    const rect = player.getBoundingClientRect();
+    isDragging = true;
+    startX = e.clientX || 0;
+    startY = e.clientY || 0;
+    elemLeft = rect.left;
+    elemTop = rect.top;
+
+    player.classList.add('is-dragging');
+    player.style.position = 'fixed';
+    player.style.left = `${elemLeft}px`;
+    player.style.top = `${elemTop}px`;
+    player.style.right = 'auto';
+    player.style.bottom = 'auto';
+
+    try {
+      player.setPointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  const onPointerMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.clientX || 0;
+    const clientY = e.clientY || 0;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+
+    const margin = window.innerWidth <= 600 ? 12 : 16;
+    const maxLeft = window.innerWidth - player.offsetWidth - margin;
+    const maxTop = window.innerHeight - player.offsetHeight - margin;
+
+    const newLeft = Math.max(margin, Math.min(maxLeft, elemLeft + dx));
+    const newTop = Math.max(margin, Math.min(maxTop, elemTop + dy));
+
+    player.style.left = `${newLeft}px`;
+    player.style.top = `${newTop}px`;
+  };
+
+  const onPointerUp = (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    player.classList.remove('is-dragging');
+    try {
+      player.releasePointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  player.addEventListener('pointerdown', onPointerDown);
+  player.addEventListener('pointermove', onPointerMove);
+  player.addEventListener('pointerup', onPointerUp);
+  player.addEventListener('pointercancel', onPointerUp);
 }
 
 function showAutoplayBanner() {
@@ -741,6 +885,8 @@ function render() {
   if (state.screen === "decline") content = declineScreen();
   app.innerHTML = shell(content);
   bind();
+  initDraggableMusicPlayer();
+  updateMusicUI();
   if (state.screen === "analysis")
     requestAnimationFrame(() =>
       document

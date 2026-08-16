@@ -607,6 +607,135 @@ test('PHASE B: Advanced Music Experience presets, volume, and playback payload',
   assert.equal(delRes.status, 200);
 });
 
+test('MUSIC PLAYER 2.0: Multi-Track, Start/End Trimming, Draggable Player, Custom Position & Playback Modes', async () => {
+  const email = `music20_${Date.now()}@example.com`;
+  const username = `music20_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  const invRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Noah', recipientName: 'Allie' })
+  });
+  const inv = await invRes.json();
+
+  // 1. Add first track with startTime and endTime trimming
+  const track1Res = await client(`/api/invitations/${inv.id}/tracks`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      title: 'Our First Dance 💃',
+      artist: 'Romantic Strings',
+      mood: 'romantic',
+      url: 'preset:acoustic',
+      duration: 180,
+      startTime: 10,
+      endTime: 120
+    })
+  });
+  assert.equal(track1Res.status, 201);
+  const track1Data = await track1Res.json();
+  assert.equal(track1Data.song.name, 'Our First Dance 💃');
+  assert.equal(track1Data.song.startTime, 10);
+  assert.equal(track1Data.song.endTime, 120);
+  assert.equal(track1Data.song.duration, 180);
+
+  // 2. Reject invalid trimming (startTime >= endTime)
+  const invalidTrimmingRes = await client(`/api/invitations/${inv.id}/tracks`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      title: 'Invalid Track',
+      url: 'preset:piano',
+      duration: 100,
+      startTime: 60,
+      endTime: 30
+    })
+  });
+  assert.equal(invalidTrimmingRes.status, 400, 'Invalid startTime >= endTime must be rejected with 400');
+  const invalidJson = await invalidTrimmingRes.json();
+  assert.ok(invalidJson.error.includes('Start time must be less than end time'));
+
+  // 3. Reject trimming where endTime exceeds track duration
+  const exceedDurationRes = await client(`/api/invitations/${inv.id}/tracks`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      title: 'Exceed Track',
+      url: 'preset:piano',
+      duration: 50,
+      startTime: 10,
+      endTime: 90
+    })
+  });
+  assert.equal(exceedDurationRes.status, 400, 'endTime > duration must be rejected with 400');
+
+  // 4. Add second track
+  const track2Res = await client(`/api/invitations/${inv.id}/tracks`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      title: 'Midnight Whispers 🌙',
+      artist: 'Lo-Fi Lounge',
+      mood: 'latenight',
+      url: 'preset:lofi',
+      duration: 200,
+      startTime: 0,
+      endTime: null
+    })
+  });
+  assert.equal(track2Res.status, 201);
+
+  // 5. Update configuration with player style, position, custom coordinates, and playback mode
+  const updateConfigRes = await client(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      inviterName: 'Noah',
+      recipientName: 'Allie',
+      title: 'For Allie ❤️',
+      features: {
+        music: true,
+        musicPlayerStyle: 'compact',
+        musicPlayerPosition: 'custom',
+        musicCustomPosition: { x: 0.85, y: 0.75 },
+        musicPlaybackMode: 'loop-playlist',
+        musicVolume: 60
+      }
+    })
+  });
+  assert.equal(updateConfigRes.status, 200);
+
+  // 6. Verify GET /api/invitations/:id returns normalized musicConfig
+  const getInvRes = await client(`/api/invitations/${inv.id}`);
+  assert.equal(getInvRes.status, 200);
+  const invDTO = await getInvRes.json();
+  assert.ok(invDTO.features.musicConfig, 'features.musicConfig must exist in DTO');
+  assert.equal(invDTO.features.musicConfig.tracks.length, 2, 'Should contain 2 tracks');
+  assert.equal(invDTO.features.musicConfig.playerStyle, 'compact');
+  assert.equal(invDTO.features.musicConfig.playerPosition, 'custom');
+  assert.equal(invDTO.features.musicConfig.customPosition.x, 0.85);
+  assert.equal(invDTO.features.musicConfig.customPosition.y, 0.75);
+  assert.equal(invDTO.features.musicConfig.playbackMode, 'loop-playlist');
+
+  // 7. Verify public invitation preview loads with compact style & custom position in payload
+  const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
+  const previewHtml = await previewRes.text();
+  assert.ok(previewHtml.includes('compact'), 'Preview payload must include compact music player style');
+  assert.ok(previewHtml.includes('musicConfig'), 'Preview payload must include normalized musicConfig');
+
+  // 8. Delete individual track
+  const delTrackRes = await client(`/api/invitations/${inv.id}/tracks/${track1Data.song.id}`, {
+    method: 'DELETE',
+    headers: { 'x-csrf-token': userCsrf }
+  });
+  assert.equal(delTrackRes.status, 200);
+  const delTrackData = await delTrackRes.json();
+  assert.equal(delTrackData.tracks.length, 1);
+  assert.equal(delTrackData.tracks[0].title, 'Midnight Whispers 🌙');
+});
+
 test('PHASE C: Our Memories timeline, scrapbook items, and preview rendering', async () => {
   const email = `memories_user_${Date.now()}@example.com`;
   const username = `memories_${Date.now()}`;

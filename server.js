@@ -293,10 +293,130 @@ function normalizeInvitationContent(rawContent) {
 
   return { screens, moods };
 }
+function normalizeMusicConfig(rawFeatures) {
+  const f = (rawFeatures && typeof rawFeatures === 'object') ? { ...rawFeatures } : {};
+  let tracks = [];
+
+  if (Array.isArray(f.tracks) && f.tracks.length > 0) {
+    tracks = f.tracks.map((t, idx) => ({
+      id: t.id || `track_${idx + 1}`,
+      sourceType: t.sourceType || (t.url?.startsWith('spotify:') || t.url?.includes('spotify.com') ? 'spotify' : (t.url?.startsWith('preset:') ? 'preset' : 'upload')),
+      title: t.title || t.name || 'Selected Track',
+      artist: t.artist || '',
+      mood: t.mood || 'romantic',
+      url: t.url || '',
+      spotifyUrl: t.spotifyUrl || (t.url?.includes('spotify.com') ? t.url : ''),
+      embedUrl: t.embedUrl || '',
+      startTime: Math.max(0, Number(t.startTime) || 0),
+      endTime: (t.endTime !== undefined && t.endTime !== null && Number(t.endTime) > 0) ? Number(t.endTime) : null,
+      duration: Math.max(0, Number(t.duration) || 0),
+      volume: (t.volume !== undefined && t.volume !== null) ? Number(t.volume) : 100,
+      enabled: t.enabled !== false,
+      default: Boolean(t.default)
+    }));
+  } else if (Array.isArray(f.playlist) && f.playlist.length > 0) {
+    tracks = f.playlist.map((p, idx) => ({
+      id: p.id || `track_${idx + 1}`,
+      sourceType: p.sourceType || (p.url?.startsWith('spotify:') || p.url?.includes('spotify.com') ? 'spotify' : (p.url?.startsWith('preset:') ? 'preset' : 'upload')),
+      title: p.name || p.title || 'Selected Track',
+      artist: p.artist || '',
+      mood: p.mood || 'romantic',
+      url: p.url || '',
+      spotifyUrl: p.spotifyUrl || (p.url?.includes('spotify.com') ? p.url : ''),
+      embedUrl: p.embedUrl || '',
+      startTime: Math.max(0, Number(p.startTime || f.musicStartOffset) || 0),
+      endTime: (p.endTime !== undefined && p.endTime !== null && Number(p.endTime) > 0) ? Number(p.endTime) : null,
+      duration: Math.max(0, Number(p.duration) || 0),
+      volume: (p.volume !== undefined && p.volume !== null) ? Number(p.volume) : 100,
+      enabled: p.enabled !== false,
+      default: Boolean(p.default)
+    }));
+  } else if (f.spotify?.embedUrl || f.spotify?.url) {
+    tracks = [{
+      id: 'spotify_default',
+      sourceType: 'spotify',
+      title: 'Spotify Track',
+      artist: '',
+      mood: 'romantic',
+      url: f.spotify.url || '',
+      spotifyUrl: f.spotify.url || '',
+      embedUrl: f.spotify.embedUrl || '',
+      startTime: 0,
+      endTime: null,
+      duration: 0,
+      volume: 100,
+      enabled: true,
+      default: true
+    }];
+  } else if (f.musicUrl) {
+    tracks = [{
+      id: 'track_1',
+      sourceType: f.musicUrl.startsWith('preset:') ? 'preset' : 'upload',
+      title: f.musicName || 'Romantic soundtrack',
+      artist: '',
+      mood: f.musicMood || 'romantic',
+      url: f.musicUrl,
+      spotifyUrl: '',
+      embedUrl: '',
+      startTime: Math.max(0, Number(f.musicStartOffset) || 0),
+      endTime: null,
+      duration: 0,
+      volume: 100,
+      enabled: true,
+      default: true
+    }];
+  }
+
+  if (tracks.length > 0 && !tracks.some(t => t.default)) {
+    tracks[0].default = true;
+  }
+
+  const musicModel = {
+    enabled: Boolean(f.music),
+    sourceType: f.musicSource || (f.spotify?.url ? 'spotify' : 'upload'),
+    autoplay: Boolean(f.musicAutoplay),
+    volume: f.musicVolume !== undefined ? Number(f.musicVolume) : 35,
+    playerStyle: f.musicPlayerStyle || 'romantic',
+    playerPosition: f.musicPlayerPosition || 'bottom-right',
+    customPosition: f.musicCustomPosition || null,
+    playbackMode: f.musicPlaybackMode || 'playlist',
+    tracks: tracks
+  };
+
+  f.musicConfig = musicModel;
+  f.tracks = tracks;
+  f.playlist = tracks.map(t => ({
+    id: t.id,
+    name: t.title,
+    artist: t.artist,
+    mood: t.mood,
+    url: t.url,
+    startTime: t.startTime,
+    endTime: t.endTime,
+    duration: t.duration,
+    enabled: t.enabled,
+    default: t.default
+  }));
+  f.musicPlayerPosition = musicModel.playerPosition;
+  f.musicCustomPosition = musicModel.customPosition;
+  f.musicPlaybackMode = musicModel.playbackMode;
+
+  const defaultTrack = tracks.find(t => t.default) || tracks[0];
+  if (defaultTrack) {
+    f.musicUrl = defaultTrack.url;
+    f.musicName = defaultTrack.title;
+    f.musicStartOffset = defaultTrack.startTime;
+  }
+
+  return f;
+}
+
 function invitationDTO(row) {
   const rawContent = json(row.content_config_json);
   const normalizedContent = normalizeInvitationContent(rawContent);
-  return { id: row.id, token: row.public_token, templateKey: row.template_key, inviterName: row.inviter_name, recipientName: row.recipient_name, whatsappNumber: row.whatsapp_number || '', title: row.title, status: row.status, theme: json(row.theme_config_json), content: normalizedContent, features: json(row.feature_config_json), createdAt: row.created_at, updatedAt: row.updated_at, publishedAt: row.published_at };
+  const rawFeatures = json(row.feature_config_json);
+  const normalizedFeatures = normalizeMusicConfig(rawFeatures);
+  return { id: row.id, token: row.public_token, templateKey: row.template_key, inviterName: row.inviter_name, recipientName: row.recipient_name, whatsappNumber: row.whatsapp_number || '', title: row.title, status: row.status, theme: json(row.theme_config_json), content: normalizedContent, features: normalizedFeatures, createdAt: row.created_at, updatedAt: row.updated_at, publishedAt: row.published_at };
 }
 async function page(title, body, req, script = '') {
   const user = req.session?.userId ? await db.prepare('SELECT username, role FROM users WHERE id=?').get(req.session.userId) : null;
@@ -744,6 +864,9 @@ app.put('/api/invitations/:id', requireUser, requireCsrf, async (req, res) => {
   const storedFeatures = json(row.feature_config_json);
   safeFeatures.musicUrl = ('musicUrl' in features) ? (features.musicUrl || null) : (storedFeatures.musicUrl || null);
   safeFeatures.musicName = ('musicName' in features) ? (features.musicName || null) : (storedFeatures.musicName || null);
+  safeFeatures.playlist = ('playlist' in features && Array.isArray(features.playlist)) ? features.playlist.slice(0, 10).map(t => sanitizeObject(t, 5000000, 2)) : (storedFeatures.playlist || []);
+  safeFeatures.tracks = safeFeatures.playlist;
+  safeFeatures.spotify = ('spotify' in features) ? features.spotify : (storedFeatures.spotify || null);
   safeFeatures.voiceNoteUrl = ('voiceNoteUrl' in features) ? (features.voiceNoteUrl || null) : (storedFeatures.voiceNoteUrl || null);
   safeFeatures.voiceNoteName = ('voiceNoteName' in features) ? (features.voiceNoteName || null) : (storedFeatures.voiceNoteName || null);
   safeFeatures.memoriesList = Array.isArray(features.memoriesList) ? features.memoriesList.slice(0, 12).map(m => sanitizeObject(m, 400, 2)) : (storedFeatures.memoriesList || []);
@@ -889,72 +1012,133 @@ app.delete('/api/invitations/:id/spotify', requireUser, requireCsrf, async (req,
   res.json({ ok: true });
 });
 
-app.post('/api/invitations/:id/playlist/song', requireUser, requireCsrf, async (req, res) => {
+function validateTrackTimestamps(startTime, endTime, duration) {
+  const start = Number(startTime) || 0;
+  if (start < 0) return 'Start time cannot be negative.';
+  if (endTime !== undefined && endTime !== null && endTime !== '') {
+    const end = Number(endTime);
+    if (end <= start) return 'Start time must be less than end time.';
+    if (duration && Number(duration) > 0 && end > Number(duration)) {
+      return 'End time cannot exceed track duration.';
+    }
+  }
+  return null;
+}
+
+const addTrackHandler = async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId);
   if (!row) return res.status(404).json({ error: 'Not found.' });
-  const name = clean(req.body?.name, 100) || 'Favorite Song';
+  const name = clean(req.body?.name || req.body?.title, 100) || 'Favorite Song';
   const artist = clean(req.body?.artist, 80) || '';
   const mood = clean(req.body?.mood, 30) || 'romantic';
   const url = clean(req.body?.url, 5000000) || '';
-  if (!url || (!url.startsWith('data:audio/') && !url.startsWith('/media/') && !url.startsWith('preset:'))) {
-    return res.status(400).json({ error: 'Valid audio URL or preset required.' });
+  const startTime = Math.max(0, Number(req.body?.startTime) || 0);
+  const endTime = (req.body?.endTime !== undefined && req.body?.endTime !== null && req.body?.endTime !== '') ? Number(req.body.endTime) : null;
+  const duration = Math.max(0, Number(req.body?.duration) || 0);
+
+  const timeErr = validateTrackTimestamps(startTime, endTime, duration);
+  if (timeErr) return res.status(400).json({ error: timeErr });
+
+  if (!url || (!url.startsWith('data:audio/') && !url.startsWith('/media/') && !url.startsWith('preset:') && !url.startsWith('https://open.spotify.com') && !url.startsWith('spotify:'))) {
+    return res.status(400).json({ error: 'Valid audio URL, Spotify link, or preset required.' });
   }
   const features = json(row.feature_config_json);
   if (!Array.isArray(features.playlist)) features.playlist = [];
   if (features.playlist.length >= 10) {
     return res.status(400).json({ error: 'Maximum 10 playlist songs allowed.' });
   }
-  const newSong = {
-    id: `song_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+  const isSpotify = url.startsWith('https://open.spotify.com') || url.startsWith('spotify:');
+  let spotifyData = null;
+  if (isSpotify) {
+    spotifyData = parseSpotifyUrl(url);
+  }
+
+  const newTrack = {
+    id: `track_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
     name,
+    title: name,
     artist,
     mood,
-    url,
+    url: isSpotify && spotifyData ? spotifyData.originalUrl : url,
+    sourceType: isSpotify ? 'spotify' : (url.startsWith('preset:') ? 'preset' : 'upload'),
+    spotifyUrl: isSpotify && spotifyData ? spotifyData.originalUrl : '',
+    embedUrl: isSpotify && spotifyData ? spotifyData.embedUrl : '',
+    startTime,
+    endTime,
+    duration,
     enabled: true,
     default: features.playlist.length === 0
   };
-  features.playlist.push(newSong);
+  features.playlist.push(newTrack);
+  features.tracks = features.playlist;
   features.music = true;
-  features.musicSource = 'upload';
-  if (newSong.default) {
-    features.musicUrl = newSong.url;
-    features.musicName = newSong.name;
+  if (newTrack.default) {
+    features.musicUrl = newTrack.url;
+    features.musicName = newTrack.name;
+    features.musicStartOffset = newTrack.startTime;
   }
   await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
-  res.status(201).json({ ok: true, song: newSong, playlist: features.playlist });
-});
+  res.status(201).json({ ok: true, song: newTrack, track: newTrack, playlist: features.playlist, tracks: features.tracks });
+};
 
-app.put('/api/invitations/:id/playlist', requireUser, requireCsrf, async (req, res) => {
+app.post('/api/invitations/:id/playlist/song', requireUser, requireCsrf, addTrackHandler);
+app.post('/api/invitations/:id/tracks', requireUser, requireCsrf, addTrackHandler);
+
+const updateTracksHandler = async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId);
   if (!row) return res.status(404).json({ error: 'Not found.' });
-  const playlist = Array.isArray(req.body?.playlist) ? req.body.playlist.slice(0, 10) : [];
+  const rawList = Array.isArray(req.body?.tracks) ? req.body.tracks : (Array.isArray(req.body?.playlist) ? req.body.playlist : []);
+  const playlist = rawList.slice(0, 10);
+  
+  for (const t of playlist) {
+    const timeErr = validateTrackTimestamps(t.startTime, t.endTime, t.duration);
+    if (timeErr) return res.status(400).json({ error: `Track "${t.name || t.title || 'Song'}": ${timeErr}` });
+  }
+
   const features = json(row.feature_config_json);
-  features.playlist = playlist.map(s => ({
-    id: clean(s.id, 60) || `song_${Date.now()}`,
-    name: clean(s.name, 100) || 'Favorite Song',
-    artist: clean(s.artist, 80) || '',
-    mood: clean(s.mood, 30) || 'romantic',
-    url: clean(s.url, 5000000) || '',
-    enabled: s.enabled !== false,
-    default: Boolean(s.default)
-  }));
+  features.playlist = playlist.map(s => {
+    const isSpotify = (s.url && (s.url.startsWith('https://open.spotify.com') || s.url.startsWith('spotify:')));
+    return {
+      id: clean(s.id, 60) || `track_${Date.now()}`,
+      name: clean(s.name || s.title, 100) || 'Favorite Song',
+      title: clean(s.title || s.name, 100) || 'Favorite Song',
+      artist: clean(s.artist, 80) || '',
+      mood: clean(s.mood, 30) || 'romantic',
+      url: clean(s.url, 5000000) || '',
+      sourceType: s.sourceType || (isSpotify ? 'spotify' : (s.url?.startsWith('preset:') ? 'preset' : 'upload')),
+      spotifyUrl: clean(s.spotifyUrl || '', 300),
+      embedUrl: clean(s.embedUrl || '', 300),
+      startTime: Math.max(0, Number(s.startTime) || 0),
+      endTime: (s.endTime !== undefined && s.endTime !== null && s.endTime !== '') ? Number(s.endTime) : null,
+      duration: Math.max(0, Number(s.duration) || 0),
+      volume: (s.volume !== undefined && s.volume !== null) ? Number(s.volume) : 100,
+      enabled: s.enabled !== false,
+      default: Boolean(s.default)
+    };
+  });
+  features.tracks = features.playlist;
   const defaultSong = features.playlist.find(s => s.default) || features.playlist[0];
   if (defaultSong) {
     features.musicUrl = defaultSong.url;
     features.musicName = defaultSong.name;
+    features.musicStartOffset = defaultSong.startTime;
   }
   await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
-  res.json({ ok: true, playlist: features.playlist });
-});
+  res.json({ ok: true, playlist: features.playlist, tracks: features.tracks });
+};
 
-app.delete('/api/invitations/:id/playlist/:songId', requireUser, requireCsrf, async (req, res) => {
+app.put('/api/invitations/:id/playlist', requireUser, requireCsrf, updateTracksHandler);
+app.put('/api/invitations/:id/tracks', requireUser, requireCsrf, updateTracksHandler);
+
+const deleteTrackHandler = async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId);
   if (!row) return res.status(404).json({ error: 'Not found.' });
-  const songId = clean(req.params.songId, 60);
+  const trackId = clean(req.params.trackId || req.params.songId, 60);
   const features = json(row.feature_config_json);
   if (Array.isArray(features.playlist)) {
-    const deleted = features.playlist.find(s => s.id === songId);
-    features.playlist = features.playlist.filter(s => s.id !== songId);
+    const deleted = features.playlist.find(s => s.id === trackId);
+    features.playlist = features.playlist.filter(s => s.id !== trackId);
+    features.tracks = features.playlist;
     if (deleted && deleted.url) {
       await removeUnusedMusic(deleted.url, row.id);
     }
@@ -963,14 +1147,18 @@ app.delete('/api/invitations/:id/playlist/:songId', requireUser, requireCsrf, as
     const active = features.playlist.find(s => s.default) || features.playlist[0];
     features.musicUrl = active.url;
     features.musicName = active.name;
+    features.musicStartOffset = active.startTime;
   } else {
     features.musicUrl = null;
     features.musicName = null;
     if (features.musicSource !== 'spotify') features.music = false;
   }
   await db.prepare('UPDATE invitations SET feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?').run(JSON.stringify(features), now(), row.id, row.owner_user_id);
-  res.json({ ok: true, playlist: features.playlist || [] });
-});
+  res.json({ ok: true, playlist: features.playlist || [], tracks: features.tracks || [] });
+};
+
+app.delete('/api/invitations/:id/playlist/:songId', requireUser, requireCsrf, deleteTrackHandler);
+app.delete('/api/invitations/:id/tracks/:trackId', requireUser, requireCsrf, deleteTrackHandler);
 
 function detectImageType(req, buffer) {
   if (!buffer || buffer.length < 12) return null;
