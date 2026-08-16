@@ -489,13 +489,12 @@ function render() {
         .querySelectorAll(".bar i")
         .forEach((el) => (el.style.width = el.dataset.width)),
     );
-  if (
-    state.screen === "yes" &&
-    features.confetti &&
-    !sessionStorage.getItem(`hl-confetti-${data.token}`)
-  ) {
-    confetti();
-    sessionStorage.setItem(`hl-confetti-${data.token}`, "1");
+  if (state.screen === "yes") {
+    playCelebrationChime();
+    if (features.confetti && !sessionStorage.getItem(`hl-confetti-${data.token}`)) {
+      confetti();
+      sessionStorage.setItem(`hl-confetti-${data.token}`, "1");
+    }
   }
 }
 function memoriesScreen() {
@@ -1301,22 +1300,45 @@ function toast(message) {
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 3200);
 }
+function playCelebrationChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const notes = [523.25, 659.25, 783.99, 987.77, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime + idx * 0.09;
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.3);
+    });
+  } catch {}
+}
+
 function confetti() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const emojis = ["💖", "✨", "🎉", "💕", "✦", "🌸", "🧸", "❤️"];
-  const count = window.innerWidth < 600 ? 22 : 36;
+  const emojis = ["💖", "✨", "🎉", "💕", "✦", "🌸", "🧸", "❤️", "🥂", "💫"];
+  const count = window.innerWidth < 600 ? 32 : 54;
   for (let i = 0; i < count; i++) {
     const x = document.createElement("i");
     x.className = `confetti-particle p-${i % 4}`;
     const left = (Math.random() * 96 + 2).toFixed(1);
-    const duration = (2.4 + Math.random() * 2.2).toFixed(2);
-    const delay = (Math.random() * 0.8).toFixed(2);
+    const duration = (2.2 + Math.random() * 2.4).toFixed(2);
+    const delay = (Math.random() * 0.9).toFixed(2);
     const rotation = (Math.random() * 360).toFixed(0);
-    const size = (0.9 + Math.random() * 0.7).toFixed(2);
+    const size = (0.85 + Math.random() * 0.85).toFixed(2);
     x.style.cssText = `--x:${left}vw;--d:${duration}s;--delay:${delay}s;--r:${rotation}deg;--s:${size};`;
     x.textContent = emojis[i % emojis.length];
     document.body.append(x);
-    setTimeout(() => x.remove(), 4800);
+    setTimeout(() => x.remove(), 5200);
   }
 }
 initialize();
