@@ -1287,25 +1287,35 @@ h2 {
 }
 .date-field { display: grid; gap: 8px; text-align: left; }
 .picker-label { display: flex; align-items: center; justify-content: space-between; }
-.picker-label span, .time-field legend { font-size: 0.8rem; font-weight: 700; color: var(--text); }
-.picker-label b { color: var(--primary); font-size: 0.72rem; }
-.calendar { padding: 10px; border: 1px solid #e8e3dc; border-radius: 16px; background: #ffffff; }
-.calendar header { display: grid; grid-template-columns: 32px 1fr 32px; align-items: center; margin-bottom: 6px; text-align: center; }
-.calendar header strong { font-size: 0.84rem; }
-.calendar header button { display: grid; place-items: center; width: 30px; height: 30px; border: none; border-radius: 8px; background: color-mix(in srgb, var(--secondary) 35%, white); font-size: 1.1rem; cursor: pointer; }
+.picker-label span, .time-field legend, .location-field legend { font-size: 0.84rem; font-weight: 700; color: var(--text); }
+.picker-label b { color: var(--primary); font-size: 0.76rem; }
+.calendar { padding: 12px; border: 1.5px solid color-mix(in srgb, var(--primary) 20%, #e8e3dc); border-radius: 18px; background: #ffffff; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03); }
+.calendar header { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-bottom: 8px; text-align: center; }
+.calendar header strong { font-size: 0.9rem; font-weight: 700; color: var(--heading-color, var(--text)); }
+.calendar header button { display: grid; place-items: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; border: none; border-radius: 12px; background: color-mix(in srgb, var(--secondary) 35%, white); font-size: 1.25rem; cursor: pointer; touch-action: manipulation; }
 .weekdays, .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.weekdays span { padding: 4px 0; color: var(--muted); font-size: 0.6rem; font-weight: 700; text-align: center; }
-.calendar-days button { display: grid; place-items: center; aspect-ratio: 1; border: none; border-radius: 8px; background: transparent; color: var(--text); font: 600 0.72rem var(--body); cursor: pointer; }
+.weekdays span { padding: 4px 0; color: var(--muted); font-size: 0.64rem; font-weight: 700; text-align: center; }
+.calendar-days button { display: grid; place-items: center; min-height: 44px; min-width: 36px; border: none; border-radius: 10px; background: transparent; color: var(--text); font: 600 0.84rem var(--body); cursor: pointer; touch-action: manipulation; }
 .calendar-days button:hover { background: color-mix(in srgb, var(--primary) 12%, white); color: var(--primary); }
-.calendar-days button.today { box-shadow: inset 0 0 0 1px var(--primary); color: var(--primary); }
-.calendar-days button.selected { background: var(--primary); color: #fff; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent); }
-.calendar-days button:disabled { color: #d5cfca; cursor: default; }
+.calendar-days button.today { box-shadow: inset 0 0 0 1.5px var(--primary); color: var(--primary); font-weight: 800; }
+.calendar-days button.selected { background: var(--primary); color: #fff; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent); }
+.calendar-days button:disabled { color: #d5cfca; cursor: default; opacity: 0.45; }
 
-.time-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.time-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); gap: 8px; }
 .time-option input { position: absolute; opacity: 0; pointer-events: none; }
-.time-option span { display: grid; place-items: center; min-height: 36px; padding: 6px 4px; border: 1px solid #e8e3dc; border-radius: 10px; background: #fff; color: var(--muted); font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: 0.15s ease; }
+.time-option span { display: grid; place-items: center; min-height: 44px; padding: 8px 6px; border: 1.5px solid #e8e3dc; border-radius: 12px; background: #fff; color: var(--text); font-size: 0.78rem; font-weight: 700; cursor: pointer; touch-action: manipulation; transition: 0.15s ease; }
 .time-option span:hover { border-color: var(--primary); color: var(--primary); }
-.time-option input:checked + span { border-color: var(--primary); background: var(--primary); color: #fff; }
+.time-option input:checked + span { border-color: var(--primary); background: var(--primary); color: #fff; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent); }
+
+.location-options { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.location-option-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 48px; border: 1.5px solid #e8e3dc; border-radius: 14px; background: #ffffff; cursor: pointer; text-align: left; transition: all 0.15s ease; touch-action: manipulation; }
+.location-option-card input { position: absolute; opacity: 0; pointer-events: none; }
+.location-radio-circle { width: 20px; height: 20px; min-width: 20px; border-radius: 50%; border: 2px solid #ccc; display: grid; place-items: center; transition: all 0.15s ease; }
+.location-option-card input:checked + .location-radio-circle { border-color: var(--primary); background: var(--primary); box-shadow: inset 0 0 0 3px #ffffff; }
+.location-option-card:has(input:checked) { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, #ffffff); }
+.location-text { display: flex; flex-direction: column; gap: 2px; }
+.location-text b { font-size: 0.88rem; color: var(--text); }
+.location-text small { font-size: 0.74rem; color: var(--muted); }
 
 /* --------------------------------------------------------------------------
    Personal Voice Note Player

@@ -1276,7 +1276,13 @@ app.post('/api/invitations/:token/events', publicLimit, async (req,res) => {
   const updates={};
   if(eventName==='nickname_selected')updates.selected_nickname=option;
   if(eventName==='mood_selected'||eventName==='mood_changed')updates.selected_mood=option;
-  if(eventName==='availability_selected'){updates.selected_availability=option;updates.selected_date=clean(req.body.selectedDate,30)||null;}
+  if(eventName==='availability_selected'){
+    const selectedDate = clean(req.body.selectedDate, 40);
+    if (selectedDate && !Number.isNaN(new Date(selectedDate).getTime())) {
+      updates.selected_date = selectedDate;
+    }
+    updates.selected_availability = option;
+  }
   if(eventName==='final_yes')updates.final_result='YES ❤️';
   if(eventName==='best_friend_result')updates.final_result='BEST FRIEND 🤝';
   if(eventName==='completion')updates.completed=1;

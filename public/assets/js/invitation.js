@@ -819,9 +819,58 @@ function yesScreen() {
     </div>
   `;
 }
+function locationOptions() {
+  const customLocs = data.content?.locations || [
+    { title: "Surprise me 😏", desc: "You pick the spot, I’ll just show up and look cute." },
+    { title: "Cozy Dinner 🍝", desc: "Italian or candlelit fine dining." },
+    { title: "Cafe & Dessert ☕🍰", desc: "Specialty coffee, matcha, and cheesecake." },
+    { title: "Fun Activity / Outdoor 🎡", desc: "Arcade, bowling, or sunset walk." }
+  ];
+
+  return customLocs.map((loc, idx) => {
+    const title = typeof loc === 'string' ? loc : loc.title;
+    const isSelected = state.selectedLocation ? (state.selectedLocation === title) : (idx === 0);
+    return `
+      <label class="location-option-card ${isSelected ? 'selected' : ''}">
+        <input type="radio" name="date-location" value="${esc(title)}" ${isSelected ? 'checked' : ''} data-location>
+        <span class="location-radio-circle"></span>
+        <div class="location-text">
+          <b>${esc(title)}</b>
+          ${loc.desc ? `<small>${esc(loc.desc)}</small>` : ''}
+        </div>
+      </label>
+    `;
+  }).join('');
+}
 function availabilityScreen() {
   const s = screens.availability;
-  return `${copy(s)}<div id="date-pick" class="date-time-pick"><section class="date-field"><div class="picker-label"><span>📅 Pick the date</span><b>${state.selectedDate ? formatDate(state.selectedDate) : "Choose a day"}</b></div>${calendar()}</section><fieldset class="time-field"><legend>⏰ Pick the time</legend><div class="time-options">${timeOptions()}</div></fieldset><button class="choice primary" data-action="submitDate">Confirm date & time ❤️</button></div>`;
+  return `
+    ${copy(s)}
+    <div id="date-pick" class="date-time-pick">
+      <section class="date-field">
+        <div class="picker-label">
+          <span>📅 Pick a date ❤️</span>
+          <b>${state.selectedDate ? formatDate(state.selectedDate) : "Choose a day"}</b>
+        </div>
+        ${calendar()}
+      </section>
+      <fieldset class="time-field" style="margin-top:14px;">
+        <legend style="margin-bottom:8px;font-size:0.84rem;font-weight:700;color:var(--heading-color, var(--text));">⏰ What time works best?</legend>
+        <div class="time-options">
+          ${timeOptions()}
+        </div>
+      </fieldset>
+      <fieldset class="location-field" style="margin-top:14px;">
+        <legend style="margin-bottom:8px;font-size:0.84rem;font-weight:700;color:var(--heading-color, var(--text));">📍 Where should we go?</legend>
+        <div class="location-options">
+          ${locationOptions()}
+        </div>
+      </fieldset>
+      <button class="choice primary" data-action="submitDate" style="margin-top:18px;min-height:48px;">
+        Confirm Date & Location ❤️
+      </button>
+    </div>
+  `;
 }
 function minDate() {
   const date = new Date();
@@ -851,7 +900,7 @@ function timeOptions() {
   return Array.from({ length: 11 }, (_, i) => {
     const hour = i + 10;
     const label = `${hour > 12 ? hour - 12 : hour}:00 ${hour < 12 ? "AM" : "PM"}`;
-    const value = `${String(hour).padStart(2, "0")}:00`;
+    const value = `${String(hour).padStart(2, "0")}:00:00`;
     return `<label class="time-option"><input data-time type="radio" name="date-time" value="${value}" ${state.selectedTime === value ? "checked" : ""}><span>${label}</span></label>`;
   }).join("");
 }

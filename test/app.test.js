@@ -880,6 +880,13 @@ test('PHASE G: Real Date Selection Flow, Calendar Sync and ICS export', async ()
   const dateNotif = notifData.notifications.find(n => n.title.includes('Date & Time'));
   assert.ok(dateNotif, 'Should generate Date & Time notification for inviter');
   assert.ok(dateNotif.message.includes('Oct 15'), 'Notification should mention selected date');
+
+  // 4. Verify analytics reports session with chosen date
+  const analyticsRes = await client(`/api/invitations/${inv.id}/analytics`);
+  const analyticsData = await analyticsRes.json();
+  const session = analyticsData.sessions.find(s => s.visitor_id === visitorId);
+  assert.ok(session, 'Session should exist in analytics');
+  assert.equal(session.selected_date, futureDate);
 });
 
 test('PHASE H: Sharing, QR Code generator, and Dashboard Quick Actions', async () => {
