@@ -187,6 +187,17 @@ function setupVoiceNote() {
     updateVoiceUI();
     restoreMusic();
   });
+  voiceAudio.addEventListener("timeupdate", updateVoiceUI);
+  voiceAudio.addEventListener("loadedmetadata", updateVoiceUI);
+  voiceAudio.addEventListener("waiting", () => {
+    const status = document.querySelector("#voice-note-player .voice-status");
+    if (status) status.textContent = "Buffering audio…";
+  });
+  voiceAudio.addEventListener("error", () => {
+    state.voicePlaying = false;
+    const status = document.querySelector("#voice-note-player .voice-status");
+    if (status) status.textContent = "Audio unavailable";
+  });
 }
 function duckMusic() {
   if (!musicAudio) return;
@@ -202,9 +213,16 @@ function updateVoiceUI() {
   if (!card) return;
   card.classList.toggle("playing", state.voicePlaying);
   const btn = card.querySelector(".voice-play-btn");
-  if (btn) btn.textContent = state.voicePlaying ? "⏸" : "▶";
+  if (btn) {
+    btn.textContent = state.voicePlaying ? "⏸" : "▶";
+    btn.setAttribute("aria-label", state.voicePlaying ? "Pause voice note" : "Play voice note");
+  }
   const status = card.querySelector(".voice-status");
-  if (status) status.textContent = state.voicePlaying ? "Playing message…" : "Tap to listen";
+  if (status && voiceAudio) {
+    const cur = clock(voiceAudio.currentTime);
+    const dur = voiceAudio.duration ? clock(voiceAudio.duration) : "0:00";
+    status.textContent = state.voicePlaying ? `Playing… ${cur} / ${dur}` : (voiceAudio.currentTime > 0 ? `Paused · ${cur} / ${dur}` : "Tap to listen");
+  }
 }
 function toggleVoiceNote() {
   if (!voiceAudio) return;
@@ -216,7 +234,10 @@ function toggleVoiceNote() {
 }
 function voiceNoteWidget() {
   if (!features.voiceNoteUrl) return "";
-  return `<div class="voice-note-card ${state.voicePlaying ? "playing" : ""}" id="voice-note-player"><button class="voice-play-btn" data-voice="toggle" type="button" aria-label="Play voice note">${state.voicePlaying ? "⏸" : "▶"}</button><div class="voice-meta"><b>🎙️ Voice note from ${esc(data.inviterName)}</b><small class="voice-status">${state.voicePlaying ? "Playing message…" : "Tap to listen"}</small></div><div class="voice-waveform" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></div></div>`;
+  const cur = voiceAudio ? clock(voiceAudio.currentTime) : "0:00";
+  const dur = voiceAudio && voiceAudio.duration ? clock(voiceAudio.duration) : "0:00";
+  const statusText = state.voicePlaying ? `Playing… ${cur} / ${dur}` : "Tap to listen";
+  return `<div class="voice-note-card ${state.voicePlaying ? "playing" : ""}" id="voice-note-player" role="region" aria-label="Voice note player"><button class="voice-play-btn" data-voice="toggle" type="button" aria-label="Play voice note">${state.voicePlaying ? "⏸" : "▶"}</button><div class="voice-meta"><b>🎙️ Voice note from ${esc(data.inviterName)}</b><small class="voice-status">${statusText}</small></div><div class="voice-waveform" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></div></div>`;
 }
 function musicControl() {
   const empty = !musicAudio;
@@ -277,19 +298,32 @@ function updateMusicUI() {
     musicAudio.duration,
   );
 }
+function mascotPackData(pack = "original") {
+  const packs = {
+    original: { yFace: "✦", yName: "Yellow", bFace: "•ᴗ•", bName: "Blue", yBg: "#FFDC00", bBg: "#0074D9" },
+    yellow: { yFace: "✦", yName: "Sunny", bFace: "★", bName: "Goldie", yBg: "#F59E0B", bBg: "#D97706" },
+    blue: { yFace: "•ᴗ•", yName: "Sky", bFace: "•ω•", bName: "Navy", yBg: "#38BDF8", bBg: "#1D4ED8" },
+    pink: { yFace: "ᐡ-ﻌ•ᐡ", yName: "Bunny", bFace: "✿", bName: "Peach", yBg: "#F472B6", bBg: "#E11D48" },
+    bears: { yFace: "ʕ•ᴥ•ʔ", yName: "Honey", bFace: "ʕ·ᴥ·ʔ", bName: "Panda", yBg: "#B45309", bBg: "#374151" },
+    cats: { yFace: "ฅ^•ﻌ•^ฅ", yName: "Mochi", bFace: "(^._.^)", bName: "Luna", yBg: "#FBBF24", bBg: "#8B5CF6" },
+    bunnies: { yFace: "( •_•)", yName: "Pip", bFace: "(>.<)", bName: "Pop", yBg: "#FB7185", bBg: "#A855F7" },
+  };
+  return packs[pack] || packs.original;
+}
 function mascots() {
+  const pack = mascotPackData(features.mascotPack);
   const lines = {
-    thinking: ["Blue says: “Bhai nervous hai 😭”", "Yellow says: “Obviously.”"],
+    thinking: [`${pack.bName} says: “Bhai nervous hai 😭”`, `${pack.yName} says: “Obviously.”`],
     convince: [
-      "Blue says: “Say something impressive!”",
-      "Yellow says: “Usko aata hi nahi 😂”",
+      `${pack.bName} says: “Say something impressive!”`,
+      `${pack.yName} says: “Usko aata hi nahi 😂”`,
     ],
     finalAttempt: [
-      "Blue says: “One last try?”",
-      "Yellow says: “Food mention kar.”",
+      `${pack.bName} says: “One last try?”`,
+      `${pack.yName} says: “Food mention kar.”`,
     ],
   }[state.screen];
-  return `<button class="mascot mascot-yellow" data-tiny aria-label="A cheerful yellow mascot"><span>✦</span><i></i></button><div class="mascot mascot-blue" aria-hidden="true"><span>•ᴗ•</span></div>${lines ? `<div class="mascot-banter" aria-hidden="true"><span>${lines[0]}</span><span>${lines[1]}</span></div>` : ""}`;
+  return `<button class="mascot mascot-yellow" data-tiny style="background:${pack.yBg};" aria-label="A cheerful ${pack.yName} mascot"><span>${pack.yFace}</span><i></i></button><div class="mascot mascot-blue" style="background:${pack.bBg};" aria-hidden="true"><span>${pack.bFace}</span></div>${lines ? `<div class="mascot-banter" aria-hidden="true"><span>${lines[0]}</span><span>${lines[1]}</span></div>` : ""}`;
 }
 function collectibles() {
   return ["✦", "🧸", "★", "●", "〰"]
@@ -504,7 +538,239 @@ function formatDateTime(value) {
   return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 function datePass(title, people, plan, when) {
-  return `<div class="date-pass"><div class="pass-title">✦ ${text(title)} ✦ <small>DATE #001</small></div><div><span>👫</span><b>${text(people)}</b></div><div><span>🍔</span><b>${text(plan)}</b></div><div><span>🗓️</span><b>${text(when)}</b></div><div><span>😎</span><b>Admits: two cute idiots 😂</b></div></div>`;
+  return `<div class="date-pass" id="date-pass-card"><div class="pass-title">✦ ${text(title)} ✦ <small>DATE #001</small></div><div><span>👫</span><b>${text(people)}</b></div><div><span>🗓️</span><b>${text(when)}</b></div><div><span>🍔</span><b>${text(plan)}</b></div><div><span>😎</span><b>Admits: two cute idiots 😂</b></div></div>`;
+}
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+async function generateDateCardCanvas() {
+  const cardWidth = 1080;
+  const cardHeight = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = cardWidth;
+  canvas.height = cardHeight;
+  const ctx = canvas.getContext("2d");
+
+  const bg = theme.background || "#FCFAF6";
+  const primary = theme.primary || "#E6496F";
+  const headingColor = theme.headingColor || "#20191B";
+  const textColor = theme.text || "#282223";
+  const mutedColor = theme.muted || "#70686A";
+  const cardBg = theme.card && theme.card.startsWith("#") ? theme.card.slice(0, 7) : "#FFFFFF";
+  const borderColor = theme.border || "#EADFE1";
+  const accentColor = theme.accent || primary;
+
+  // Background
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, cardWidth, cardHeight);
+
+  // Soft Ambient Glow Circles
+  const grad1 = ctx.createRadialGradient(200, 200, 50, 200, 200, 450);
+  grad1.addColorStop(0, primary + "28");
+  grad1.addColorStop(1, "transparent");
+  ctx.fillStyle = grad1;
+  ctx.beginPath();
+  ctx.arc(200, 200, 450, 0, Math.PI * 2);
+  ctx.fill();
+
+  const grad2 = ctx.createRadialGradient(880, 1150, 50, 880, 1150, 450);
+  grad2.addColorStop(0, accentColor + "28");
+  grad2.addColorStop(1, "transparent");
+  ctx.fillStyle = grad2;
+  ctx.beginPath();
+  ctx.arc(880, 1150, 450, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Outer Ticket Container Card
+  const padX = 80;
+  const padY = 90;
+  const w = cardWidth - padX * 2;
+  const h = cardHeight - padY * 2;
+  const rad = 48;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(40, 20, 30, 0.12)";
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 16;
+  ctx.fillStyle = cardBg;
+  roundRect(ctx, padX, padY, w, h, rad);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 4;
+  roundRect(ctx, padX, padY, w, h, rad);
+  ctx.stroke();
+
+  // Header Pill: DATE CONFIRMED
+  const pillY = padY + 70;
+  ctx.fillStyle = primary + "18";
+  roundRect(ctx, cardWidth / 2 - 170, pillY, 340, 58, 29);
+  ctx.fill();
+  ctx.strokeStyle = primary + "40";
+  ctx.lineWidth = 2;
+  roundRect(ctx, cardWidth / 2 - 170, pillY, 340, 58, 29);
+  ctx.stroke();
+
+  ctx.font = "bold 22px sans-serif";
+  ctx.fillStyle = primary;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("❤️ DATE CONFIRMED ❤️", cardWidth / 2, pillY + 29);
+
+  // Big Title
+  ctx.font = "bold 68px serif";
+  ctx.fillStyle = headingColor;
+  ctx.fillText("IT'S A DATE.", cardWidth / 2, pillY + 122);
+
+  // Subtitle / Names
+  const names = `${state.nickname || data.recipientName}  ❤️  ${data.inviterName}`;
+  ctx.font = "bold 38px sans-serif";
+  ctx.fillStyle = primary;
+  ctx.fillText(names, cardWidth / 2, pillY + 195);
+
+  // Perforated Dashed Line with Notches
+  const dashY = pillY + 265;
+  ctx.beginPath();
+  ctx.setLineDash([14, 12]);
+  ctx.strokeStyle = primary + "40";
+  ctx.lineWidth = 3;
+  ctx.moveTo(padX + 40, dashY);
+  ctx.lineTo(padX + w - 40, dashY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Ticket Side Notches
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.arc(padX, dashY, 26, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(padX + w, dashY, 26, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Information Grid
+  const when = state.date ? formatDateTime(state.date) : "We decide 😌";
+  const plan = state.mood || "Food + Fun + Unlimited Bakwaas";
+
+  const rows = [
+    { icon: "👫", label: "WHO", val: `${state.nickname || data.recipientName} + ${data.inviterName}` },
+    { icon: "🗓️", label: "WHEN", val: when },
+    { icon: "🍔", label: "VIBE / PLAN", val: plan },
+    { icon: "😎", label: "ENTRY", val: "Admits: Two cute idiots 😂" },
+  ];
+
+  let currentY = dashY + 65;
+  rows.forEach((r, idx) => {
+    ctx.fillStyle = idx % 2 === 0 ? bg + "88" : "transparent";
+    roundRect(ctx, padX + 36, currentY - 8, w - 72, 94, 20);
+    ctx.fill();
+
+    ctx.font = "38px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(r.icon, padX + 80, currentY + 40);
+
+    ctx.font = "bold 18px sans-serif";
+    ctx.fillStyle = mutedColor;
+    ctx.textAlign = "left";
+    ctx.fillText(r.label, padX + 130, currentY + 24);
+
+    ctx.font = "600 30px sans-serif";
+    ctx.fillStyle = textColor;
+    ctx.fillText(r.val, padX + 130, currentY + 62);
+
+    currentY += 105;
+  });
+
+  // Footer Quote & Watermark
+  const footerY = padY + h - 105;
+  ctx.font = "italic 26px sans-serif";
+  ctx.fillStyle = mutedColor;
+  ctx.textAlign = "center";
+  ctx.fillText("“Screenshot this. Evidence secured 😂”", cardWidth / 2, footerY);
+
+  ctx.font = "bold 20px sans-serif";
+  ctx.fillStyle = primary;
+  ctx.fillText("✦ ASK HER FOR DATE ✦", cardWidth / 2, footerY + 42);
+
+  return canvas;
+}
+async function downloadDateCard() {
+  try {
+    toast("Preparing your Date Card... 📸");
+    const canvas = await generateDateCardCanvas();
+    const link = document.createElement("a");
+    const slug = (data.recipientName || "date").toLowerCase().replace(/[^a-z0-9]/g, "-");
+    link.download = `date-confirmed-${slug}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    toast("Date Card downloaded! ❤️");
+    track("button_clicked", state.screen, "download_date_card");
+  } catch (err) {
+    toast("Could not download date card. Screenshot this page instead! 😂");
+  }
+}
+function fallbackShare(shareText) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareText).then(() => {
+      toast("Confirmation copied to clipboard! 💌");
+      downloadDateCard();
+    }).catch(() => {
+      downloadDateCard();
+    });
+  } else {
+    downloadDateCard();
+  }
+}
+async function shareDateCard() {
+  const when = state.date ? formatDateTime(state.date) : "We decide 😌";
+  const plan = state.mood || "Food + Fun";
+  const shareText = `Hey ${data.inviterName}! I said YES 😌❤️ It's a date! Plan: ${plan} (${when}).`;
+  try {
+    const canvas = await generateDateCardCanvas();
+    if (navigator.share) {
+      canvas.toBlob(async (blob) => {
+        if (blob && navigator.canShare && navigator.canShare({ files: [new File([blob], "date-pass.png", { type: "image/png" })] })) {
+          const file = new File([blob], "date-pass.png", { type: "image/png" });
+          try {
+            await navigator.share({
+              title: "Official Date Confirmation ❤️",
+              text: shareText,
+              files: [file]
+            });
+            track("button_clicked", state.screen, "share_date_card");
+            return;
+          } catch {}
+        }
+        try {
+          await navigator.share({
+            title: "Official Date Confirmation ❤️",
+            text: shareText,
+            url: window.location.href
+          });
+          track("button_clicked", state.screen, "share_date_card");
+        } catch {
+          fallbackShare(shareText);
+        }
+      }, "image/png");
+    } else {
+      fallbackShare(shareText);
+    }
+  } catch {
+    fallbackShare(shareText);
+  }
 }
 function successScreen() {
   const s = screens.success,
@@ -512,9 +778,9 @@ function successScreen() {
     plan = state.mood || "Food + Fun + Unlimited Bakwaas";
   const message = encodeURIComponent(`Hey ${data.inviterName}! I said yes 😌❤️ Let's plan it now. I chose ${plan} and ${when}.`),
     whatsapp = data.whatsappNumber
-      ? `<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">${text(s.primary)}</a>`
-      : btn(s.primary, "complete", "primary");
-  return `<div class="celebration-hero"><div class="celebration-heart-badge small" aria-hidden="true"><span class="heart-pulse">💖</span><span class="sparkle-orbit s1">✨</span><span class="sparkle-orbit s2">✨</span></div><span class="celebration-kicker">Date Planning Unlocked ✨</span><h1 class="celebration-title">${text(s.heading || "Baaki planning meri.")}</h1><p class="celebration-quote">“${text(s.body || "You picked the timing. You picked the vibe. You just have to show up. 😂❤️")}”</p></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}${voiceNoteWidget()}<div class="evidence-note">📸 Screenshot this. Evidence secured 😂</div><div class="action-stack">${whatsapp}<button class="choice" data-modal="secret" type="button">One more thing… 👀</button></div>`;
+      ? `<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">Plan on WhatsApp 💬</a>`
+      : "";
+  return `<div class="celebration-hero"><div class="celebration-heart-badge small" aria-hidden="true"><span class="heart-pulse">💖</span><span class="sparkle-orbit s1">✨</span><span class="sparkle-orbit s2">✨</span></div><span class="celebration-kicker">Date Planning Unlocked ✨</span><h1 class="celebration-title">${text(s.heading || "Baaki planning meri.")}</h1><p class="celebration-quote">“${text(s.body || "You picked the timing. You picked the vibe. You just have to show up. 😂❤️")}”</p></div>${datePass("Official date pass", `${state.nickname} + ${data.inviterName}`, plan, when)}${voiceNoteWidget()}<div class="evidence-note">📸 Screenshot this. Evidence secured 😂</div><div class="action-stack"><button class="choice primary" data-action="downloadCard" type="button">Download Date Card 📸</button><button class="choice" data-action="shareCard" type="button">Share Date Card 💌</button>${whatsapp}<button class="choice ghost" data-modal="secret" type="button">One more thing… 👀</button></div>`;
 }
 function declineScreen() {
   const s = screens.decline,
@@ -842,6 +1108,10 @@ function act(action, value) {
       selectedDate: dateTime,
     });
     go("success");
+  } else if (action === "downloadCard") {
+    downloadDateCard();
+  } else if (action === "shareCard") {
+    shareDateCard();
   } else if (action === "success") go("success", "screen_view", value);
   else if (action === "complete" || action === "declineComplete") {
     track("completion", state.screen, value);

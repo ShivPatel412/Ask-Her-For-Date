@@ -303,6 +303,17 @@ h2 {
   color: var(--text);
 }
 
+.choice.ghost {
+  background: transparent !important;
+  border: 1.5px dashed color-mix(in srgb, var(--primary) 30%, #e8e3dc) !important;
+  color: var(--primary) !important;
+  box-shadow: none !important;
+}
+.choice.ghost:hover {
+  background: color-mix(in srgb, var(--primary) 8%, white) !important;
+  border-style: solid !important;
+}
+
 /* Back Navigation Button */
 .back {
   display: inline-flex;
