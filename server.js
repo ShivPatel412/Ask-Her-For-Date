@@ -1632,7 +1632,9 @@ app.post('/api/invitations/:token/events', publicLimit, async (req,res) => {
   
   if (['final_yes', 'best_friend_result', 'completion', 'availability_selected'].includes(eventName)) {
     const eventType = eventName === 'final_yes' ? 'yes' : eventName === 'availability_selected' ? 'dateConfirmed' : 'completed';
-    sendInvitationEmailAlert(inv.id, s.id, eventType).catch(() => {});
+    try {
+      await sendInvitationEmailAlert(inv.id, s.id, eventType);
+    } catch {}
   }
   res.status(201).json({ok:true,sequence});
 });
