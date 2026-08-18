@@ -2103,6 +2103,10 @@ textarea {
     border-radius: 20px;
 }
 
+.mobile-tabs {
+    display: none;
+}
+
 /* Horizontal Stepper Ribbon */
 .builder-stepper-wrap {
     background: #ffffff;
