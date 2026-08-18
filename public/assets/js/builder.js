@@ -100,17 +100,27 @@ let currentStep = 1;
 let activeContentScreen = 'intro';
 
 fetch(`/api/invitations/${id}`)
-  .then(r => {
+  .then(async r => {
     if (r.status === 401) { window.location.href = '/login'; return null; }
-    return r.json();
+    const data = await r.json().catch(() => null);
+    if (!r.ok || !data || data.error || !data.content) {
+      const msg = data?.error || 'Failed to load invitation data. Please refresh.';
+      toast(msg);
+      console.error('API Error:', msg);
+      return null;
+    }
+    return data;
   })
   .then(data => {
-    if (!data || data.error || !data.content) { if (data?.error) toast(data.error); return; }
+    if (!data) return;
     state = data;
     render();
     if (new URLSearchParams(location.search).has('created')) toast('Invitation created 🎉 — customize or publish when ready.');
   })
-  .catch(err => console.error('Failed to load invitation data:', err));
+  .catch(err => {
+    console.error('Failed to load invitation data:', err);
+    toast('Error loading invitation data. Please refresh.');
+  });
 
 const themeColorSpecs = [
   { key: 'background', label: 'Background', desc: 'Page background & ambient surface', defaultVal: '#FCFAF6' },

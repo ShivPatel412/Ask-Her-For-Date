@@ -272,151 +272,212 @@ async function ownedInvitation(id, userId) {
     : await db.prepare('SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.owner_user_id=?').get(tokenStr, userId);
 }
 function normalizeInvitationContent(rawContent) {
-  const content = (rawContent && typeof rawContent === 'object') ? rawContent : {};
-  let screens = {};
-  if (content.screens && typeof content.screens === 'object') {
-    screens = { ...content.screens };
-  } else {
-    screens = { ...content };
-    delete screens.moods;
-  }
-  const fallbackScreens = defaultConfig('Inviter', 'Recipient').content;
-  screens = { ...fallbackScreens, ...screens };
+  try {
+    const content = (rawContent && typeof rawContent === 'object') ? rawContent : {};
+    let screens = {};
+    if (content.screens && typeof content.screens === 'object') {
+      screens = { ...content.screens };
+    } else {
+      screens = { ...content };
+      delete screens.moods;
+    }
+    const fallbackScreens = defaultConfig('Inviter', 'Recipient').content;
+    screens = { ...fallbackScreens, ...screens };
 
-  const moods = Array.isArray(content.moods) ? content.moods : (Array.isArray(rawContent?.moods) ? rawContent.moods : []);
-  let favorite = moods.find(m => m.favorite);
-  if (!favorite) {
-    favorite = moods.find(m => m.title?.startsWith('Long Drive + Food'));
-    if (favorite) favorite.favorite = true;
-    else moods.unshift(structuredClone(favoriteMood));
-  }
+    let rawMoods = Array.isArray(content.moods) ? content.moods : (Array.isArray(rawContent?.moods) ? rawContent.moods : []);
+    const moods = rawMoods.map((m, idx) => {
+      if (m && typeof m === 'object') {
+        return {
+          title: String(m.title || `Date Idea #${idx + 1}`),
+          description: String(m.description || ''),
+          favorite: Boolean(m.favorite)
+        };
+      }
+      return {
+        title: String(m || `Date Idea #${idx + 1}`),
+        description: '',
+        favorite: idx === 0
+      };
+    });
 
-  return { screens, moods };
+    let favorite = moods.find(m => m.favorite);
+    if (!favorite) {
+      favorite = moods.find(m => m.title && typeof m.title === 'string' && m.title.startsWith('Long Drive + Food'));
+      if (favorite) favorite.favorite = true;
+      else if (moods.length > 0) moods[0].favorite = true;
+      else moods.push(structuredClone(favoriteMood));
+    }
+
+    return { screens, moods };
+  } catch (err) {
+    console.error('Error normalizing invitation content:', err);
+    return { screens: defaultConfig('Inviter', 'Recipient').content, moods: structuredClone(moods) };
+  }
 }
 function normalizeMusicConfig(rawFeatures) {
-  const f = (rawFeatures && typeof rawFeatures === 'object') ? { ...rawFeatures } : {};
-  let tracks = [];
+  try {
+    const f = (rawFeatures && typeof rawFeatures === 'object') ? { ...rawFeatures } : {};
+    let tracks = [];
 
-  if (Array.isArray(f.tracks) && f.tracks.length > 0) {
-    tracks = f.tracks.map((t, idx) => ({
-      id: t.id || `track_${idx + 1}`,
-      sourceType: t.sourceType || (t.url?.startsWith('spotify:') || t.url?.includes('spotify.com') ? 'spotify' : (t.url?.startsWith('preset:') ? 'preset' : 'upload')),
-      title: t.title || t.name || 'Selected Track',
-      artist: t.artist || '',
-      mood: t.mood || 'romantic',
-      url: t.url || '',
-      spotifyUrl: t.spotifyUrl || (t.url?.includes('spotify.com') ? t.url : ''),
-      embedUrl: t.embedUrl || '',
-      startTime: Math.max(0, Number(t.startTime) || 0),
-      endTime: (t.endTime !== undefined && t.endTime !== null && Number(t.endTime) > 0) ? Number(t.endTime) : null,
-      duration: Math.max(0, Number(t.duration) || 0),
-      volume: (t.volume !== undefined && t.volume !== null) ? Number(t.volume) : 100,
-      enabled: t.enabled !== false,
-      default: Boolean(t.default)
+    if (Array.isArray(f.tracks) && f.tracks.length > 0) {
+      tracks = f.tracks.filter(Boolean).map((t, idx) => ({
+        id: t.id || `track_${idx + 1}`,
+        sourceType: t.sourceType || (t.url?.startsWith('spotify:') || t.url?.includes('spotify.com') ? 'spotify' : (t.url?.startsWith('preset:') ? 'preset' : 'upload')),
+        title: t.title || t.name || 'Selected Track',
+        artist: t.artist || '',
+        mood: t.mood || 'romantic',
+        url: t.url || '',
+        spotifyUrl: t.spotifyUrl || (t.url?.includes('spotify.com') ? t.url : ''),
+        embedUrl: t.embedUrl || '',
+        startTime: Math.max(0, Number(t.startTime) || 0),
+        endTime: (t.endTime !== undefined && t.endTime !== null && Number(t.endTime) > 0) ? Number(t.endTime) : null,
+        duration: Math.max(0, Number(t.duration) || 0),
+        volume: (t.volume !== undefined && t.volume !== null) ? Number(t.volume) : 100,
+        enabled: t.enabled !== false,
+        default: Boolean(t.default)
+      }));
+    } else if (Array.isArray(f.playlist) && f.playlist.length > 0) {
+      tracks = f.playlist.filter(Boolean).map((p, idx) => ({
+        id: p.id || `track_${idx + 1}`,
+        sourceType: p.sourceType || (p.url?.startsWith('spotify:') || p.url?.includes('spotify.com') ? 'spotify' : (p.url?.startsWith('preset:') ? 'preset' : 'upload')),
+        title: p.name || p.title || 'Selected Track',
+        artist: p.artist || '',
+        mood: p.mood || 'romantic',
+        url: p.url || '',
+        spotifyUrl: p.spotifyUrl || (p.url?.includes('spotify.com') ? p.url : ''),
+        embedUrl: p.embedUrl || '',
+        startTime: Math.max(0, Number(p.startTime || f.musicStartOffset) || 0),
+        endTime: (p.endTime !== undefined && p.endTime !== null && Number(p.endTime) > 0) ? Number(p.endTime) : null,
+        duration: Math.max(0, Number(p.duration) || 0),
+        volume: (p.volume !== undefined && p.volume !== null) ? Number(p.volume) : 100,
+        enabled: p.enabled !== false,
+        default: Boolean(p.default)
+      }));
+    } else if (f.spotify?.embedUrl || f.spotify?.url) {
+      tracks = [{
+        id: 'spotify_default',
+        sourceType: 'spotify',
+        title: 'Spotify Track',
+        artist: '',
+        mood: 'romantic',
+        url: f.spotify.url || '',
+        spotifyUrl: f.spotify.url || '',
+        embedUrl: f.spotify.embedUrl || '',
+        startTime: 0,
+        endTime: null,
+        duration: 0,
+        volume: 100,
+        enabled: true,
+        default: true
+      }];
+    } else if (f.musicUrl) {
+      tracks = [{
+        id: 'track_1',
+        sourceType: f.musicUrl.startsWith('preset:') ? 'preset' : 'upload',
+        title: f.musicName || 'Romantic soundtrack',
+        artist: '',
+        mood: f.musicMood || 'romantic',
+        url: f.musicUrl,
+        spotifyUrl: '',
+        embedUrl: '',
+        startTime: Math.max(0, Number(f.musicStartOffset) || 0),
+        endTime: null,
+        duration: 0,
+        volume: 100,
+        enabled: true,
+        default: true
+      }];
+    }
+
+    if (tracks.length > 0 && !tracks.some(t => t.default)) {
+      tracks[0].default = true;
+    }
+
+    const musicModel = {
+      enabled: Boolean(f.music),
+      sourceType: f.musicSource || (f.spotify?.url ? 'spotify' : 'upload'),
+      autoplay: Boolean(f.musicAutoplay),
+      volume: f.musicVolume !== undefined ? Number(f.musicVolume) : 35,
+      playerStyle: f.musicPlayerStyle || 'romantic',
+      playerPosition: f.musicPlayerPosition || 'bottom-right',
+      customPosition: f.musicCustomPosition || null,
+      playbackMode: f.musicPlaybackMode || 'playlist',
+      tracks: tracks
+    };
+
+    f.musicConfig = musicModel;
+    f.tracks = tracks;
+    f.playlist = tracks.map(t => ({
+      id: t.id,
+      name: t.title,
+      artist: t.artist,
+      mood: t.mood,
+      url: t.url,
+      startTime: t.startTime,
+      endTime: t.endTime,
+      duration: t.duration,
+      enabled: t.enabled,
+      default: t.default
     }));
-  } else if (Array.isArray(f.playlist) && f.playlist.length > 0) {
-    tracks = f.playlist.map((p, idx) => ({
-      id: p.id || `track_${idx + 1}`,
-      sourceType: p.sourceType || (p.url?.startsWith('spotify:') || p.url?.includes('spotify.com') ? 'spotify' : (p.url?.startsWith('preset:') ? 'preset' : 'upload')),
-      title: p.name || p.title || 'Selected Track',
-      artist: p.artist || '',
-      mood: p.mood || 'romantic',
-      url: p.url || '',
-      spotifyUrl: p.spotifyUrl || (p.url?.includes('spotify.com') ? p.url : ''),
-      embedUrl: p.embedUrl || '',
-      startTime: Math.max(0, Number(p.startTime || f.musicStartOffset) || 0),
-      endTime: (p.endTime !== undefined && p.endTime !== null && Number(p.endTime) > 0) ? Number(p.endTime) : null,
-      duration: Math.max(0, Number(p.duration) || 0),
-      volume: (p.volume !== undefined && p.volume !== null) ? Number(p.volume) : 100,
-      enabled: p.enabled !== false,
-      default: Boolean(p.default)
-    }));
-  } else if (f.spotify?.embedUrl || f.spotify?.url) {
-    tracks = [{
-      id: 'spotify_default',
-      sourceType: 'spotify',
-      title: 'Spotify Track',
-      artist: '',
-      mood: 'romantic',
-      url: f.spotify.url || '',
-      spotifyUrl: f.spotify.url || '',
-      embedUrl: f.spotify.embedUrl || '',
-      startTime: 0,
-      endTime: null,
-      duration: 0,
-      volume: 100,
-      enabled: true,
-      default: true
-    }];
-  } else if (f.musicUrl) {
-    tracks = [{
-      id: 'track_1',
-      sourceType: f.musicUrl.startsWith('preset:') ? 'preset' : 'upload',
-      title: f.musicName || 'Romantic soundtrack',
-      artist: '',
-      mood: f.musicMood || 'romantic',
-      url: f.musicUrl,
-      spotifyUrl: '',
-      embedUrl: '',
-      startTime: Math.max(0, Number(f.musicStartOffset) || 0),
-      endTime: null,
-      duration: 0,
-      volume: 100,
-      enabled: true,
-      default: true
-    }];
+    f.musicPlayerPosition = musicModel.playerPosition;
+    f.musicCustomPosition = musicModel.customPosition;
+    f.musicPlaybackMode = musicModel.playbackMode;
+
+    const defaultTrack = tracks.find(t => t.default) || tracks[0];
+    if (defaultTrack) {
+      f.musicUrl = defaultTrack.url;
+      f.musicName = defaultTrack.title;
+      f.musicStartOffset = defaultTrack.startTime;
+    }
+
+    return f;
+  } catch (err) {
+    console.error('Error normalizing music config:', err);
+    return (rawFeatures && typeof rawFeatures === 'object') ? rawFeatures : {};
   }
-
-  if (tracks.length > 0 && !tracks.some(t => t.default)) {
-    tracks[0].default = true;
-  }
-
-  const musicModel = {
-    enabled: Boolean(f.music),
-    sourceType: f.musicSource || (f.spotify?.url ? 'spotify' : 'upload'),
-    autoplay: Boolean(f.musicAutoplay),
-    volume: f.musicVolume !== undefined ? Number(f.musicVolume) : 35,
-    playerStyle: f.musicPlayerStyle || 'romantic',
-    playerPosition: f.musicPlayerPosition || 'bottom-right',
-    customPosition: f.musicCustomPosition || null,
-    playbackMode: f.musicPlaybackMode || 'playlist',
-    tracks: tracks
-  };
-
-  f.musicConfig = musicModel;
-  f.tracks = tracks;
-  f.playlist = tracks.map(t => ({
-    id: t.id,
-    name: t.title,
-    artist: t.artist,
-    mood: t.mood,
-    url: t.url,
-    startTime: t.startTime,
-    endTime: t.endTime,
-    duration: t.duration,
-    enabled: t.enabled,
-    default: t.default
-  }));
-  f.musicPlayerPosition = musicModel.playerPosition;
-  f.musicCustomPosition = musicModel.customPosition;
-  f.musicPlaybackMode = musicModel.playbackMode;
-
-  const defaultTrack = tracks.find(t => t.default) || tracks[0];
-  if (defaultTrack) {
-    f.musicUrl = defaultTrack.url;
-    f.musicName = defaultTrack.title;
-    f.musicStartOffset = defaultTrack.startTime;
-  }
-
-  return f;
 }
 
 function invitationDTO(row) {
-  const rawContent = json(row.content_config_json);
-  const normalizedContent = normalizeInvitationContent(rawContent);
-  const rawFeatures = json(row.feature_config_json);
-  const normalizedFeatures = normalizeMusicConfig(rawFeatures);
-  return { id: row.id, token: row.public_token, templateKey: row.template_key, inviterName: row.inviter_name, recipientName: row.recipient_name, whatsappNumber: row.whatsapp_number || '', title: row.title, status: row.status, theme: json(row.theme_config_json), content: normalizedContent, features: normalizedFeatures, createdAt: row.created_at, updatedAt: row.updated_at, publishedAt: row.published_at };
+  try {
+    const rawContent = json(row.content_config_json);
+    const normalizedContent = normalizeInvitationContent(rawContent);
+    const rawFeatures = json(row.feature_config_json);
+    const normalizedFeatures = normalizeMusicConfig(rawFeatures);
+    const rawTheme = json(row.theme_config_json);
+    return {
+      id: row.id,
+      token: row.public_token,
+      templateKey: row.template_key || 'classic',
+      templateId: row.template_key || 'classic',
+      inviterName: row.inviter_name || '',
+      recipientName: row.recipient_name || '',
+      whatsappNumber: row.whatsapp_number || '',
+      title: row.title || 'Something for you ❤️',
+      status: row.status || 'draft',
+      theme: rawTheme || {},
+      content: normalizedContent,
+      features: normalizedFeatures,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      publishedAt: row.published_at
+    };
+  } catch (err) {
+    console.error('Error in invitationDTO:', err);
+    return {
+      id: row.id,
+      token: row.public_token,
+      templateKey: 'classic',
+      templateId: 'classic',
+      inviterName: row.inviter_name || '',
+      recipientName: row.recipient_name || '',
+      whatsappNumber: '',
+      title: row.title || 'Something for you ❤️',
+      status: row.status || 'draft',
+      theme: {},
+      content: defaultConfig().content,
+      features: defaultConfig().features
+    };
+  }
 }
 async function page(title, body, req, script = '') {
   const user = req.session?.userId ? await db.prepare('SELECT username, role FROM users WHERE id=?').get(req.session.userId) : null;
@@ -841,48 +902,66 @@ app.post('/api/invitations', requireUser, requireCsrf, async (req, res) => {
 });
 
 app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
-  const row = await ownedInvitation(req.params.id, req.session.userId);
-  if (!row) return res.status(404).send(await page('Invitation not found', '<main class="empty"><h1>Invitation not found.</h1><p>The invitation you requested does not exist or you do not have access to it.</p><a class="button primary" href="/dashboard">Return to Dashboard</a></main>', req));
-  res.send(await page('Edit invitation', `<main id="builder" class="builder" data-id="${row.id}">
-    <header class="builder-head">
-      <div class="builder-head-left">
-        <a class="builder-back" href="/dashboard">← Dashboard</a>
-        <div class="builder-title-group">
-          <h1>${escapeHtml(row.recipient_name)}'s invitation <span class="edit-badge" aria-hidden="true">✎</span></h1>
+  try {
+    const row = await ownedInvitation(req.params.id, req.session.userId);
+    if (!row) return res.status(404).send(await page('Invitation not found', '<main class="empty"><h1>Invitation not found.</h1><p>The invitation you requested does not exist or you do not have access to it.</p><a class="button primary" href="/dashboard">Return to Dashboard</a></main>', req));
+    res.send(await page('Edit invitation', `<main id="builder" class="builder" data-id="${row.id}">
+      <header class="builder-head">
+        <div class="builder-head-left">
+          <a class="builder-back" href="/dashboard">← Dashboard</a>
+          <div class="builder-title-group">
+            <h1>${escapeHtml(row.recipient_name)}'s invitation <span class="edit-badge" aria-hidden="true">✎</span></h1>
+          </div>
+          <span id="save-status" class="save-status">✓ All changes saved</span>
         </div>
-        <span id="save-status" class="save-status">✓ All changes saved</span>
+        <div class="actions">
+          <a class="button ghost small" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a>
+          <button id="save-draft" class="button ghost small">▣ Save draft</button>
+          <button id="publish" class="button primary small">Publish Invitation ♥</button>
+        </div>
+      </header>
+      <div class="mobile-tabs" role="tablist" aria-label="Mobile View Toggle">
+        <button data-tab="edit" class="active" role="tab" aria-selected="true">✎ Edit</button>
+        <button data-tab="preview" role="tab" aria-selected="false">◉ Preview</button>
       </div>
-      <div class="actions">
-        <a class="button ghost small" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a>
-        <button id="save-draft" class="button ghost small">▣ Save draft</button>
-        <button id="publish" class="button primary small">Publish Invitation ♥</button>
+      <div class="builder-stepper-wrap">
+        <nav class="builder-stepper" id="builder-stepper" aria-label="Editor Steps" role="tablist"></nav>
       </div>
-    </header>
-    <div class="mobile-tabs" role="tablist" aria-label="Mobile View Toggle">
-      <button data-tab="edit" class="active" role="tab" aria-selected="true">✎ Edit</button>
-      <button data-tab="preview" role="tab" aria-selected="false">◉ Preview</button>
-    </div>
-    <div class="builder-stepper-wrap">
-      <nav class="builder-stepper" id="builder-stepper" aria-label="Editor Steps" role="tablist"></nav>
-    </div>
-    <div class="builder-grid">
-      <section id="controls" class="controls"></section>
-      <aside id="preview-pane" class="preview-pane">
-        <div class="preview-toolbar" aria-label="Preview size">
-          <button class="active" data-viewport="mobile">▯ Mobile</button>
-          <button data-viewport="tablet">▯ Tablet</button>
-          <button data-viewport="desktop">▱ Desktop</button>
-        </div>
-        <div class="phone">
-          <iframe title="Live invitation preview" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe>
-        </div>
-        <span class="preview-dots" aria-hidden="true">● ○ ○ ○ ○</span>
-      </aside>
-    </div>
-  </main>`, req, '/assets/js/builder.js'));
+      <div class="builder-grid">
+        <section id="controls" class="controls"></section>
+        <aside id="preview-pane" class="preview-pane">
+          <div class="preview-toolbar" aria-label="Preview size">
+            <button class="active" data-viewport="mobile">▯ Mobile</button>
+            <button data-viewport="tablet">▯ Tablet</button>
+            <button data-viewport="desktop">▱ Desktop</button>
+          </div>
+          <div class="phone">
+            <iframe title="Live invitation preview" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe>
+          </div>
+          <span class="preview-dots" aria-hidden="true">● ○ ○ ○ ○</span>
+        </aside>
+      </div>
+    </main>`, req, '/assets/js/builder.js'));
+  } catch (err) {
+    console.error('Error rendering edit page:', err);
+    res.status(500).send(await page('Error', '<main class="empty"><h1>Something went wrong</h1><p>Failed to load the invitation editor. Please return to the dashboard and try again.</p><a class="button primary" href="/dashboard">Return to Dashboard</a></main>', req));
+  }
 });
 
-app.get('/api/invitations/:id', requireUser, async (req, res) => { const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' }); res.json({ ...invitationDTO(row), presets: { themes, music: musicPresets, templates: invitationTemplates }, csrf: csrf(req) }); });
+app.get('/api/invitations/:id', requireUser, async (req, res) => {
+  try {
+    const row = await ownedInvitation(req.params.id, req.session.userId);
+    if (!row) return res.status(404).json({ error: 'Not found.' });
+    res.json({
+      ...invitationDTO(row),
+      presets: { themes, music: musicPresets, templates: invitationTemplates },
+      csrf: csrf(req)
+    });
+  } catch (err) {
+    console.error('Error fetching invitation API:', err);
+    res.status(500).json({ error: 'Failed to load invitation data.' });
+  }
+});
 app.put('/api/invitations/:id', requireUser, requireCsrf, async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' });
   const inviterName = clean(req.body.inviterName,60) || row.inviter_name;
