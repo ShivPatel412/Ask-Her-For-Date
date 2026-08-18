@@ -10,32 +10,94 @@ let saveVersion = 0;
 let saveQueue = Promise.resolve();
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const field = (label, path, value, type = 'text') => `<label>${label}<input data-path="${path}" type="${type}" value="${esc(value)}" ${type === 'text' ? 'maxlength="1000"' : ''}></label>`;
-const toggle = (label, path, value) => `<label class="toggle"><input data-path="${path}" type="checkbox" ${value ? 'checked' : ''}><span></span>${label}</label>`;
+
+// Modern form component helpers
+const formField = (label, path, value, helper = '', type = 'text', placeholder = '') => `
+  <div class="form-group">
+    <label class="form-label">
+      <span class="label-title">${label}</span>
+      ${helper ? `<small class="label-helper">${helper}</small>` : ''}
+    </label>
+    <div class="input-wrap">
+      <input data-path="${path}" type="${type}" value="${esc(value)}" class="form-input" placeholder="${esc(placeholder)}" ${type === 'text' ? 'maxlength="1000"' : ''}>
+    </div>
+  </div>
+`;
+
+const formTextarea = (label, path, value, helper = '', placeholder = '', rows = 3) => `
+  <div class="form-group">
+    <label class="form-label">
+      <span class="label-title">${label}</span>
+      ${helper ? `<small class="label-helper">${helper}</small>` : ''}
+    </label>
+    <div class="input-wrap">
+      <textarea data-path="${path}" class="form-textarea" placeholder="${esc(placeholder)}" rows="${rows}" maxlength="1000">${esc(value)}</textarea>
+    </div>
+  </div>
+`;
+
+const customToggle = (label, path, value, subtitle = '') => `
+  <label class="modern-toggle-card">
+    <div class="toggle-text">
+      <strong>${label}</strong>
+      ${subtitle ? `<small>${subtitle}</small>` : ''}
+    </div>
+    <div class="toggle-switch">
+      <input data-path="${path}" type="checkbox" ${value ? 'checked' : ''}>
+      <span class="toggle-slider" aria-hidden="true"></span>
+    </div>
+  </label>
+`;
+
 const featureInfo = {
-  Mascots: ['🐻', 'Display adorable mascots throughout the invitation.'],
+  Mascots: ['🐻', 'Display animated characters throughout the invitation.'],
   'Tiny Mode': ['⌗', 'Enable a compact and minimal layout for a cute vibe.'],
-  'Cute-item collection': ['♡', 'Show a collection of cute items to charm your recipient.'],
-  Confetti: ['⌁', 'Celebrate moments with a burst of confetti.'],
-  'Funny Back buttons': ['‹', 'Replace standard back buttons with fun alternatives.']
+  'Cute-item collection': ['♡', 'Show hidden interactive easter-egg items for your recipient to discover.'],
+  Confetti: ['⌁', 'Celebrate the YES moment with a burst of romantic confetti.'],
+  'Funny Back buttons': ['‹', 'Replace standard back buttons with playful teasing alternatives.']
 };
-const featureToggle = (label, path, value) => {
+
+const featureToggleCard = (label, path, value) => {
   const [icon, description] = featureInfo[label] || ['✨', 'Feature toggle'];
-  return `<label class="feature-toggle"><i>${icon}</i><span><b>${label}</b><small>${description}</small></span><input data-path="${path}" type="checkbox" ${value ? 'checked' : ''}><em aria-hidden="true"></em></label>`;
+  return `
+    <label class="feature-toggle-card">
+      <span class="feature-icon" aria-hidden="true">${icon}</span>
+      <div class="feature-text">
+        <strong>${label}</strong>
+        <small>${description}</small>
+      </div>
+      <div class="toggle-switch">
+        <input data-path="${path}" type="checkbox" ${value ? 'checked' : ''}>
+        <span class="toggle-slider" aria-hidden="true"></span>
+      </div>
+    </label>
+  `;
 };
 
 const BUILDER_STEPS = [
-  { id: 1, key: 'basics', title: 'Basics', subtitle: 'Names & title' },
-  { id: 2, key: 'template', title: 'Template', subtitle: 'Occasion preset' },
-  { id: 3, key: 'design', title: 'Design', subtitle: 'Colors & theme' },
-  { id: 4, key: 'content', title: 'Content', subtitle: 'Questions & copy' },
-  { id: 5, key: 'photos', title: 'Photos', subtitle: 'Cover & memories' },
-  { id: 6, key: 'features', title: 'Features', subtitle: 'Dates & mascots' },
-  { id: 7, key: 'music', title: 'Music', subtitle: 'Songs & voice note' },
-  { id: 8, key: 'publish', title: 'Publish', subtitle: 'Review & share' }
+  { id: 1, key: 'basics', title: 'Basics', subtitle: 'Names & title', icon: '1' },
+  { id: 2, key: 'template', title: 'Template', subtitle: 'Occasion preset', icon: '2' },
+  { id: 3, key: 'design', title: 'Design', subtitle: 'Colors & theme', icon: '3' },
+  { id: 4, key: 'content', title: 'Content', subtitle: 'Questions & copy', icon: '4' },
+  { id: 5, key: 'photos', title: 'Photos', subtitle: 'Cover & memories', icon: '5' },
+  { id: 6, key: 'features', title: 'Features', subtitle: 'Dates & mascots', icon: '6' },
+  { id: 7, key: 'music', title: 'Music', subtitle: 'Songs & voice note', icon: '7' },
+  { id: 8, key: 'publish', title: 'Publish', subtitle: 'Review & share', icon: '8' }
+];
+
+const CONTENT_SCREENS = [
+  { key: 'intro', label: '1. Intro', icon: '💌', desc: 'Opening invitation card' },
+  { key: 'main', label: '2. Main Ask', icon: '❤️', desc: 'Primary date question & copy' },
+  { key: 'thinking', label: '3. Thinking', icon: '🥺', desc: 'Playful hesitation banter' },
+  { key: 'convince', label: '4. Convince', icon: '🍕', desc: 'Reasons why you should say yes' },
+  { key: 'benefits', label: '5. Benefits', icon: '🍰', desc: 'Perks & stats of going on this date' },
+  { key: 'mood', label: '6. Date Vibe', icon: '✨', desc: 'Date vibe & ideas prompt' },
+  { key: 'finalAttempt', label: '7. Final Evasion', icon: '😂', desc: 'Playful evasive NO button banter' },
+  { key: 'secret', label: '8. Secret Note', icon: '🔒', desc: 'Hidden easter-egg letter' }
 ];
 
 let currentStep = 1;
+let activeContentScreen = 'intro';
 
 fetch(`/api/invitations/${id}`)
   .then(r => {
@@ -52,15 +114,15 @@ fetch(`/api/invitations/${id}`)
 
 const themeColorSpecs = [
   { key: 'background', label: 'Background', desc: 'Page background & ambient surface', defaultVal: '#FCFAF6' },
-  { key: 'primary', label: 'Primary', desc: 'Main buttons & important accents', defaultVal: '#E6496F' },
-  { key: 'secondary', label: 'Secondary', desc: 'Soft blush & ambient accents', defaultVal: '#F4E9DD' },
-  { key: 'accent', label: 'Accent', desc: 'Badges, glows & gradient accents', defaultVal: '#FF7B94' },
-  { key: 'headingColor', label: 'Heading', desc: 'Main title & question headings', defaultVal: '#20191B' },
-  { key: 'text', label: 'Text', desc: 'Normal readable body text', defaultVal: '#282223' },
-  { key: 'muted', label: 'Muted Text', desc: 'Subtitles & secondary information', defaultVal: '#70686A' },
-  { key: 'card', label: 'Card', desc: 'Cards and panels with optional alpha', defaultVal: '#FFFFFFEE' },
-  { key: 'buttonText', label: 'Button Text', desc: 'Text displayed inside primary buttons', defaultVal: '#FFFFFF' },
-  { key: 'border', label: 'Border', desc: 'Separators, chips & card borders', defaultVal: '#EADFE1' }
+  { key: 'primary', label: 'Primary Accent', desc: 'Main buttons & important highlights', defaultVal: '#E6496F' },
+  { key: 'secondary', label: 'Secondary Blush', desc: 'Soft blush & ambient accents', defaultVal: '#F4E9DD' },
+  { key: 'accent', label: 'Accent Glow', desc: 'Badges, glows & gradient accents', defaultVal: '#FF7B94' },
+  { key: 'headingColor', label: 'Heading Color', desc: 'Main title & question headings', defaultVal: '#20191B' },
+  { key: 'text', label: 'Body Text', desc: 'Normal readable body copy', defaultVal: '#282223' },
+  { key: 'muted', label: 'Muted Text', desc: 'Subtitles & secondary notes', defaultVal: '#70686A' },
+  { key: 'card', label: 'Card Surface', desc: 'Glass panels & cards (supports alpha)', defaultVal: '#FFFFFFEE' },
+  { key: 'buttonText', label: 'Button Text', desc: 'Text inside primary buttons', defaultVal: '#FFFFFF' },
+  { key: 'border', label: 'Border & Lines', desc: 'Separators, chips & card borders', defaultVal: '#EADFE1' }
 ];
 
 function hexToRgb(hex) {
@@ -168,7 +230,13 @@ function renderContrastAudit(t) {
 
   return `
     <div class="contrast-audit-section">
-      <h4><span>⚡</span> WCAG Contrast Checker</h4>
+      <div class="audit-header">
+        <h4><span>⚡</span> WCAG Contrast Checker</h4>
+        <div class="theme-actions-bar">
+          <button type="button" class="button ghost small" data-action="autofix-contrast">✨ Auto-fix</button>
+          <button type="button" class="button ghost small" data-action="reset-theme">↺ Reset</button>
+        </div>
+      </div>
       <div class="contrast-audit-table">
         ${pairs.map(p => {
           const ratio = getContrastRatio(p.fg, p.bg);
@@ -179,15 +247,11 @@ function renderContrastAudit(t) {
               <span class="contrast-pair">${p.label}</span>
               <div class="contrast-actions-cell">
                 <span class="contrast-badge ${rating.class}">${rating.symbol} ${rating.label} (${ratio.toFixed(1)}:1)</span>
-                ${needsFix ? `<button type="button" class="btn-fix-contrast" data-fix-key="${p.fgKey}" data-bg-color="${p.bg}">Fix contrast</button>` : ''}
+                ${needsFix ? `<button type="button" class="btn-fix-contrast" data-fix-key="${p.fgKey}" data-bg-color="${p.bg}">Fix</button>` : ''}
               </div>
             </div>
           `;
         }).join('')}
-      </div>
-      <div class="theme-actions-bar">
-        <button type="button" class="button ghost small" data-action="autofix-contrast">✨ Auto-fix contrast</button>
-        <button type="button" class="button ghost small" data-action="reset-theme">↺ Reset to preset</button>
       </div>
     </div>
   `;
@@ -205,14 +269,16 @@ function renderLiveThemePreview(t) {
 
   return `
     <div class="live-theme-preview-wrap">
-      <h4>Live Theme Preview</h4>
+      <h4>Live Theme Palette Preview</h4>
       <div class="live-theme-card-mockup" style="background: ${card}; border: 1px solid ${border}; color: ${text};">
         <span class="mockup-eyebrow" style="color: ${accent}; background: color-mix(in srgb, ${accent} 12%, transparent); border: 1px solid color-mix(in srgb, ${accent} 25%, transparent);">Recommended</span>
         <h3 class="mockup-heading" style="color: ${heading}; font-family: var(--font-display, Georgia, serif);">Let's make this moment special ❤️</h3>
         <p class="mockup-body" style="color: ${text};">I really enjoy spending time with you. Made with love and a little overthinking.</p>
-        <button type="button" class="mockup-btn-primary" style="background: linear-gradient(135deg, ${primary} 0%, ${accent} 100%); color: ${btnText};">Say Yes ❤️</button>
-        <button type="button" class="mockup-btn-secondary" style="border: 1.5px solid ${border}; color: ${text};">Maybe later 😏</button>
-        <small class="mockup-muted" style="color: ${muted};">Updated just now · 100% Fun guaranteed</small>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button type="button" class="mockup-btn-primary" style="background: linear-gradient(135deg, ${primary} 0%, ${accent} 100%); color: ${btnText};">Say Yes ❤️</button>
+          <button type="button" class="mockup-btn-secondary" style="border: 1.5px solid ${border}; color: ${text};">Maybe later 😏</button>
+        </div>
+        <small class="mockup-muted" style="color: ${muted};margin-top:8px;display:block;">Updated live · 100% Fun guaranteed</small>
       </div>
     </div>
   `;
@@ -275,12 +341,53 @@ function goToStep(stepId, smooth = true) {
   }
 }
 
+function renderContentScreenFields(s) {
+  if (activeContentScreen === 'secret') {
+    return `
+      <div class="content-screen-card active">
+        <div class="screen-card-header">
+          <span class="screen-kicker">🔒 Secret Note</span>
+          <h3>Hidden Final Message</h3>
+          <p>This note is revealed when the recipient explores the final screen.</p>
+        </div>
+        <div class="screen-fields-grid">
+          ${formField('Secret Heading', 'content.screens.secret.heading', s.secret?.heading || '', 'Heading shown when secret note opens', 'text', 'A little note for you…')}
+          ${formTextarea('Secret Message Body', 'content.screens.secret.body', s.secret?.body || '', 'The heartfelt note or inside joke to share', 'I just wanted to say that having you in my life makes every day brighter...', 4)}
+          ${formField('Primary Button Label', 'content.screens.secret.primary', s.secret?.primary || 'Aww, thanks! ❤️', 'Button text to dismiss secret note')}
+        </div>
+      </div>
+    `;
+  }
+
+  const screenObj = s[activeContentScreen];
+  if (!screenObj) return '<p class="hint">Select a screen above to edit its copy.</p>';
+
+  const currentMeta = CONTENT_SCREENS.find(sc => sc.key === activeContentScreen) || { icon: '✨', label: activeContentScreen, desc: 'Customize copy' };
+
+  return `
+    <div class="content-screen-card active">
+      <div class="screen-card-header">
+        <span class="screen-kicker">${currentMeta.icon} Screen: ${currentMeta.label}</span>
+        <h3>${currentMeta.desc}</h3>
+      </div>
+      <div class="screen-fields-grid">
+        ${Object.entries(screenObj).map(([k, val]) => {
+          const isLong = k === 'body' || String(val).length > 60 || val.includes('\n');
+          const title = k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          return isLong
+            ? formTextarea(title, `content.screens.${activeContentScreen}.${k}`, val, `Screen ${activeContentScreen} · ${k}`)
+            : formField(title, `content.screens.${activeContentScreen}.${k}`, val, `Screen ${activeContentScreen} · ${k}`);
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function render() {
   const c = state.content;
   const s = c.screens;
   const t = state.theme;
   const f = state.features;
-  const editableScreens = Object.entries(s).filter(([key]) => !['nickname', 'analysis'].includes(key));
 
   renderStepper();
 
@@ -293,9 +400,12 @@ function render() {
         <p>Set your name, your recipient's name, and an inviting title.</p>
       </div>
       <div class="step-panel-body">
-        ${field('Your Name', 'inviterName', state.inviterName)}
-        ${field('Recipient Name', 'recipientName', state.recipientName)}
-        ${field('Invitation Title', 'title', state.title)}
+        <div class="sub-panel">
+          <h3>Essential Details</h3>
+          ${formField('Your Name', 'inviterName', state.inviterName, 'Displayed in the invitation as the sender', 'text', 'e.g. Alex')}
+          ${formField("Recipient's Name", 'recipientName', state.recipientName, 'Personalizes greetings and question screens', 'text', 'e.g. Maya')}
+          ${formField('Invitation Title', 'title', state.title, 'Appears on browser tabs and sharing cards', 'text', 'e.g. Coffee Date?')}
+        </div>
       </div>
       <div class="step-panel-footer">
         <div></div>
@@ -321,8 +431,11 @@ function render() {
             'anniversary-special': { name: 'Anniversary Celebration 💍🥂', tagline: 'Heartfelt milestone invitation with romantic memories' }
           }).map(([k, v]) => `
             <button type="button" class="template-card ${state.templateId === k ? 'active' : ''}" data-template-key="${k}">
-              <b>${v.name}</b>
-              <small>${v.tagline}</small>
+              <div class="template-card-header">
+                <span class="template-badge">${state.templateId === k ? '✓ Selected' : 'Preset'}</span>
+              </div>
+              <strong class="template-name">${v.name}</strong>
+              <p class="template-tagline">${v.tagline}</p>
             </button>
           `).join('')}
         </div>
@@ -341,18 +454,31 @@ function render() {
         <p>Pick a romantic color palette or fine-tune individual colors.</p>
       </div>
       <div class="step-panel-body">
-        <div class="theme-choices">
-          ${Object.entries(state.presets.themes).map(([k, v]) => `
-            <button type="button" class="theme-choice ${t.preset === k ? 'active' : ''}" data-theme-preset="${k}">
-              <i style="--swatch-a:${v.primary};--swatch-b:${v.secondary};--swatch-bg:${v.background}"></i>
-              <span>${v.name}</span>
-            </button>
-          `).join('')}
+        <div class="sub-panel">
+          <h3>Preset Color Themes</h3>
+          <div class="theme-presets-grid">
+            ${Object.entries(state.presets.themes).map(([k, v]) => `
+              <button type="button" class="theme-preset-card ${t.preset === k ? 'active' : ''}" data-theme-preset="${k}">
+                <div class="theme-swatch-bar" style="background: linear-gradient(135deg, ${v.primary} 0%, ${v.accent || v.primary} 50%, ${v.secondary} 100%);">
+                  <span class="swatch-bubble" style="background: ${v.background};"></span>
+                </div>
+                <div class="theme-preset-info">
+                  <strong>${v.name}</strong>
+                  ${t.preset === k ? '<span class="preset-active-check">✓ Active</span>' : ''}
+                </div>
+              </button>
+            `).join('')}
+          </div>
         </div>
-        <p class="hint">Fine-tune individual colors below (auto-checked for readability):</p>
-        <div class="color-grid">
-          ${renderColorCards(t)}
+
+        <div class="sub-panel">
+          <h3>Fine-Tune Palette Colors</h3>
+          <p class="hint">Adjust specific colors below (automatically checked for readability):</p>
+          <div class="color-grid">
+            ${renderColorCards(t)}
+          </div>
         </div>
+
         ${renderContrastAudit(t)}
         ${renderLiveThemePreview(t)}
       </div>
@@ -362,34 +488,32 @@ function render() {
       </div>
     </section>
 
-    <!-- STEP 4: CONTENT -->
+    <!-- STEP 4: CONTENT (REDESIGNED WITH SCREEN CHIP NAV) -->
     <section class="step-panel ${currentStep === 4 ? 'active' : ''}" id="step-panel-4" data-step="4" role="tabpanel" aria-labelledby="step-tab-4" ${currentStep === 4 ? '' : 'hidden'}>
       <div class="step-panel-header">
         <span class="step-kicker">Step 4 of 8 · Content</span>
         <h2>Questions & Screen Copy</h2>
-        <p>Personalize the exact words and questions on every screen.</p>
+        <p>Select a screen below to edit its words, questions, and buttons.</p>
       </div>
       <div class="step-panel-body">
-        <div class="flow-map">
-          ${editableScreens.map(([k]) => `<a href="#screen-${k}">${k.replace(/([A-Z])/g, ' $1')}</a>`).join('<span>↓</span>')}
-        </div>
-        ${editableScreens.map(([key, v]) => `
-          <fieldset id="screen-${key}">
-            <legend>${key.replace(/([A-Z])/g, ' $1')}</legend>
-            ${Object.entries(v).map(([k, val]) => `
-              <label>${k}
-                <textarea data-path="content.screens.${key}.${k}" maxlength="1000">${esc(val)}</textarea>
-              </label>
+        <div class="content-screen-tabs-wrap">
+          <div class="content-screen-tabs" role="tablist" aria-label="Invitation Screens">
+            ${CONTENT_SCREENS.map(sc => `
+              <button type="button" 
+                      class="content-screen-tab ${activeContentScreen === sc.key ? 'active' : ''}" 
+                      data-content-tab="${sc.key}"
+                      role="tab"
+                      aria-selected="${activeContentScreen === sc.key}">
+                <span class="tab-icon">${sc.icon}</span>
+                <span class="tab-label">${sc.label}</span>
+              </button>
             `).join('')}
-          </fieldset>
-        `).join('')}
-        <fieldset id="screen-secret">
-          <legend>Secret Final Message</legend>
-          ${field('Secret heading', 'content.screens.secret.heading', s.secret?.heading || '')}
-          <label>Secret message
-            <textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret?.body || '')}</textarea>
-          </label>
-        </fieldset>
+          </div>
+        </div>
+
+        <div id="content-screen-fields-container">
+          ${renderContentScreenFields(s)}
+        </div>
       </div>
       <div class="step-panel-footer">
         <button type="button" class="button ghost step-nav-btn" data-nav-step="3">← Previous</button>
@@ -407,96 +531,103 @@ function render() {
       <div class="step-panel-body">
         <div class="sub-panel">
           <h3>Cover Photo & Intro Visual</h3>
-          ${toggle('Show visual photo / background', 'features.coverPhoto', f.coverPhoto)}
-          <label>
-            <span><b>Display Style</b><small>Choose how your photo appears in the invitation.</small></span>
-            <select data-path="features.coverPhotoStyle">
+          ${customToggle('Show visual photo / background', 'features.coverPhoto', f.coverPhoto, 'Displays a photo on the intro opening screen')}
+          
+          <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">
+              <span class="label-title">Display Presentation Style</span>
+              <small class="label-helper">Choose how your photo appears in the invitation</small>
+            </label>
+            <select data-path="features.coverPhotoStyle" class="form-select">
               <option value="polaroid" ${(f.coverPhotoStyle || 'polaroid') === 'polaroid' ? 'selected' : ''}>📸 Romantic Polaroid (with caption & tilt)</option>
               <option value="hero" ${f.coverPhotoStyle === 'hero' ? 'selected' : ''}>🖼️ Hero Banner (clean & prominent)</option>
               <option value="full-bg" ${f.coverPhotoStyle === 'full-bg' ? 'selected' : ''}>🌌 Full Background (with contrast protection)</option>
               <option value="memory-card" ${f.coverPhotoStyle === 'memory-card' ? 'selected' : ''}>💌 Memory Card (soft glass frame)</option>
               <option value="circular" ${f.coverPhotoStyle === 'circular' ? 'selected' : ''}>⭕ Circular Photo (with glowing ring)</option>
             </select>
-          </label>
-          <label>Photo Caption / Note (optional)
-            <input data-path="features.coverPhotoCaption" value="${esc(f.coverPhotoCaption || '')}" placeholder="e.g. Our favorite memory ✨" maxlength="80">
-          </label>
-          <label>Accessibility Alt Text (optional)
-            <input data-path="features.coverPhotoAlt" value="${esc(f.coverPhotoAlt || '')}" placeholder="e.g. Us laughing together at the cafe" maxlength="100">
-          </label>
-          <label style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
-            <span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;">
-              <b>Background Overlay Tint</b>
-              <span id="cover-overlay-label">${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}%</span>
-            </span>
-            <input data-path="features.coverPhotoOverlay" type="range" min="10" max="85" value="${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}">
-            <small style="color:var(--muted);font-size:0.75rem;">Protects text readability over high-contrast photos.</small>
-          </label>
-          <label class="music-upload" style="margin-top:12px;">
-            <span class="upload-icon">🖼️</span>
-            <b>${f.coverPhotoUrl ? 'Replace Photo' : 'Upload Couple / Background Photo'}</b>
-            <small>JPG, PNG, WebP or GIF · max 5 MB</small>
-            <span id="cover-upload-copy" class="button primary small">${f.coverPhotoUrl ? 'Change photo' : 'Choose photo'}</span>
-            <input id="cover-file" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*">
-          </label>
+          </div>
+
+          ${formField('Photo Caption / Note (optional)', 'features.coverPhotoCaption', f.coverPhotoCaption || '', 'Shown under Polaroid & card styles', 'text', 'e.g. Our favorite memory ✨')}
+          ${formField('Accessibility Alt Text (optional)', 'features.coverPhotoAlt', f.coverPhotoAlt || '', 'Screen reader description', 'text', 'e.g. Us laughing together at the cafe')}
+
+          <div class="form-group">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span class="label-title">Background Overlay Tint</span>
+              <span id="cover-overlay-label" style="font-size:0.82rem;font-weight:700;color:var(--color-primary);">${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}%</span>
+            </div>
+            <input data-path="features.coverPhotoOverlay" type="range" min="10" max="85" value="${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}" class="form-range">
+            <small class="label-helper" style="display:block;margin-top:4px;">Protects text readability over high-contrast photos.</small>
+          </div>
+
+          <!-- Modern Upload Card -->
+          <div class="modern-upload-card" id="cover-dropzone">
+            <div class="upload-icon-circle">🖼️</div>
+            <h4>${f.coverPhotoUrl ? 'Replace Cover Photo' : 'Upload Cover Photo'}</h4>
+            <p>JPG, PNG, WebP or GIF · max 5 MB</p>
+            <label class="button primary small upload-btn-label">
+              <span id="cover-upload-copy">${f.coverPhotoUrl ? 'Change Photo' : 'Choose Photo'}</span>
+              <input id="cover-file" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" hidden>
+            </label>
+            <small class="drag-hint">or drag and drop file here</small>
+          </div>
+
           ${f.coverPhotoUrl ? `
-            <div class="cover-current">
+            <div class="cover-current-card">
               <img src="${esc(f.coverPhotoUrl)}" alt="${esc(f.coverPhotoAlt || 'Cover preview')}" class="cover-thumbnail">
               <div class="cover-meta">
                 <b>Photo active (${f.coverPhotoStyle || 'polaroid'})</b>
                 <small>${esc(f.coverPhotoCaption || 'Opening screen visual')}</small>
               </div>
-              <button id="remove-cover" class="icon-button" type="button" aria-label="Remove photo">×</button>
+              <button id="remove-cover" class="icon-button danger-icon" type="button" aria-label="Remove photo">×</button>
             </div>
           ` : ''}
         </div>
 
         <div class="sub-panel" style="margin-top:20px;">
           <h3>Our Story & Memories Scrapbook</h3>
-          ${toggle('Enable Our Story timeline section', 'features.memories', f.memories)}
-          <p class="hint">Showcase sweet milestone photos, dates, and memories leading up to your date ask.</p>
+          ${customToggle('Enable Our Story timeline section', 'features.memories', f.memories, 'Showcase milestone dates, photos, and memories leading up to your date ask')}
           <div class="memories-builder-list">
             ${(f.memoriesList || []).map((m, idx) => `
-              <fieldset class="memory-builder-item">
-                <legend>Memory #${idx + 1} ${m.title ? `· ${esc(m.title)}` : ''}</legend>
-                <div style="display:grid;gap:8px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">Position #${idx + 1}</span>
-                    <div style="display:flex;gap:4px;">
-                      <button type="button" class="button ghost small move-memory" data-memory-move="up" data-memory-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.4;"' : ''}>▲ Up</button>
-                      <button type="button" class="button ghost small move-memory" data-memory-move="down" data-memory-idx="${idx}" ${idx === (f.memoriesList.length - 1) ? 'disabled style="opacity:0.4;"' : ''}>▼ Down</button>
-                    </div>
+              <div class="memory-builder-item-card">
+                <div class="memory-card-topbar">
+                  <span class="memory-pos-badge">Position #${idx + 1}</span>
+                  <div class="memory-card-actions">
+                    <button type="button" class="button ghost small move-memory" data-memory-move="up" data-memory-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.4;"' : ''}>▲ Up</button>
+                    <button type="button" class="button ghost small move-memory" data-memory-move="down" data-memory-idx="${idx}" ${idx === (f.memoriesList.length - 1) ? 'disabled style="opacity:0.4;"' : ''}>▼ Down</button>
+                    <button class="button danger small remove-memory" data-memory-idx="${idx}" type="button">Delete</button>
                   </div>
-                  <label>Title
-                    <input data-memory-idx="${idx}" data-memory-field="title" value="${esc(m.title || '')}" placeholder="e.g. First Coffee Together" maxlength="80">
-                  </label>
-                  <label>Date / Milestone (optional)
-                    <input data-memory-idx="${idx}" data-memory-field="date" value="${esc(m.date || '')}" placeholder="e.g. 12 March 2024" maxlength="50">
-                  </label>
-                  <label>Caption / Note
-                    <textarea data-memory-idx="${idx}" data-memory-field="caption" placeholder="The day everything started..." maxlength="400">${esc(m.caption || '')}</textarea>
-                  </label>
-                  <label class="music-upload" style="margin:4px 0;">
+                </div>
+                <div class="memory-card-fields">
+                  ${formField('Title', '', m.title || '', '', 'text', 'e.g. First Coffee Together', `data-memory-idx="${idx}" data-memory-field="title"`)}
+                  ${formField('Date / Milestone (optional)', '', m.date || '', '', 'text', 'e.g. 12 March 2024', `data-memory-idx="${idx}" data-memory-field="date"`)}
+                  <div class="form-group">
+                    <label class="form-label"><span class="label-title">Caption / Note</span></label>
+                    <textarea data-memory-idx="${idx}" data-memory-field="caption" class="form-textarea" placeholder="The day everything started..." rows="2" maxlength="400">${esc(m.caption || '')}</textarea>
+                  </div>
+                  <label class="memory-mini-upload">
                     <span class="upload-icon">📷</span>
-                    <b>${m.photoUrl ? 'Replace Memory Photo' : 'Upload Memory Photo'}</b>
-                    <small>JPG, PNG, WebP or GIF · max 5 MB</small>
-                    <input class="memory-photo-file" data-memory-idx="${idx}" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*">
+                    <div class="mini-upload-text">
+                      <b>${m.photoUrl ? 'Replace Memory Photo' : 'Upload Memory Photo'}</b>
+                      <small>JPG, PNG, WebP or GIF · max 5 MB</small>
+                    </div>
+                    <input class="memory-photo-file" data-memory-idx="${idx}" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" hidden>
                   </label>
                   ${m.photoUrl ? `
-                    <div class="cover-current">
+                    <div class="cover-current-card mini">
                       <img src="${esc(m.photoUrl)}" alt="Memory" class="cover-thumbnail">
                       <div class="cover-meta">
                         <b>Photo Attached</b>
                         <small>Visible in Our Story timeline</small>
                       </div>
-                      <button class="icon-button remove-memory-photo" data-memory-idx="${idx}" type="button" aria-label="Remove photo">×</button>
+                      <button class="icon-button remove-memory-photo danger-icon" data-memory-idx="${idx}" type="button" aria-label="Remove photo">×</button>
                     </div>
                   ` : ''}
-                  <button class="button danger small remove-memory" data-memory-idx="${idx}" type="button" style="margin-top:6px;">Delete Memory</button>
                 </div>
-              </fieldset>
+              </div>
             `).join('')}
-            <button class="button ghost small add-memory" type="button" ${(f.memoriesList || []).length >= 12 ? 'disabled' : ''}>+ Add Memory ${(f.memoriesList || []).length >= 12 ? '(Max 12)' : ''}</button>
+            <button class="button ghost add-memory" type="button" style="width:100%;min-height:46px;margin-top:8px;" ${(f.memoriesList || []).length >= 12 ? 'disabled' : ''}>
+              + Add Memory Card ${(f.memoriesList || []).length >= 12 ? '(Max 12 reached)' : ''}
+            </button>
           </div>
         </div>
       </div>
@@ -516,30 +647,41 @@ function render() {
       <div class="step-panel-body">
         <div class="sub-panel">
           <h3>Date Ideas / Moods</h3>
-          <p class="hint">Choose one featured idea. Your recipient can also pick their preferred date and time.</p>
-          ${c.moods.map((m, i) => `
-            <fieldset class="${m.favorite ? 'favorite-field' : ''}">
-              <legend>Option ${i + 1}${m.favorite ? ' · My favorite' : ''}</legend>
-              ${field('Title', `content.moods.${i}.title`, m.title)}
-              ${field('Description', `content.moods.${i}.description`, m.description)}
-              <button type="button" class="favorite-option ${m.favorite ? 'active' : ''}" data-favorite-index="${i}">
-                ${m.favorite ? '★ Featured & selected' : '☆ Make my favorite'}
-              </button>
-            </fieldset>
-          `).join('')}
-          <button class="button ghost small add" data-list="moods">+ Add option</button>
+          <p class="hint">Choose one featured date idea. Your recipient can also select their preferred date and time.</p>
+          <div class="mood-cards-list">
+            ${c.moods.map((m, i) => `
+              <div class="mood-builder-item-card ${m.favorite ? 'favorite-active' : ''}">
+                <div class="mood-item-header">
+                  <span class="mood-badge">${m.favorite ? '★ Featured & Selected' : `Option ${i + 1}`}</span>
+                  <div style="display:flex;gap:6px;">
+                    <button type="button" class="favorite-option button small ${m.favorite ? 'primary' : 'ghost'}" data-favorite-index="${i}">
+                      ${m.favorite ? '★ Selected' : '☆ Make Favorite'}
+                    </button>
+                    ${c.moods.length > 1 ? `<button class="icon-button danger-icon remove" data-list="moods" data-index="${i}" type="button" aria-label="Remove option">×</button>` : ''}
+                  </div>
+                </div>
+                ${formField('Title', `content.moods.${i}.title`, m.title, '', 'text', 'e.g. Cozy Coffee & Conversations ☕')}
+                ${formField('Description', `content.moods.${i}.description`, m.description, '', 'text', 'e.g. Warm drinks, quiet cafe, unlimited banter.')}
+              </div>
+            `).join('')}
+          </div>
+          <button class="button ghost add" data-list="moods" style="width:100%;min-height:44px;margin-top:8px;">+ Add Date Option</button>
         </div>
 
         <div class="sub-panel" style="margin-top:20px;">
           <h3>Playful Touches</h3>
-          <div class="feature-list">
-            ${[['Mascots', 'mascots'], ['Tiny Mode', 'tinyMode'], ['Cute-item collection', 'collection'], ['Confetti', 'confetti'], ['Funny Back buttons', 'funnyBack']].map(([l, k]) => featureToggle(l, `features.${k}`, f[k])).join('')}
-            <label class="mascot-select">
-              <span><b>Mascot pack</b><small>Choose the animated characters shown throughout.</small></span>
-              <select data-path="features.mascotPack">
-                ${['original', 'yellow', 'blue', 'pink', 'bears', 'cats', 'bunnies', 'none'].map(x => `<option ${f.mascotPack === x ? 'selected' : ''} value="${x}">${x[0].toUpperCase() + x.slice(1)}</option>`).join('')}
-              </select>
+          <div class="feature-toggles-grid">
+            ${[['Mascots', 'mascots'], ['Tiny Mode', 'tinyMode'], ['Cute-item collection', 'collection'], ['Confetti', 'confetti'], ['Funny Back buttons', 'funnyBack']].map(([l, k]) => featureToggleCard(l, `features.${k}`, f[k])).join('')}
+          </div>
+          
+          <div class="form-group" style="margin-top:16px;">
+            <label class="form-label">
+              <span class="label-title">Mascot Character Pack</span>
+              <small class="label-helper">Choose the animated characters shown throughout the invitation</small>
             </label>
+            <select data-path="features.mascotPack" class="form-select">
+              ${['original', 'yellow', 'blue', 'pink', 'bears', 'cats', 'bunnies', 'none'].map(x => `<option ${f.mascotPack === x ? 'selected' : ''} value="${x}">${x[0].toUpperCase() + x.slice(1)}</option>`).join('')}
+            </select>
           </div>
         </div>
       </div>
@@ -558,77 +700,83 @@ function render() {
       </div>
       <div class="step-panel-body">
         <div class="sub-panel">
-          <h3>Background Music</h3>
-          <div class="music-enable">
-            ${toggle('Enable background soundtrack', 'features.music', f.music)}
-            <small>Starts gracefully when the invitation is opened (never forceful autoplay).</small>
-          </div>
+          <h3>Background Soundtrack</h3>
+          ${customToggle('Enable background music', 'features.music', f.music, 'Starts gracefully when the invitation is opened (never forceful autoplay)')}
 
-          <div class="music-source-tabs" style="display:flex;gap:6px;margin:10px 0 12px;">
-            <button type="button" class="button small ${(f.musicSource || 'upload') === 'upload' ? 'primary' : 'ghost'} set-music-source" data-source="upload">♫ Upload / Presets</button>
-            <button type="button" class="button small ${f.musicSource === 'spotify' ? 'primary' : 'ghost'} set-music-source" data-source="spotify">🟢 Spotify</button>
+          <div class="music-source-segmented-tabs" style="margin:14px 0;">
+            <button type="button" class="source-tab-btn ${(f.musicSource || 'upload') === 'upload' ? 'active' : ''} set-music-source" data-source="upload">
+              ♫ Upload / Presets
+            </button>
+            <button type="button" class="source-tab-btn ${f.musicSource === 'spotify' ? 'active' : ''} set-music-source" data-source="spotify">
+              🟢 Spotify
+            </button>
           </div>
 
           ${f.musicSource === 'spotify' ? `
-            <div class="spotify-builder-panel" style="display:grid;gap:10px;padding:12px;background:rgba(29,185,84,0.06);border:1.5px solid rgba(29,185,84,0.3);border-radius:14px;">
-              <label>
-                <span><b>Paste Spotify Link</b><small>Track, Album, or Playlist URL</small></span>
-                <div style="display:flex;gap:6px;margin-top:4px;">
-                  <input id="spotify-url-input" value="${esc(f.spotify?.url || '')}" placeholder="https://open.spotify.com/track/..." style="flex:1;">
+            <div class="spotify-builder-card">
+              <div class="form-group">
+                <label class="form-label">
+                  <span class="label-title">Paste Spotify Track / Album / Playlist Link</span>
+                </label>
+                <div style="display:flex;gap:8px;">
+                  <input id="spotify-url-input" value="${esc(f.spotify?.url || '')}" placeholder="https://open.spotify.com/track/..." class="form-input" style="flex:1;">
                   <button type="button" class="button primary small" id="apply-spotify-btn">Link</button>
                 </div>
-              </label>
+              </div>
               ${f.spotify?.embedUrl ? `
-                <div class="spotify-preview-card" style="margin-top:6px;">
+                <div class="spotify-preview-card" style="margin-top:10px;">
                   <iframe src="${esc(f.spotify.embedUrl)}" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="border-radius:12px;border:none;"></iframe>
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-                    <small style="color:var(--muted);">✓ Spotify embed connected · Official controls</small>
-                    <button type="button" class="button danger small" id="remove-spotify-btn">Remove Spotify</button>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+                    <small style="color:#166534;font-weight:600;">✓ Spotify embed connected · Official controls</small>
+                    <button type="button" class="button danger small" id="remove-spotify-btn">Remove</button>
                   </div>
                 </div>
               ` : ''}
-              <p class="hint" style="margin:0;font-size:0.73rem;color:#166534;">Spotify tracks use Spotify's official embed player. Custom start/end trimming is available for uploaded audio.</p>
+              <p class="hint" style="margin:8px 0 0;font-size:0.75rem;color:#166534;">Spotify tracks use Spotify's official embed player. Custom start/end trimming is available for uploaded audio.</p>
             </div>
           ` : `
             <div class="playlist-builder-panel">
-              <label class="music-upload" style="margin-bottom:12px;">
-                <span class="upload-icon">↥</span>
-                <b>Upload custom song to playlist</b>
-                <small>MP3, M4A, OGG, or WAV · max 10 MB</small>
-                <span id="music-upload-copy" class="button ghost small">+ Add custom file</span>
-                <input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*">
-              </label>
-              <div class="playlist-items-list" style="display:grid;gap:10px;margin-bottom:14px;">
+              <div class="modern-upload-card mini">
+                <div class="upload-icon-circle mini">↥</div>
+                <h4>Upload custom song to playlist</h4>
+                <p>MP3, M4A, OGG, or WAV · max 10 MB</p>
+                <label class="button ghost small upload-btn-label">
+                  <span id="music-upload-copy">+ Add Custom Song</span>
+                  <input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*" hidden>
+                </label>
+              </div>
+
+              <div class="playlist-items-list" style="display:grid;gap:10px;margin:14px 0;">
                 ${((f.playlist && f.playlist.length) ? f.playlist : (f.musicUrl ? [{ id: 'default', name: f.musicName || 'Selected Song', artist: 'Romantic soundtrack', mood: 'romantic', url: f.musicUrl, startTime: f.musicStartOffset || 0, endTime: null, duration: 0, default: true, enabled: true }] : [])).map((song, idx, arr) => `
-                  <fieldset class="track-builder-item" style="border:1px solid #e8e3dc;border-radius:14px;padding:12px;background:#fff;margin:0;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                      <span style="font-size:1.2rem;">${song.mood === 'latenight' ? '🌙' : song.mood === 'funny' ? '😂' : song.mood === 'emotional' ? '💔' : song.mood === 'dreamy' ? '✨' : '❤️'}</span>
+                  <div class="track-builder-item-card">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                      <span style="font-size:1.3rem;">${song.mood === 'latenight' ? '🌙' : song.mood === 'funny' ? '😂' : song.mood === 'emotional' ? '💔' : song.mood === 'dreamy' ? '✨' : '❤️'}</span>
                       <div style="flex:1;min-width:0;">
-                        <b style="display:block;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(song.name || song.title || 'Song')}</b>
-                        <small style="color:var(--muted);font-size:0.72rem;">${esc(song.artist || (song.sourceType === 'preset' || (song.url && song.url.startsWith('preset:')) ? 'Preset Soundscape' : 'Custom track'))}${song.default ? ' · ★ Default track' : ''}</small>
+                        <b style="display:block;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(song.name || song.title || 'Song')}</b>
+                        <small style="color:var(--muted);font-size:0.74rem;">${esc(song.artist || (song.sourceType === 'preset' || (song.url && song.url.startsWith('preset:')) ? 'Preset Soundscape' : 'Custom track'))}${song.default ? ' · ★ Default' : ''}</small>
                       </div>
                       <div style="display:flex;gap:4px;">
                         <button type="button" class="button ghost small playlist-move-btn" data-playlist-move="up" data-playlist-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
                         <button type="button" class="button ghost small playlist-move-btn" data-playlist-move="down" data-playlist-idx="${idx}" ${idx === arr.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
                         <button type="button" class="button ghost small playlist-default-btn ${song.default ? 'primary' : ''}" data-playlist-idx="${idx}" title="Set as default song">★</button>
-                        <button type="button" class="icon-button playlist-delete-btn" data-playlist-idx="${idx}" aria-label="Remove song">×</button>
+                        <button type="button" class="icon-button danger-icon playlist-delete-btn" data-playlist-idx="${idx}" aria-label="Remove song">×</button>
                       </div>
                     </div>
                     ${(song.sourceType !== 'spotify' && (!song.url || !song.url.startsWith('https://open.spotify.com'))) ? `
-                      <div class="audio-trimmer-box" style="background:#faf8f5;border:1px solid #ede7df;border-radius:10px;padding:10px;margin-top:4px;">
+                      <div class="audio-trimmer-box">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                           <span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">✂️ Audio Trimmer & Start/End</span>
                           <span class="trimmer-duration-label" style="font-size:0.72rem;color:var(--muted);">${song.duration ? `Duration: ${formatTime(song.duration)}` : (song.url && song.url.startsWith('preset:') ? 'Preset Loop' : '')}</span>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                          <label style="font-size:0.75rem;margin:0;">
-                            <span>Start Time (MM:SS)</span>
-                            <input type="text" class="track-time-input" data-time-field="startTime" data-track-idx="${idx}" value="${formatTime(song.startTime || 0)}" placeholder="00:00" style="padding:4px 8px;font-size:0.8rem;">
-                          </label>
-                          <label style="font-size:0.75rem;margin:0;">
-                            <span>End Time (MM:SS)</span>
-                            <input type="text" class="track-time-input" data-time-field="endTime" data-track-idx="${idx}" value="${song.endTime ? formatTime(song.endTime) : ''}" placeholder="${song.duration ? formatTime(song.duration) : 'Full song'}" style="padding:4px 8px;font-size:0.8rem;">
-                          </label>
+                          <div class="form-group" style="margin:0;">
+                            <label class="form-label" style="margin:0;"><span style="font-size:0.72rem;">Start Time (MM:SS)</span></label>
+                            <input type="text" class="track-time-input form-input" data-time-field="startTime" data-track-idx="${idx}" value="${formatTime(song.startTime || 0)}" placeholder="00:00" style="padding:4px 8px;font-size:0.8rem;min-height:36px;">
+                          </div>
+                          <div class="form-group" style="margin:0;">
+                            <label class="form-label" style="margin:0;"><span style="font-size:0.72rem;">End Time (MM:SS)</span></label>
+                            <input type="text" class="track-time-input form-input" data-time-field="endTime" data-track-idx="${idx}" value="${song.endTime ? formatTime(song.endTime) : ''}" placeholder="${song.duration ? formatTime(song.duration) : 'Full song'}" style="padding:4px 8px;font-size:0.8rem;min-height:36px;">
+                          </div>
                         </div>
                         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
                           <button type="button" class="button ghost small preview-track-btn" data-preview-idx="${idx}" data-track-url="${esc(song.url)}" data-start-time="${song.startTime || 0}" data-end-time="${song.endTime || ''}">▶ Preview Selection</button>
@@ -636,32 +784,40 @@ function render() {
                         </div>
                       </div>
                     ` : ''}
-                  </fieldset>
+                  </div>
                 `).join('')}
               </div>
-              <p class="hint" style="margin:8px 0 4px;">Or choose romantic preset soundscapes:</p>
-              <div class="music-mood-filters">
-                <button type="button" class="mood-filter-btn active" data-music-filter="all">All</button>
-                <button type="button" class="mood-filter-btn" data-music-filter="romantic">❤️ Romantic</button>
-                <button type="button" class="mood-filter-btn" data-music-filter="latenight">🌙 Late Night</button>
-                <button type="button" class="mood-filter-btn" data-music-filter="funny">😂 Cute/Funny</button>
-                <button type="button" class="mood-filter-btn" data-music-filter="emotional">💔 Emotional</button>
-                <button type="button" class="mood-filter-btn" data-music-filter="dreamy">✨ Dreamy</button>
-              </div>
-              <div class="music-preset-grid">
-                ${(state.presets?.music || [{ key: 'preset:piano', name: 'Piano Serenade 🎹', desc: 'Soft emotive romantic piano', mood: 'romantic' }, { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸', desc: 'Warm fingerstyle acoustic melody', mood: 'romantic' }, { key: 'preset:jazz', name: 'Midnight Jazz 🎷', desc: 'Slow, smooth late-night jazz', mood: 'latenight' }, { key: 'preset:lofi', name: 'Lo-fi Romance 🎧', desc: 'Chill beats, warm vinyl, and cozy chords', mood: 'latenight' }, { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️', desc: 'Playful, sunny, cheerful vibe', mood: 'funny' }, { key: 'preset:ballad', name: 'Emotional Strings 🎻', desc: 'Gentle, touching cello and violin', mood: 'emotional' }, { key: 'preset:dreamy', name: 'Celestial Starlight ✨', desc: 'Ethereal ambient pads and sparkle bells', mood: 'dreamy' }]).map(p => `
-                  <button type="button" class="music-preset-btn ${f.musicUrl === p.key ? 'active' : ''}" data-music-preset="${p.key}" data-music-name="${esc(p.name)}" data-preset-mood="${p.mood || 'romantic'}">
-                    <b>${p.name}</b>
-                    <small>${p.desc}</small>
-                  </button>
-                `).join('')}
+
+              <div class="form-group">
+                <label class="form-label">
+                  <span class="label-title">Or choose romantic preset soundscapes:</span>
+                </label>
+                <div class="music-mood-filters">
+                  <button type="button" class="mood-filter-btn active" data-music-filter="all">All</button>
+                  <button type="button" class="mood-filter-btn" data-music-filter="romantic">❤️ Romantic</button>
+                  <button type="button" class="mood-filter-btn" data-music-filter="latenight">🌙 Late Night</button>
+                  <button type="button" class="mood-filter-btn" data-music-filter="funny">😂 Cute/Funny</button>
+                  <button type="button" class="mood-filter-btn" data-music-filter="emotional">💔 Emotional</button>
+                  <button type="button" class="mood-filter-btn" data-music-filter="dreamy">✨ Dreamy</button>
+                </div>
+                <div class="music-preset-grid">
+                  ${(state.presets?.music || [{ key: 'preset:piano', name: 'Piano Serenade 🎹', desc: 'Soft emotive romantic piano', mood: 'romantic' }, { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸', desc: 'Warm fingerstyle acoustic melody', mood: 'romantic' }, { key: 'preset:jazz', name: 'Midnight Jazz 🎷', desc: 'Slow, smooth late-night jazz', mood: 'latenight' }, { key: 'preset:lofi', name: 'Lo-fi Romance 🎧', desc: 'Chill beats, warm vinyl, and cozy chords', mood: 'latenight' }, { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️', desc: 'Playful, sunny, cheerful vibe', mood: 'funny' }, { key: 'preset:ballad', name: 'Emotional Strings 🎻', desc: 'Gentle, touching cello and violin', mood: 'emotional' }, { key: 'preset:dreamy', name: 'Celestial Starlight ✨', desc: 'Ethereal ambient pads and sparkle bells', mood: 'dreamy' }]).map(p => `
+                    <button type="button" class="music-preset-btn ${f.musicUrl === p.key ? 'active' : ''}" data-music-preset="${p.key}" data-music-name="${esc(p.name)}" data-preset-mood="${p.mood || 'romantic'}">
+                      <b>${p.name}</b>
+                      <small>${p.desc}</small>
+                    </button>
+                  `).join('')}
+                </div>
               </div>
             </div>
           `}
 
-          <label style="margin-top:12px;">
-            <span><b>Music Player Style</b><small>Choose how the audio player appears to the recipient.</small></span>
-            <select data-path="features.musicPlayerStyle">
+          <div class="form-group" style="margin-top:14px;">
+            <label class="form-label">
+              <span class="label-title">Music Player Style</span>
+              <small class="label-helper">Choose how the audio player appears to the recipient</small>
+            </label>
+            <select data-path="features.musicPlayerStyle" class="form-select">
               <option value="romantic" ${(f.musicPlayerStyle || 'romantic') === 'romantic' ? 'selected' : ''}>💿 Romantic Vinyl (Animated disc & full player)</option>
               <option value="glass" ${f.musicPlayerStyle === 'glass' ? 'selected' : ''}>💎 Glassmorphism (Frosted floating bar)</option>
               <option value="minimal" ${f.musicPlayerStyle === 'minimal' ? 'selected' : ''}>💊 Minimal Pill (Compact play/mute)</option>
@@ -670,11 +826,14 @@ function render() {
               <option value="ambient" ${f.musicPlayerStyle === 'ambient' ? 'selected' : ''}>🌌 Hidden Label / Icon Only (Discreet sound)</option>
               <option value="spotify" ${f.musicPlayerStyle === 'spotify' ? 'selected' : ''}>🟢 Spotify Card</option>
             </select>
-          </label>
+          </div>
 
-          <label style="margin-top:10px;">
-            <span><b>Player Screen Position</b><small>Choose where the music widget is docked on screen.</small></span>
-            <select data-path="features.musicPlayerPosition">
+          <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">
+              <span class="label-title">Player Screen Position</span>
+              <small class="label-helper">Choose where the music widget is docked on screen</small>
+            </label>
+            <select data-path="features.musicPlayerPosition" class="form-select">
               <option value="bottom-right" ${(f.musicPlayerPosition || 'bottom-right') === 'bottom-right' ? 'selected' : ''}>↘ Bottom Right (Default)</option>
               <option value="bottom-left" ${f.musicPlayerPosition === 'bottom-left' ? 'selected' : ''}>↙ Bottom Left</option>
               <option value="top-right" ${f.musicPlayerPosition === 'top-right' ? 'selected' : ''}>↗ Top Right</option>
@@ -683,59 +842,66 @@ function render() {
               <option value="center-left" ${f.musicPlayerPosition === 'center-left' ? 'selected' : ''}>← Center Left</option>
               <option value="custom" ${f.musicPlayerPosition === 'custom' ? 'selected' : ''}>📍 Custom Draggable Position</option>
             </select>
-          </label>
+          </div>
 
           ${f.musicPlayerPosition === 'custom' ? `
-            <div class="custom-position-canvas-card" style="margin-top:8px;padding:12px;background:#f7f4ee;border:1.5px dashed #d8cebf;border-radius:14px;text-align:center;">
-              <small style="display:block;font-weight:700;margin-bottom:6px;color:var(--text);">Drag player to customize dock position</small>
-              <div id="position-preview-canvas" style="position:relative;width:200px;height:120px;margin:0 auto;background:#fff;border:1px solid #ccc;border-radius:10px;overflow:hidden;box-shadow:inset 0 2px 6px rgba(0,0,0,0.05);touch-action:none;">
-                <div id="position-drag-handle" style="position:absolute;left:${(f.musicCustomPosition?.x || 0.8) * 100}%;top:${(f.musicCustomPosition?.y || 0.8) * 100}%;transform:translate(-50%,-50%);padding:4px 8px;background:var(--primary);color:#fff;border-radius:20px;font-size:0.65rem;font-weight:700;cursor:grab;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.2);">♫ Player</div>
+            <div class="custom-position-canvas-card">
+              <small style="display:block;font-weight:700;margin-bottom:6px;color:var(--color-heading);">Drag player widget to customize dock position</small>
+              <div id="position-preview-canvas">
+                <div id="position-drag-handle" style="left:${(f.musicCustomPosition?.x || 0.8) * 100}%;top:${(f.musicCustomPosition?.y || 0.8) * 100}%;">♫ Player</div>
               </div>
-              <small style="display:block;margin-top:4px;color:var(--muted);font-size:0.68rem;">Normalized: X: ${Math.round((f.musicCustomPosition?.x || 0.8) * 100)}% · Y: ${Math.round((f.musicCustomPosition?.y || 0.8) * 100)}%</small>
+              <small style="display:block;margin-top:6px;color:var(--muted);font-size:0.72rem;">Normalized: X: ${Math.round((f.musicCustomPosition?.x || 0.8) * 100)}% · Y: ${Math.round((f.musicCustomPosition?.y || 0.8) * 100)}%</small>
             </div>
           ` : ''}
 
-          <label style="margin-top:10px;">
-            <span><b>Playback Mode</b><small>How tracks transition during playback.</small></span>
-            <select data-path="features.musicPlaybackMode">
+          <div class="form-group" style="margin-top:12px;">
+            <label class="form-label">
+              <span class="label-title">Playback Mode</span>
+              <small class="label-helper">How tracks transition during playback</small>
+            </label>
+            <select data-path="features.musicPlaybackMode" class="form-select">
               <option value="playlist" ${(f.musicPlaybackMode || 'playlist') === 'playlist' ? 'selected' : ''}>⏭ Play selected tracks in order (Playlist)</option>
               <option value="loop-track" ${f.musicPlaybackMode === 'loop-track' ? 'selected' : ''}>🔂 Loop current track</option>
               <option value="loop-playlist" ${f.musicPlaybackMode === 'loop-playlist' ? 'selected' : ''}>🔁 Loop playlist</option>
               <option value="once" ${f.musicPlaybackMode === 'once' ? 'selected' : ''}>⏹ Play once</option>
             </select>
-          </label>
+          </div>
 
-          <label style="display:flex;flex-direction:column;gap:4px;margin-top:14px;">
-            <span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;">
-              <b>Default Volume</b>
-              <span id="music-vol-label">${f.musicVolume || 35}%</span>
-            </span>
-            <input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume || 35}">
-          </label>
+          <div class="form-group" style="margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span class="label-title">Default Volume</span>
+              <span id="music-vol-label" style="font-size:0.82rem;font-weight:700;color:var(--color-primary);">${f.musicVolume || 35}%</span>
+            </div>
+            <input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume || 35}" class="form-range">
+          </div>
         </div>
 
         <div class="sub-panel" style="margin-top:20px;">
           <h3>Personal Voice Note 🎙️</h3>
-          <p class="hint">Record with your mic or upload an audio file. The background music automatically ducks when your voice note plays!</p>
+          <p class="hint">Record with your microphone or upload an audio file. The background music automatically ducks when your voice note plays!</p>
           <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
             <button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button>
             <span id="recording-timer" style="font-weight:700;font-size:0.85rem;display:none;color:#ff625f;">● 0:00</span>
           </div>
-          <label class="music-upload">
-            <span class="upload-icon">↥</span>
-            <b>Upload recorded voice note</b>
-            <small>MP3, M4A, OGG, WAV, or AAC · max 10 MB</small>
-            <span id="voice-upload-copy" class="button ghost small">Choose voice file</span>
-            <input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*">
-          </label>
+          
+          <div class="modern-upload-card mini">
+            <div class="upload-icon-circle mini">🎤</div>
+            <h4>Upload recorded voice note</h4>
+            <p>MP3, M4A, OGG, WAV, or AAC · max 10 MB</p>
+            <label class="button ghost small upload-btn-label">
+              <span id="voice-upload-copy">Choose Voice File</span>
+              <input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*" hidden>
+            </label>
+          </div>
+
           ${f.voiceNoteUrl ? `
-            <div class="music-current" style="margin-top:12px;">
-              <span class="music-note">🎙️</span>
-              <div>
+            <div class="cover-current-card mini" style="margin-top:12px;">
+              <span style="font-size:1.4rem;">🎙️</span>
+              <div class="cover-meta">
                 <b>${esc(f.voiceNoteName || 'Personal Voice Note')}</b>
                 <small>Ready to play in invitation</small>
               </div>
-              <button id="remove-voice" class="icon-button" type="button" aria-label="Remove voice note">×</button>
+              <button id="remove-voice" class="icon-button danger-icon" type="button" aria-label="Remove voice note">×</button>
             </div>
           ` : ''}
         </div>
@@ -754,7 +920,7 @@ function render() {
         <p>Publish your date invitation and get your private share link.</p>
       </div>
       <div class="step-panel-body">
-        <div class="publish-status-card" style="padding:16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);margin-bottom:16px;">
+        <div class="publish-status-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <span style="font-weight:700;font-size:0.95rem;">Publication Status</span>
             <span class="status ${state.status === 'published' ? 'published' : 'draft'}">${state.status}</span>
@@ -764,18 +930,18 @@ function render() {
           </p>
         </div>
 
-        <button class="button primary" id="publish-inline" style="width:100%;min-height:48px;font-size:1rem;margin-bottom:16px;">
+        <button class="button primary" id="publish-inline" style="width:100%;min-height:50px;font-size:1.02rem;margin-bottom:16px;">
           ${state.status === 'published' ? 'Update & Re-Publish Invitation ♥' : 'Publish Invitation ❤️'}
         </button>
 
         ${state.status === 'published' ? `
-          <div class="share-box-panel" style="padding:16px;background:var(--color-surface-soft);border:1px solid var(--color-border);border-radius:var(--radius-lg);">
+          <div class="share-box-panel">
             <h4 style="margin:0 0 8px;font-size:0.9rem;">Your Private Invitation Link:</h4>
-            <div class="share-box" style="display:flex;gap:8px;">
-              <input readonly value="${location.origin}/i/${state.token}" id="publish-link-input" style="flex:1;">
+            <div class="share-box">
+              <input readonly value="${location.origin}/i/${state.token}" id="publish-link-input" class="form-input" style="flex:1;">
               <button type="button" class="button small copy-link">Copy Link</button>
             </div>
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+            <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
               <a class="button small ghost" target="_blank" href="/i/${state.token}">↗ Open Public Link</a>
               <a class="button small ghost" target="_blank" href="/dashboard/invitations/${id}/preview">◉ Editor Preview</a>
             </div>
@@ -900,6 +1066,22 @@ document.addEventListener('click', e => {
   const navBtn = e.target.closest('[data-nav-step]');
   if (navBtn) {
     goToStep(navBtn.dataset.navStep);
+    return;
+  }
+
+  // Content Sub-screen Tab Click
+  const contentTabBtn = e.target.closest('[data-content-tab]');
+  if (contentTabBtn) {
+    activeContentScreen = contentTabBtn.dataset.contentTab;
+    document.querySelectorAll('.content-screen-tab').forEach(b => {
+      const isCur = b === contentTabBtn;
+      b.classList.toggle('active', isCur);
+      b.setAttribute('aria-selected', isCur);
+    });
+    const fieldsContainer = document.querySelector('#content-screen-fields-container');
+    if (fieldsContainer && state?.content?.screens) {
+      fieldsContainer.innerHTML = renderContentScreenFields(state.content.screens);
+    }
     return;
   }
 
@@ -1707,7 +1889,7 @@ async function save() {
         body
       });
       if (version === saveVersion) {
-        document.querySelector('#save-status').textContent = r.ok ? 'Saved ✓' : 'Save failed';
+        document.querySelector('#save-status').textContent = r.ok ? '✓ Saved' : 'Save failed';
         if (r.ok) preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
         else toast((await r.json()).error || 'Could not save changes.');
       }
@@ -1749,18 +1931,24 @@ function copyLink() {
 
 document.querySelector('#publish').onclick = publish;
 document.querySelector('#save-draft').onclick = save;
+
 document.querySelector('.preview-toolbar')?.addEventListener('click', e => {
   const button = e.target.closest('[data-viewport]');
   if (!button) return;
   document.querySelectorAll('.preview-toolbar button').forEach(item => item.classList.toggle('active', item === button));
   document.querySelector('#preview-pane').dataset.viewport = button.dataset.viewport;
 });
-document.querySelector('.mobile-tabs').onclick = e => {
+
+document.querySelector('.mobile-tabs')?.addEventListener('click', e => {
   const tab = e.target.dataset.tab;
   if (!tab) return;
-  document.querySelectorAll('.mobile-tabs button').forEach(b => b.classList.toggle('active', b === e.target));
+  document.querySelectorAll('.mobile-tabs button').forEach(b => {
+    const isCur = b === e.target;
+    b.classList.toggle('active', isCur);
+    b.setAttribute('aria-selected', isCur);
+  });
   root.classList.toggle('show-preview', tab === 'preview');
-};
+});
 
 function toast(message) {
   let el = document.querySelector('.toast');
