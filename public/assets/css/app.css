@@ -967,43 +967,7 @@ body {
     }
 }
 
-.builder {
-    background: #fffdfb
-}
-
-.builder-head {
-    height: 104px;
-    padding-inline: 32px;
-    background: #fffdfbe8
-}
-
-.builder-head h1 span {
-    color: var(--pink);
-    font: inherit
-}
-
-.builder-head>div:first-child>a {
-    color: var(--muted);
-    text-decoration: none
-}
-
 #save-status { color:#6a9d73 }
-
-.builder-grid {
-    height: calc(100% - 104px);
-    grid-template-columns: 410px minmax(0, 1fr);
-    gap: 22px;
-    padding: 18px 24px 24px;
-    background: #fffdfb
-}
-
-.controls {
-    padding: 10px;
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    background: #fff;
-    box-shadow: 0 14px 40px #4d1d2b0a
-}
 
 .controls details {
     margin-bottom: 7px;
@@ -2069,10 +2033,12 @@ textarea {
 
 .builder {
     min-height: 100vh;
+    height: auto;
     display: flex;
     flex-direction: column;
     background: #FCFAF7;
     overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .builder-head {
@@ -2194,16 +2160,19 @@ textarea {
 }
 
 .step-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-primary-soft, #FFF0F3);
-    border-color: var(--color-primary, #E6496F);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 .step-btn.active {
-    background: var(--color-primary-soft, #FFF0F3);
-    color: var(--color-primary, #E6496F);
-    border-color: var(--color-primary, #E6496F);
-    box-shadow: 0 4px 14px rgba(230, 73, 111, 0.12);
+    background: #FFF0F3;
+    border-color: #E6496F;
+    color: #20191B;
+    box-shadow: 0 4px 12px rgba(230, 73, 111, 0.12);
+}
+
+.step-btn.completed {
+    color: #282223;
 }
 
 .step-btn.completed:not(.active) {
@@ -2214,36 +2183,38 @@ textarea {
     width: 28px;
     height: 28px;
     border-radius: 50%;
+    border: 1.5px solid #EADFE1;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.8rem;
     font-weight: 700;
-    background: var(--color-surface-soft, #EFE9E2);
-    color: var(--color-text-muted, #70686A);
+    background: #F7F2EC;
+    color: #70686A;
     flex-shrink: 0;
     transition: all 0.2s ease;
 }
 
 .step-btn.active .step-badge {
-    background: var(--color-primary, #E6496F);
+    background: #E6496F;
     color: #ffffff;
-    box-shadow: 0 2px 8px rgba(230, 73, 111, 0.35);
+    border-color: #E6496F;
+    box-shadow: 0 2px 8px rgba(230, 73, 111, 0.3);
 }
 
 .step-btn.completed:not(.active) .step-badge {
-    background: #e8f5e9;
-    color: #2e7d32;
-    font-weight: 800;
+    background: #2E7D32;
+    color: #ffffff;
+    border-color: #2E7D32;
 }
 
-.step-text {
+.step-meta {
     display: flex;
     flex-direction: column;
     gap: 1px;
 }
 
-.step-label {
+.step-name {
     font-size: 0.88rem;
     font-weight: 700;
     line-height: 1.2;
@@ -2268,12 +2239,13 @@ textarea {
     max-width: 1440px;
     width: 100%;
     margin: 0 auto;
-    padding: 28px 28px 48px;
+    padding: 28px 28px 80px;
     display: grid;
     grid-template-columns: minmax(420px, 480px) minmax(0, 1fr);
     gap: 32px;
     align-items: start;
     min-height: calc(100vh - 180px);
+    height: auto;
 }
 
 .controls {
@@ -2283,6 +2255,8 @@ textarea {
     padding: 32px;
     box-shadow: 0 10px 35px rgba(0, 0, 0, 0.03);
     min-width: 0;
+    height: auto;
+    overflow: visible;
 }
 
 /* Step Panels */
@@ -5254,31 +5228,6 @@ html {
 /* Keep studio rules above the legacy component defaults in the cascade. */
 .topbar.app-topbar { background:#fffdfbe8;border-bottom-color:#eee5e2 }
 .dashboard-studio .dashboard-hero h1 { font-size:clamp(2.8rem,5vw,4.25rem);letter-spacing:-.035em }
-.whatsapp-setup{display:grid;grid-template-columns:minmax(220px,1fr) minmax(230px,340px) auto;align-items:center;gap:14px;margin:0 0 24px;padding:16px 18px;border:1px solid #dcecdf;border-radius:18px;background:linear-gradient(110deg,#f4fff7,#fff);box-shadow:0 10px 30px #284d3110}.whatsapp-setup div{display:grid;gap:3px}.whatsapp-setup b{font-size:.9rem}.whatsapp-setup span{color:var(--muted);font-size:.72rem}.whatsapp-setup input{min-height:44px;border-radius:12px;background:#fff}.whatsapp-setup .button{min-height:44px;margin:0;background:#25d366}
-.builder .builder-head { height:104px;padding:14px 32px;background:#fffdfbe8 }
-.builder .builder-grid { height:calc(100% - 104px);grid-template-columns:410px minmax(0,1fr);gap:22px;padding:18px 24px 24px;background:#fffdfb }
-.builder .controls { padding:10px;background:#fff }
-.builder .controls details { margin-bottom:7px;padding:0;border:1px solid #eee4e1 }
-.builder .controls summary { min-height:54px;padding:15px 40px 15px 16px }
-.builder .section-body { padding:8px 16px 20px }
-.builder .toggle { grid-template-columns:40px 1fr !important }
-.builder .toggle input,
-.builder .feature-toggle input { width:1px;height:1px }
-.builder .music-upload { flex-direction:column;border-color:#ff9aac !important;background:linear-gradient(145deg,#fff8f6,#fff) !important }
-.builder .upload-icon { color:var(--pink);font-size:2.2rem;font-weight:400 }
-.builder .music-current { display:flex }
-.builder .preview-pane { padding:68px 30px 38px;background:radial-gradient(circle at 15% 30%,#ffd9df55,transparent 18rem),radial-gradient(circle at 85% 80%,#e3e6ff77,transparent 22rem),#fff9f7 }
-
-@media(max-width:1100px) {
-    .builder .builder-grid { grid-template-columns:360px minmax(0,1fr) }
-}
-
-@media(max-width:800px) {
-    .builder .builder-head { height:auto }
-    .builder .builder-grid { height:auto;display:block;padding:10px }
-    .builder .preview-pane { height:calc(100vh - 220px);padding:64px 12px 28px }
-}
-
 .admin-panel .panel { margin-bottom: 28px; }
 .admin-panel h2 { display: flex; align-items: center; justify-content: space-between; font: 1.5rem 'DM Serif Display', serif; margin: 0 0 16px; }
 .log-action { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 99px; font-size: .68rem; font-weight: 700; letter-spacing: .02em; }
