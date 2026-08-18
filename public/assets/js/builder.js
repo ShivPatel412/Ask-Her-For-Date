@@ -129,16 +129,6 @@ const BUILDER_STEPS = [
   { id: 8, key: 'publish', title: 'Review', subtitle: 'Finalize invite', icon: '8' }
 ];
 
-const SIDEBAR_SECTIONS = [
-  { id: 'theme', step: 3, label: 'Theme & Colors', sub: 'Palette & styling', icon: '🎨' },
-  { id: 'background', step: 3, label: 'Background', sub: 'Images & patterns', icon: '🖼' },
-  { id: 'content', step: 4, label: 'Content', sub: 'Questions & copy', icon: 'T' },
-  { id: 'photos', step: 5, label: 'Photos & Memories', sub: 'Upload & manage', icon: '📷' },
-  { id: 'dates', step: 6, label: 'Date Options', sub: 'Activities & dates', icon: '📅' },
-  { id: 'features', step: 6, label: 'Features', sub: 'Mascots & extras', icon: '✨' },
-  { id: 'music', step: 7, label: 'Music & Sound', sub: 'Songs & vibes', icon: '🎵' }
-];
-
 const CONTENT_SCREENS = [
   { key: 'intro', label: '1. Intro', icon: '💌', desc: 'Opening invitation card' },
   { key: 'main', label: '2. Main Ask', icon: '❤️', desc: 'Primary date question & copy' },
@@ -346,40 +336,6 @@ function renderLiveThemePreview(t) {
   `;
 }
 
-function renderSidebar() {
-  const sidebarEl = document.querySelector('#builder-sidebar');
-  if (!sidebarEl) return;
-  sidebarEl.innerHTML = `
-    <div class="sidebar-inner">
-      <div class="sidebar-header">
-        <span class="sidebar-kicker">EDIT SECTIONS</span>
-      </div>
-      <nav class="sidebar-nav" aria-label="Editor sections">
-        ${SIDEBAR_SECTIONS.map(item => {
-          const isActive = currentStep === item.step;
-          return `
-            <button type="button" class="sidebar-nav-item ${isActive ? 'active' : ''}" data-sidebar-step="${item.step}" data-sidebar-id="${item.id}">
-              <span class="sidebar-item-icon" aria-hidden="true">${item.icon}</span>
-              <div class="sidebar-item-text">
-                <strong class="sidebar-item-title">${item.label}</strong>
-                <small class="sidebar-item-sub">${item.sub}</small>
-              </div>
-            </button>
-          `;
-        }).join('')}
-      </nav>
-      <div class="sidebar-inspiration-card">
-        <div class="inspiration-header">
-          <span class="inspiration-icon" aria-hidden="true">🎨</span>
-          <strong>Need inspiration?</strong>
-        </div>
-        <p>Try our quick customize to get started faster.</p>
-        <button type="button" class="quick-customize-btn" id="btn-quick-customize">Quick Customize ✨</button>
-      </div>
-    </div>
-  `;
-}
-
 function renderStepper() {
   const stepperEl = document.querySelector('#builder-stepper');
   if (stepperEl) {
@@ -421,7 +377,6 @@ function goToStep(stepId, smooth = true) {
   const next = Math.max(1, Math.min(BUILDER_STEPS.length, Number(stepId)));
   currentStep = next;
   renderStepper();
-  renderSidebar();
 
   document.querySelectorAll('.step-panel').forEach(panel => {
     const isTarget = Number(panel.dataset.step) === currentStep;
@@ -494,7 +449,6 @@ function render() {
   const f = state.features;
 
   renderStepper();
-  renderSidebar();
 
   const titleHeader = document.querySelector('#header-recipient-title');
   if (titleHeader) titleHeader.textContent = state.recipientName || 'Your Date';
@@ -540,9 +494,9 @@ function render() {
           }).map(([k, v]) => `
             <button type="button" class="template-card ${state.templateId === k ? 'active' : ''}" data-template-key="${k}">
               <div class="template-card-header">
+                <strong class="template-name">${v.name}</strong>
                 <span class="template-badge">${state.templateId === k ? '✓ Selected' : 'Preset'}</span>
               </div>
-              <strong class="template-name">${v.name}</strong>
               <p class="template-tagline">${v.tagline}</p>
             </button>
           `).join('')}

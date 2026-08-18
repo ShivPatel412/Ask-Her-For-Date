@@ -940,8 +940,7 @@ app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
           </div>
         </div>
       </div>
-      <div class="builder-grid builder-grid-3col">
-        <aside id="builder-sidebar" class="builder-sidebar" aria-label="Edit Sections"></aside>
+      <div class="builder-grid">
         <section id="controls" class="controls"></section>
         <aside id="preview-pane" class="preview-pane">
           <div class="preview-toolbar" aria-label="Preview settings">
