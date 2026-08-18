@@ -228,6 +228,7 @@ h2 {
   background: color-mix(in srgb, var(--accent, var(--primary)) 10%, white);
   border-radius: 999px;
   margin-bottom: 6px;
+}
 /* --------------------------------------------------------------------------
    Presentation Styles for Visual Cover Photo
    -------------------------------------------------------------------------- */
@@ -377,6 +378,7 @@ h2 {
   gap: 16px;
   overflow-x: auto;
   padding: 12px 4px 20px;
+}
 /* --------------------------------------------------------------------------
    Our Story Chronological Timeline
    -------------------------------------------------------------------------- */
@@ -501,9 +503,6 @@ h2 {
   .story-timeline-item {
     animation: none;
   }
-}
-  color: var(--muted);
-  margin: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -2035,30 +2034,130 @@ h2 {
 /* --------------------------------------------------------------------------
    Footer & Modals
    -------------------------------------------------------------------------- */
-.invite-shell footer {
+.invite-shell footer,
+.invite-footer {
   margin-top: auto;
-  padding: 24px 16px 10px;
+  padding: clamp(28px, 5vh, 48px) 20px 16px;
+  width: 100%;
+  max-width: 960px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px 24px;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   z-index: 3;
 }
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.footer-privacy-btn,
 .invite-shell footer button {
-  border: none;
-  background: none;
-  color: inherit;
-  text-decoration: underline;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  background: color-mix(in srgb, var(--primary) 6%, #ffffff);
+  color: var(--text);
+  padding: 6px 16px;
+  border-radius: 9999px;
   cursor: pointer;
   font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  min-height: 34px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
+
+.footer-privacy-btn:hover,
+.invite-shell footer button:hover {
+  background: color-mix(in srgb, var(--primary) 14%, #ffffff);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(230, 73, 111, 0.12);
+}
+
+.footer-cute-count {
+  font-size: 0.76rem;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+}
+
+.footer-cute-count b {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.footer-credits,
+.invite-credit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.footer-sep {
+  opacity: 0.4;
+}
+
+.footer-credits a,
 .invite-credit a {
   color: var(--primary);
   font-weight: 700;
   text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.footer-credits a:hover,
+.invite-credit a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .invite-shell footer,
+  .invite-footer {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+    padding: 20px 16px 12px;
+  }
+  
+  .footer-left {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .footer-credits {
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .footer-sep {
+    display: none;
+  }
 }
 
 dialog {
