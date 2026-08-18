@@ -910,14 +910,16 @@ app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
         <div class="builder-head-left">
           <a class="builder-back" href="/dashboard">← Dashboard</a>
           <div class="builder-title-group">
-            <h1>${escapeHtml(row.recipient_name)}'s invitation <span class="edit-badge" aria-hidden="true">✎</span></h1>
+            <h1><span id="header-recipient-title">${escapeHtml(row.recipient_name)}</span>'s invitation <button type="button" class="edit-badge" id="btn-edit-title" title="Edit recipient name" aria-label="Edit recipient name">✎</button></h1>
           </div>
-          <span id="save-status" class="save-status">✓ All changes saved</span>
+          <span id="save-status" class="save-status">✓ Saved just now</span>
         </div>
-        <div class="actions">
-          <a class="button ghost small" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a>
-          <button id="save-draft" class="button ghost small">▣ Save draft</button>
-          <button id="publish" class="button primary small">Publish Invitation ♥</button>
+        <div class="actions builder-head-actions">
+          <button type="button" id="btn-undo" class="button ghost small icon-btn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
+          <button type="button" id="btn-redo" class="button ghost small icon-btn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↷</button>
+          <a class="button ghost small nav-preview-btn" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a>
+          <button type="button" id="save-draft" class="button ghost small">▣ Save draft</button>
+          <button type="button" id="publish" class="button primary small publish-btn">Publish Invitation 🚀</button>
         </div>
       </header>
       <div class="mobile-tabs" role="tablist" aria-label="Mobile View Toggle">
@@ -925,20 +927,45 @@ app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
         <button data-tab="preview" role="tab" aria-selected="false">◉ Preview</button>
       </div>
       <div class="builder-stepper-wrap">
-        <nav class="builder-stepper" id="builder-stepper" aria-label="Editor Steps" role="tablist"></nav>
+        <div class="builder-stepper-container">
+          <nav class="builder-stepper" id="builder-stepper" aria-label="Editor Steps" role="tablist"></nav>
+          <div class="step-counter-card" aria-hidden="true">
+            <div class="step-counter-header">
+              <b id="step-counter-text">1 / 8</b>
+              <span>Steps completed</span>
+            </div>
+            <div class="step-progress-track">
+              <div id="step-progress-fill" class="step-progress-fill" style="width: 12.5%"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="builder-grid">
+      <div class="builder-grid builder-grid-3col">
+        <aside id="builder-sidebar" class="builder-sidebar" aria-label="Edit Sections"></aside>
         <section id="controls" class="controls"></section>
         <aside id="preview-pane" class="preview-pane">
-          <div class="preview-toolbar" aria-label="Preview size">
-            <button class="active" data-viewport="mobile">▯ Mobile</button>
-            <button data-viewport="tablet">▯ Tablet</button>
-            <button data-viewport="desktop">▱ Desktop</button>
+          <div class="preview-toolbar" aria-label="Preview settings">
+            <div class="viewport-toggles" role="group" aria-label="Device viewport">
+              <button type="button" class="active" data-viewport="mobile">📱 Mobile</button>
+              <button type="button" data-viewport="tablet">💻 Tablet</button>
+              <button type="button" data-viewport="desktop">🖥 Desktop</button>
+            </div>
+            <div class="preview-extra-actions">
+              <div class="zoom-controls">
+                <button type="button" id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+                <span id="preview-zoom-label">100%</span>
+                <button type="button" id="btn-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+              </div>
+              <a class="preview-open-link" target="_blank" href="/dashboard/invitations/${row.id}/preview" title="Open preview in new tab">Open preview ↗</a>
+            </div>
           </div>
-          <div class="phone">
-            <iframe title="Live invitation preview" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe>
+          <div class="phone" id="phone-container">
+            <iframe title="Live invitation preview" id="preview-iframe" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe>
           </div>
-          <span class="preview-dots" aria-hidden="true">● ○ ○ ○ ○</span>
+          <div class="preview-live-status">
+            <span>Preview updates automatically as you edit</span>
+            <span class="live-indicator"><span class="live-dot">●</span> Live</span>
+          </div>
         </aside>
       </div>
     </main>`, req, '/assets/js/builder.js'));

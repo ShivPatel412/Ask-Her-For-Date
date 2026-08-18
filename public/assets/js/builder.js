@@ -1,7 +1,7 @@
 const root = document.querySelector('#builder');
 const id = root.dataset.id;
 const controls = document.querySelector('#controls');
-const preview = document.querySelector('iframe');
+const preview = document.querySelector('#preview-iframe') || document.querySelector('iframe');
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
 let state;
@@ -9,17 +9,61 @@ let timer;
 let saveVersion = 0;
 let saveQueue = Promise.resolve();
 
+// In-Memory Undo / Redo State Stacks
+let historyStack = [];
+let futureStack = [];
+let previewZoom = 1.0;
+
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-// Modern form component helpers
-const formField = (label, path, value, helper = '', type = 'text', placeholder = '') => `
+function pushHistorySnapshot() {
+  if (!state) return;
+  if (historyStack.length >= 25) historyStack.shift();
+  historyStack.push(JSON.stringify(state));
+  futureStack = [];
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  const undoBtn = document.querySelector('#btn-undo');
+  const redoBtn = document.querySelector('#btn-redo');
+  if (undoBtn) undoBtn.disabled = historyStack.length === 0;
+  if (redoBtn) redoBtn.disabled = futureStack.length === 0;
+}
+
+function performUndo() {
+  if (historyStack.length === 0) return;
+  futureStack.push(JSON.stringify(state));
+  const prevSnapshot = historyStack.pop();
+  state = JSON.parse(prevSnapshot);
+  render();
+  updateThemePreview();
+  scheduleSave();
+  updateUndoRedoButtons();
+  toast('Undone ↶');
+}
+
+function performRedo() {
+  if (futureStack.length === 0) return;
+  historyStack.push(JSON.stringify(state));
+  const nextSnapshot = futureStack.pop();
+  state = JSON.parse(nextSnapshot);
+  render();
+  updateThemePreview();
+  scheduleSave();
+  updateUndoRedoButtons();
+  toast('Redone ↷');
+}
+
+// Form component helpers
+const formField = (label, path, value, helper = '', type = 'text', placeholder = '', extraAttrs = '') => `
   <div class="form-group">
     <label class="form-label">
       <span class="label-title">${label}</span>
       ${helper ? `<small class="label-helper">${helper}</small>` : ''}
     </label>
     <div class="input-wrap">
-      <input data-path="${path}" type="${type}" value="${esc(value)}" class="form-input" placeholder="${esc(placeholder)}" ${type === 'text' ? 'maxlength="1000"' : ''}>
+      <input data-path="${path}" type="${type}" value="${esc(value)}" class="form-input" placeholder="${esc(placeholder)}" ${type === 'text' ? 'maxlength="1000"' : ''} ${extraAttrs}>
     </div>
   </div>
 `;
@@ -81,8 +125,18 @@ const BUILDER_STEPS = [
   { id: 4, key: 'content', title: 'Content', subtitle: 'Questions & copy', icon: '4' },
   { id: 5, key: 'photos', title: 'Photos', subtitle: 'Cover & memories', icon: '5' },
   { id: 6, key: 'features', title: 'Features', subtitle: 'Dates & mascots', icon: '6' },
-  { id: 7, key: 'music', title: 'Music', subtitle: 'Songs & voice note', icon: '7' },
-  { id: 8, key: 'publish', title: 'Publish', subtitle: 'Review & share', icon: '8' }
+  { id: 7, key: 'music', title: 'Music', subtitle: 'Songs & sounds', icon: '7' },
+  { id: 8, key: 'publish', title: 'Review', subtitle: 'Finalize invite', icon: '8' }
+];
+
+const SIDEBAR_SECTIONS = [
+  { id: 'theme', step: 3, label: 'Theme & Colors', sub: 'Palette & styling', icon: '🎨' },
+  { id: 'background', step: 3, label: 'Background', sub: 'Images & patterns', icon: '🖼' },
+  { id: 'content', step: 4, label: 'Content', sub: 'Questions & copy', icon: 'T' },
+  { id: 'photos', step: 5, label: 'Photos & Memories', sub: 'Upload & manage', icon: '📷' },
+  { id: 'dates', step: 6, label: 'Date Options', sub: 'Activities & dates', icon: '📅' },
+  { id: 'features', step: 6, label: 'Features', sub: 'Mascots & extras', icon: '✨' },
+  { id: 'music', step: 7, label: 'Music & Sound', sub: 'Songs & vibes', icon: '🎵' }
 ];
 
 const CONTENT_SCREENS = [
@@ -96,7 +150,7 @@ const CONTENT_SCREENS = [
   { key: 'secret', label: '8. Secret Note', icon: '🔒', desc: 'Hidden easter-egg letter' }
 ];
 
-let currentStep = 1;
+let currentStep = 3;
 let activeContentScreen = 'intro';
 
 fetch(`/api/invitations/${id}`)
@@ -115,6 +169,7 @@ fetch(`/api/invitations/${id}`)
     if (!data) return;
     state = data;
     render();
+    updateUndoRedoButtons();
     if (new URLSearchParams(location.search).has('created')) toast('Invitation created 🎉 — customize or publish when ready.');
   })
   .catch(err => {
@@ -123,16 +178,16 @@ fetch(`/api/invitations/${id}`)
   });
 
 const themeColorSpecs = [
-  { key: 'background', label: 'Background', desc: 'Page background & ambient surface', defaultVal: '#FCFAF6' },
-  { key: 'primary', label: 'Primary Accent', desc: 'Main buttons & important highlights', defaultVal: '#E6496F' },
-  { key: 'secondary', label: 'Secondary Blush', desc: 'Soft blush & ambient accents', defaultVal: '#F4E9DD' },
-  { key: 'accent', label: 'Accent Glow', desc: 'Badges, glows & gradient accents', defaultVal: '#FF7B94' },
-  { key: 'headingColor', label: 'Heading Color', desc: 'Main title & question headings', defaultVal: '#20191B' },
-  { key: 'text', label: 'Body Text', desc: 'Normal readable body copy', defaultVal: '#282223' },
-  { key: 'muted', label: 'Muted Text', desc: 'Subtitles & secondary notes', defaultVal: '#70686A' },
-  { key: 'card', label: 'Card Surface', desc: 'Glass panels & cards (supports alpha)', defaultVal: '#FFFFFFEE' },
+  { key: 'background', label: 'Background', desc: 'Page background & ambient surface', defaultVal: '#13111C' },
+  { key: 'primary', label: 'Primary Accent', desc: 'Main buttons & important highlights', defaultVal: '#FF4D7D' },
+  { key: 'secondary', label: 'Secondary Blush', desc: 'Soft blush & ambient accents', defaultVal: '#2A1E2E' },
+  { key: 'accent', label: 'Accent Glow', desc: 'Badges, glows & gradient accents', defaultVal: '#7B61FF' },
+  { key: 'headingColor', label: 'Heading Color', desc: 'Main title & question headings', defaultVal: '#FFFFFF' },
+  { key: 'text', label: 'Body Text', desc: 'Normal body copy & descriptions', defaultVal: '#E7E2E8' },
+  { key: 'muted', label: 'Muted Text', desc: 'Subtitles & secondary notes', defaultVal: '#7E7275' },
+  { key: 'card', label: 'Card Surface', desc: 'Glass panels & cards (supports alpha)', defaultVal: '#201C30EE' },
   { key: 'buttonText', label: 'Button Text', desc: 'Text inside primary buttons', defaultVal: '#FFFFFF' },
-  { key: 'border', label: 'Border & Lines', desc: 'Separators, chips & card borders', defaultVal: '#EADFE1' }
+  { key: 'border', label: 'Border & Lines', desc: 'Separators, chips & card borders', defaultVal: '#38324F' }
 ];
 
 function hexToRgb(hex) {
@@ -204,16 +259,16 @@ function renderColorCards(t) {
     const rawVal = t[spec.key] || spec.defaultVal;
     const solidHex = String(rawVal).slice(0, 7);
     return `
-      <div class="color-card">
-        <div class="color-card-head">
-          <b>${spec.label}</b>
-          <small>${spec.desc}</small>
+      <div class="color-palette-row">
+        <div class="color-row-meta">
+          <strong class="color-row-title">${spec.label}</strong>
+          <small class="color-row-desc">${spec.desc}</small>
         </div>
-        <div class="color-input-row">
-          <div class="color-picker-wrapper" title="Pick ${spec.label}">
+        <div class="color-row-controls">
+          <label class="color-swatch-box" style="background-color: ${solidHex};" title="Click to pick ${spec.label}">
             <input type="color" value="${solidHex}" data-color-picker="${spec.key}" aria-label="${spec.label} color picker">
-          </div>
-          <input type="text" class="color-hex-input" data-color-hex="${spec.key}" data-path="theme.${spec.key}" value="${esc(rawVal)}" maxlength="9" placeholder="#RRGGBB" aria-label="${spec.label} hex code">
+          </label>
+          <input type="text" class="color-hex-field" data-color-hex="${spec.key}" data-path="theme.${spec.key}" value="${esc(rawVal)}" maxlength="9" placeholder="#RRGGBB" aria-label="${spec.label} hex code">
         </div>
       </div>
     `;
@@ -222,7 +277,7 @@ function renderColorCards(t) {
 
 function renderContrastAudit(t) {
   const bg = t.background || '#FCFAF6';
-  const primary = t.primary || '#E6496F';
+  const primary = t.primary || '#FF4D7D';
   const heading = t.headingColor || t.text || '#20191B';
   const text = t.text || '#282223';
   const muted = t.muted || '#70686A';
@@ -232,19 +287,16 @@ function renderContrastAudit(t) {
   const pairs = [
     { label: 'Text / Background', fgKey: 'text', fg: text, bg: bg, isLarge: false },
     { label: 'Heading / Background', fgKey: 'headingColor', fg: heading, bg: bg, isLarge: true },
-    { label: 'Muted Text / Background', fgKey: 'muted', fg: muted, bg: bg, isLarge: false },
     { label: 'Button Text / Primary', fgKey: 'buttonText', fg: btnText, bg: primary, isLarge: true },
-    { label: 'Text / Card', fgKey: 'text', fg: text, bg: card, isLarge: false },
-    { label: 'Heading / Card', fgKey: 'headingColor', fg: heading, bg: card, isLarge: true }
+    { label: 'Text / Card', fgKey: 'text', fg: text, bg: card, isLarge: false }
   ];
 
   return `
     <div class="contrast-audit-section">
       <div class="audit-header">
-        <h4><span>⚡</span> WCAG Contrast Checker</h4>
+        <h4><span>⚡</span> WCAG Contrast Readability</h4>
         <div class="theme-actions-bar">
           <button type="button" class="button ghost small" data-action="autofix-contrast">✨ Auto-fix</button>
-          <button type="button" class="button ghost small" data-action="reset-theme">↺ Reset</button>
         </div>
       </div>
       <div class="contrast-audit-table">
@@ -268,20 +320,20 @@ function renderContrastAudit(t) {
 }
 
 function renderLiveThemePreview(t) {
-  const primary = t.primary || '#E6496F';
-  const accent = t.accent || t.primary || '#FF7B94';
-  const heading = t.headingColor || t.text || '#20191B';
-  const text = t.text || '#282223';
-  const muted = t.muted || '#70686A';
-  const card = t.card || '#FFFFFFEE';
+  const primary = t.primary || '#FF4D7D';
+  const accent = t.accent || t.primary || '#7B61FF';
+  const heading = t.headingColor || t.text || '#FFFFFF';
+  const text = t.text || '#E7E2E8';
+  const muted = t.muted || '#7E7275';
+  const card = t.card || '#201C30EE';
   const btnText = t.buttonText || '#FFFFFF';
-  const border = t.border || '#EADFE1';
+  const border = t.border || '#38324F';
 
   return `
     <div class="live-theme-preview-wrap">
       <h4>Live Theme Palette Preview</h4>
       <div class="live-theme-card-mockup" style="background: ${card}; border: 1px solid ${border}; color: ${text};">
-        <span class="mockup-eyebrow" style="color: ${accent}; background: color-mix(in srgb, ${accent} 12%, transparent); border: 1px solid color-mix(in srgb, ${accent} 25%, transparent);">Recommended</span>
+        <span class="mockup-eyebrow" style="color: ${accent}; background: color-mix(in srgb, ${accent} 15%, transparent); border: 1px solid color-mix(in srgb, ${accent} 30%, transparent);">Recommended</span>
         <h3 class="mockup-heading" style="color: ${heading}; font-family: var(--font-display, Georgia, serif);">Let's make this moment special ❤️</h3>
         <p class="mockup-body" style="color: ${text};">I really enjoy spending time with you. Made with love and a little overthinking.</p>
         <div style="display:flex;gap:8px;margin-top:12px;">
@@ -294,41 +346,82 @@ function renderLiveThemePreview(t) {
   `;
 }
 
-function renderStepper() {
-  const stepperEl = document.querySelector('#builder-stepper');
-  if (!stepperEl) return;
-  stepperEl.innerHTML = `
-    <div class="stepper-track" role="tablist" aria-label="Editor Step Navigation">
-      ${BUILDER_STEPS.map((s, i) => {
-        const isActive = currentStep === s.id;
-        const isCompleted = currentStep > s.id;
-        return `
-          <button type="button" 
-                  class="step-btn ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" 
-                  data-step="${s.id}" 
-                  role="tab" 
-                  aria-selected="${isActive}" 
-                  aria-controls="step-panel-${s.id}" 
-                  id="step-tab-${s.id}" 
-                  ${isActive ? 'aria-current="step"' : ''}
-                  tabindex="${isActive ? '0' : '-1'}">
-            <span class="step-badge">${isCompleted ? '✓' : s.id}</span>
-            <span class="step-text">
-              <strong class="step-label">${s.title}</strong>
-              <small class="step-sub">${s.subtitle}</small>
-            </span>
-          </button>
-          ${i < BUILDER_STEPS.length - 1 ? '<span class="step-divider" aria-hidden="true"></span>' : ''}
-        `;
-      }).join('')}
+function renderSidebar() {
+  const sidebarEl = document.querySelector('#builder-sidebar');
+  if (!sidebarEl) return;
+  sidebarEl.innerHTML = `
+    <div class="sidebar-inner">
+      <div class="sidebar-header">
+        <span class="sidebar-kicker">EDIT SECTIONS</span>
+      </div>
+      <nav class="sidebar-nav" aria-label="Editor sections">
+        ${SIDEBAR_SECTIONS.map(item => {
+          const isActive = currentStep === item.step;
+          return `
+            <button type="button" class="sidebar-nav-item ${isActive ? 'active' : ''}" data-sidebar-step="${item.step}" data-sidebar-id="${item.id}">
+              <span class="sidebar-item-icon" aria-hidden="true">${item.icon}</span>
+              <div class="sidebar-item-text">
+                <strong class="sidebar-item-title">${item.label}</strong>
+                <small class="sidebar-item-sub">${item.sub}</small>
+              </div>
+            </button>
+          `;
+        }).join('')}
+      </nav>
+      <div class="sidebar-inspiration-card">
+        <div class="inspiration-header">
+          <span class="inspiration-icon" aria-hidden="true">🎨</span>
+          <strong>Need inspiration?</strong>
+        </div>
+        <p>Try our quick customize to get started faster.</p>
+        <button type="button" class="quick-customize-btn" id="btn-quick-customize">Quick Customize ✨</button>
+      </div>
     </div>
   `;
+}
+
+function renderStepper() {
+  const stepperEl = document.querySelector('#builder-stepper');
+  if (stepperEl) {
+    stepperEl.innerHTML = `
+      <div class="stepper-track" role="tablist" aria-label="Editor Step Navigation">
+        ${BUILDER_STEPS.map((s, i) => {
+          const isActive = currentStep === s.id;
+          const isCompleted = currentStep > s.id;
+          return `
+            <button type="button" 
+                    class="step-btn ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" 
+                    data-step="${s.id}" 
+                    role="tab" 
+                    aria-selected="${isActive}" 
+                    aria-controls="step-panel-${s.id}" 
+                    id="step-tab-${s.id}" 
+                    ${isActive ? 'aria-current="step"' : ''}
+                    tabindex="${isActive ? '0' : '-1'}">
+              <span class="step-badge">${isCompleted ? '✓' : s.id}</span>
+              <span class="step-meta">
+                <strong class="step-name">${s.title}</strong>
+                <small class="step-sub">${s.subtitle}</small>
+              </span>
+            </button>
+            ${i < BUILDER_STEPS.length - 1 ? '<span class="step-divider" aria-hidden="true"></span>' : ''}
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  const counterText = document.querySelector('#step-counter-text');
+  const counterFill = document.querySelector('#step-progress-fill');
+  if (counterText) counterText.textContent = `${currentStep} / 8`;
+  if (counterFill) counterFill.style.width = `${(currentStep / 8) * 100}%`;
 }
 
 function goToStep(stepId, smooth = true) {
   const next = Math.max(1, Math.min(BUILDER_STEPS.length, Number(stepId)));
   currentStep = next;
   renderStepper();
+  renderSidebar();
 
   document.querySelectorAll('.step-panel').forEach(panel => {
     const isTarget = Number(panel.dataset.step) === currentStep;
@@ -394,12 +487,17 @@ function renderContentScreenFields(s) {
 }
 
 function render() {
+  if (!state) return;
   const c = state.content;
   const s = c.screens;
   const t = state.theme;
   const f = state.features;
 
   renderStepper();
+  renderSidebar();
+
+  const titleHeader = document.querySelector('#header-recipient-title');
+  if (titleHeader) titleHeader.textContent = state.recipientName || 'Your Date';
 
   controls.innerHTML = `
     <!-- STEP 1: BASICS -->
@@ -456,35 +554,52 @@ function render() {
       </div>
     </section>
 
-    <!-- STEP 3: DESIGN -->
+    <!-- STEP 3: DESIGN (THEME & COLORS) -->
     <section class="step-panel ${currentStep === 3 ? 'active' : ''}" id="step-panel-3" data-step="3" role="tabpanel" aria-labelledby="step-tab-3" ${currentStep === 3 ? '' : 'hidden'}>
-      <div class="step-panel-header">
-        <span class="step-kicker">Step 3 of 8 · Design</span>
-        <h2>Theme Colors & Styling</h2>
-        <p>Pick a romantic color palette or fine-tune individual colors.</p>
+      <div class="step-panel-header with-action">
+        <div>
+          <span class="step-kicker">STEP 3 OF 8 · DESIGN</span>
+          <h2>Theme Colors & Styling</h2>
+          <p>Pick a theme or fine-tune your colors to match your invitation.</p>
+        </div>
+        <button type="button" class="button ghost small btn-reset-preset" data-action="reset-theme">↺ Reset to preset</button>
       </div>
       <div class="step-panel-body">
-        <div class="sub-panel">
-          <h3>Preset Color Themes</h3>
-          <div class="theme-presets-grid">
-            ${Object.entries(state.presets.themes).map(([k, v]) => `
-              <button type="button" class="theme-preset-card ${t.preset === k ? 'active' : ''}" data-theme-preset="${k}">
-                <div class="theme-swatch-bar" style="background: linear-gradient(135deg, ${v.primary} 0%, ${v.accent || v.primary} 50%, ${v.secondary} 100%);">
-                  <span class="swatch-bubble" style="background: ${v.background};"></span>
-                </div>
-                <div class="theme-preset-info">
-                  <strong>${v.name}</strong>
-                  ${t.preset === k ? '<span class="preset-active-check">✓ Active</span>' : ''}
-                </div>
-              </button>
-            `).join('')}
+        <div class="editor-section-card">
+          <div class="editor-section-card-header">
+            <h3>Preset Color Themes</h3>
+            <button type="button" class="link-action-btn" data-action="view-all-presets">View all</button>
+          </div>
+          <div class="theme-presets-card-grid">
+            ${Object.entries(state.presets?.themes || {
+              strawberry: { name: 'Warm Minimal ✨', background: '#FCFAF6', primary: '#E6496F', secondary: '#F4E9DD', accent: '#FF7B94' },
+              blue: { name: 'Blue Trouble 💙', background: '#F4FAFF', primary: '#3B82F6', secondary: '#E8DEFF', accent: '#60A5FA' },
+              yellow: { name: 'Yellow Chaos 💛', background: '#FFFDF2', primary: '#D97706', secondary: '#FEF3C7', accent: '#F59E0B' },
+              midnight: { name: 'Midnight Date 🌙', background: '#13111C', primary: '#F43F5E', secondary: '#312E4A', accent: '#FB7185' },
+              rose: { name: 'Rose Gold 🌹', background: '#FFF8F5', primary: '#C95A72', secondary: '#F9E4DE', accent: '#DE758C' }
+            }).map(([k, v]) => {
+              const isSelected = t.preset === k;
+              return `
+                <button type="button" class="theme-preset-tile ${isSelected ? 'active' : ''}" data-theme-preset="${k}">
+                  <div class="theme-tile-preview" style="background: linear-gradient(135deg, ${v.primary} 0%, ${v.accent || v.primary} 50%, ${v.secondary} 100%);">
+                    ${isSelected ? '<span class="tile-check-icon">✓</span>' : ''}
+                  </div>
+                  <div class="theme-tile-footer">
+                    <strong class="theme-tile-name">${v.name}</strong>
+                    ${isSelected ? '<span class="theme-tile-active-label">Active</span>' : ''}
+                  </div>
+                </button>
+              `;
+            }).join('')}
           </div>
         </div>
 
-        <div class="sub-panel">
-          <h3>Fine-Tune Palette Colors</h3>
-          <p class="hint">Adjust specific colors below (automatically checked for readability):</p>
-          <div class="color-grid">
+        <div class="editor-section-card">
+          <div class="editor-section-card-header">
+            <h3>Fine-Tune Palette Colors</h3>
+            <button type="button" class="link-action-btn" data-action="reset-theme">Reset colors</button>
+          </div>
+          <div class="palette-rows-container">
             ${renderColorCards(t)}
           </div>
         </div>
@@ -498,7 +613,7 @@ function render() {
       </div>
     </section>
 
-    <!-- STEP 4: CONTENT (REDESIGNED WITH SCREEN CHIP NAV) -->
+    <!-- STEP 4: CONTENT -->
     <section class="step-panel ${currentStep === 4 ? 'active' : ''}" id="step-panel-4" data-step="4" role="tabpanel" aria-labelledby="step-tab-4" ${currentStep === 4 ? '' : 'hidden'}>
       <div class="step-panel-header">
         <span class="step-kicker">Step 4 of 8 · Content</span>
@@ -539,11 +654,13 @@ function render() {
         <p>Add a personal cover photo and memorable timeline moments.</p>
       </div>
       <div class="step-panel-body">
-        <div class="sub-panel">
-          <h3>Cover Photo & Intro Visual</h3>
+        <div class="editor-section-card">
+          <div class="editor-section-card-header">
+            <h3>Cover Photo & Intro Visual</h3>
+          </div>
           ${customToggle('Show visual photo / background', 'features.coverPhoto', f.coverPhoto, 'Displays a photo on the intro opening screen')}
           
-          <div class="form-group" style="margin-top:12px;">
+          <div class="form-group" style="margin-top:14px;">
             <label class="form-label">
               <span class="label-title">Display Presentation Style</span>
               <small class="label-helper">Choose how your photo appears in the invitation</small>
@@ -569,7 +686,6 @@ function render() {
             <small class="label-helper" style="display:block;margin-top:4px;">Protects text readability over high-contrast photos.</small>
           </div>
 
-          <!-- Modern Upload Card -->
           <div class="modern-upload-card" id="cover-dropzone">
             <div class="upload-icon-circle">🖼️</div>
             <h4>${f.coverPhotoUrl ? 'Replace Cover Photo' : 'Upload Cover Photo'}</h4>
@@ -593,8 +709,10 @@ function render() {
           ` : ''}
         </div>
 
-        <div class="sub-panel" style="margin-top:20px;">
-          <h3>Our Story & Memories Scrapbook</h3>
+        <div class="editor-section-card" style="margin-top:20px;">
+          <div class="editor-section-card-header">
+            <h3>Our Story & Memories Scrapbook</h3>
+          </div>
           ${customToggle('Enable Our Story timeline section', 'features.memories', f.memories, 'Showcase milestone dates, photos, and memories leading up to your date ask')}
           <div class="memories-builder-list">
             ${(f.memoriesList || []).map((m, idx) => `
@@ -647,16 +765,18 @@ function render() {
       </div>
     </section>
 
-    <!-- STEP 6: DATE IDEAS & FEATURES -->
+    <!-- STEP 6: DATE OPTIONS & FEATURES -->
     <section class="step-panel ${currentStep === 6 ? 'active' : ''}" id="step-panel-6" data-step="6" role="tabpanel" aria-labelledby="step-tab-6" ${currentStep === 6 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 6 of 8 · Features</span>
+        <span class="step-kicker">Step 6 of 8 · Features & Dates</span>
         <h2>Date Ideas & Playful Touches</h2>
         <p>Set date choices, mascots, confetti celebrations, and playful surprises.</p>
       </div>
       <div class="step-panel-body">
-        <div class="sub-panel">
-          <h3>Date Ideas / Moods</h3>
+        <div class="editor-section-card">
+          <div class="editor-section-card-header">
+            <h3>Date Ideas / Moods</h3>
+          </div>
           <p class="hint">Choose one featured date idea. Your recipient can also select their preferred date and time.</p>
           <div class="mood-cards-list">
             ${c.moods.map((m, i) => `
@@ -678,8 +798,10 @@ function render() {
           <button class="button ghost add" data-list="moods" style="width:100%;min-height:44px;margin-top:8px;">+ Add Date Option</button>
         </div>
 
-        <div class="sub-panel" style="margin-top:20px;">
-          <h3>Playful Touches</h3>
+        <div class="editor-section-card" style="margin-top:20px;">
+          <div class="editor-section-card-header">
+            <h3>Playful Touches & Mascots</h3>
+          </div>
           <div class="feature-toggles-grid">
             ${[['Mascots', 'mascots'], ['Tiny Mode', 'tinyMode'], ['Cute-item collection', 'collection'], ['Confetti', 'confetti'], ['Funny Back buttons', 'funnyBack']].map(([l, k]) => featureToggleCard(l, `features.${k}`, f[k])).join('')}
           </div>
@@ -701,16 +823,18 @@ function render() {
       </div>
     </section>
 
-    <!-- STEP 7: MUSIC & VOICE -->
+    <!-- STEP 7: MUSIC & SOUND -->
     <section class="step-panel ${currentStep === 7 ? 'active' : ''}" id="step-panel-7" data-step="7" role="tabpanel" aria-labelledby="step-tab-7" ${currentStep === 7 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 7 of 8 · Music & Voice</span>
+        <span class="step-kicker">Step 7 of 8 · Music & Sound</span>
         <h2>Soundtracks & Voice Note</h2>
         <p>Set background music, audio start/end trimming, or record a personal voice note.</p>
       </div>
       <div class="step-panel-body">
-        <div class="sub-panel">
-          <h3>Background Soundtrack</h3>
+        <div class="editor-section-card">
+          <div class="editor-section-card-header">
+            <h3>Background Soundtrack</h3>
+          </div>
           ${customToggle('Enable background music', 'features.music', f.music, 'Starts gracefully when the invitation is opened (never forceful autoplay)')}
 
           <div class="music-source-segmented-tabs" style="margin:14px 0;">
@@ -886,8 +1010,10 @@ function render() {
           </div>
         </div>
 
-        <div class="sub-panel" style="margin-top:20px;">
-          <h3>Personal Voice Note 🎙️</h3>
+        <div class="editor-section-card" style="margin-top:20px;">
+          <div class="editor-section-card-header">
+            <h3>Personal Voice Note 🎙️</h3>
+          </div>
           <p class="hint">Record with your microphone or upload an audio file. The background music automatically ducks when your voice note plays!</p>
           <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
             <button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button>
@@ -918,14 +1044,14 @@ function render() {
       </div>
       <div class="step-panel-footer">
         <button type="button" class="button ghost step-nav-btn" data-nav-step="6">← Previous</button>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="8">Next: Publish →</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="8">Next: Review →</button>
       </div>
     </section>
 
-    <!-- STEP 8: PUBLISH -->
+    <!-- STEP 8: REVIEW & PUBLISH -->
     <section class="step-panel ${currentStep === 8 ? 'active' : ''}" id="step-panel-8" data-step="8" role="tabpanel" aria-labelledby="step-tab-8" ${currentStep === 8 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 8 of 8 · Publish</span>
+        <span class="step-kicker">Step 8 of 8 · Final Review</span>
         <h2>Review & Share</h2>
         <p>Publish your date invitation and get your private share link.</p>
       </div>
@@ -941,7 +1067,7 @@ function render() {
         </div>
 
         <button class="button primary" id="publish-inline" style="width:100%;min-height:50px;font-size:1.02rem;margin-bottom:16px;">
-          ${state.status === 'published' ? 'Update & Re-Publish Invitation ♥' : 'Publish Invitation ❤️'}
+          ${state.status === 'published' ? 'Update & Re-Publish Invitation 🚀' : 'Publish Invitation 🚀'}
         </button>
 
         ${state.status === 'published' ? `
@@ -960,7 +1086,7 @@ function render() {
       </div>
       <div class="step-panel-footer">
         <button type="button" class="button ghost step-nav-btn" data-nav-step="7">← Previous</button>
-        <button type="button" class="button primary" id="publish-bottom-btn">Publish Invitation ❤️</button>
+        <button type="button" class="button primary" id="publish-bottom-btn">Publish Invitation 🚀</button>
       </div>
     </section>
   `;
@@ -971,6 +1097,7 @@ function render() {
 }
 
 function setPath(path, value) {
+  pushHistorySnapshot();
   const bits = path.split('.');
   let obj = state;
   for (let i = 0; i < bits.length - 1; i++) obj = obj[bits[i]];
@@ -980,16 +1107,20 @@ function setPath(path, value) {
 
 controls.addEventListener('input', e => {
   if (e.target.dataset.colorPicker) {
+    pushHistorySnapshot();
     const key = e.target.dataset.colorPicker;
     state.theme[key] = e.target.value.toUpperCase();
     const hexInput = controls.querySelector(`[data-color-hex="${key}"]`);
     if (hexInput) hexInput.value = state.theme[key];
+    const swatchBox = e.target.closest('.color-swatch-box');
+    if (swatchBox) swatchBox.style.backgroundColor = state.theme[key];
     updateThemePreview();
     renderLiveMockupOnly();
     scheduleSave();
     return;
   }
   if (e.target.dataset.memoryField) {
+    pushHistorySnapshot();
     const idx = Number(e.target.dataset.memoryIdx);
     const fld = e.target.dataset.memoryField;
     if (!state.features.memoriesList) state.features.memoriesList = [];
@@ -1031,7 +1162,11 @@ controls.addEventListener('input', e => {
   if (e.target.dataset.path.startsWith('theme.')) {
     const key = e.target.dataset.path.replace('theme.', '');
     const picker = controls.querySelector(`[data-color-picker="${key}"]`);
-    if (picker && e.target.value.startsWith('#') && e.target.value.length >= 7) picker.value = e.target.value.slice(0, 7);
+    if (picker && e.target.value.startsWith('#') && e.target.value.length >= 7) {
+      picker.value = e.target.value.slice(0, 7);
+      const swatchBox = picker.closest('.color-swatch-box');
+      if (swatchBox) swatchBox.style.backgroundColor = e.target.value.slice(0, 7);
+    }
     updateThemePreview();
     renderLiveMockupOnly();
   }
@@ -1072,6 +1207,13 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // Sidebar item click
+  const sidebarItem = e.target.closest('[data-sidebar-step]');
+  if (sidebarItem) {
+    goToStep(sidebarItem.dataset.sidebarStep);
+    return;
+  }
+
   // Previous / Next button click
   const navBtn = e.target.closest('[data-nav-step]');
   if (navBtn) {
@@ -1095,6 +1237,60 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // Quick Edit Recipient Title
+  if (e.target.id === 'btn-edit-title' || e.target.closest('#btn-edit-title')) {
+    const currentName = state.recipientName || '';
+    const newName = prompt("Edit your recipient's name:", currentName);
+    if (newName !== null && newName.trim() && newName.trim() !== currentName) {
+      pushHistorySnapshot();
+      state.recipientName = newName.trim();
+      scheduleSave();
+      render();
+      toast(`Updated recipient name to ${state.recipientName} ❤️`);
+    }
+    return;
+  }
+
+  // Quick Customize Inspiration button
+  if (e.target.id === 'btn-quick-customize' || e.target.closest('#btn-quick-customize')) {
+    const themeKeys = Object.keys(state.presets?.themes || {});
+    if (themeKeys.length > 0) {
+      pushHistorySnapshot();
+      const currentIdx = themeKeys.indexOf(state.theme.preset || 'strawberry');
+      const nextKey = themeKeys[(currentIdx + 1) % themeKeys.length];
+      const nextTheme = state.presets.themes[nextKey];
+      Object.assign(state.theme, nextTheme, { preset: nextKey });
+      goToStep(3);
+      render();
+      updateThemePreview();
+      scheduleSave();
+      toast(`Quick customized theme to "${nextTheme.name}" ✨`);
+    }
+    return;
+  }
+
+  // Undo / Redo
+  if (e.target.id === 'btn-undo' || e.target.closest('#btn-undo')) {
+    performUndo();
+    return;
+  }
+  if (e.target.id === 'btn-redo' || e.target.closest('#btn-redo')) {
+    performRedo();
+    return;
+  }
+
+  // Zoom In / Out
+  if (e.target.id === 'btn-zoom-in') {
+    previewZoom = Math.min(1.3, Number((previewZoom + 0.05).toFixed(2)));
+    applyPreviewZoom();
+    return;
+  }
+  if (e.target.id === 'btn-zoom-out') {
+    previewZoom = Math.max(0.7, Number((previewZoom - 0.05).toFixed(2)));
+    applyPreviewZoom();
+    return;
+  }
+
   // Controls-delegated clicks
   const add = e.target.closest('.add');
   const remove = e.target.closest('.remove');
@@ -1103,6 +1299,7 @@ document.addEventListener('click', e => {
   const addMemoryBtn = e.target.closest('.add-memory');
 
   if (addMemoryBtn) {
+    pushHistorySnapshot();
     if (!state.features.memoriesList) state.features.memoriesList = [];
     if (state.features.memoriesList.length < 12) {
       state.features.memoriesList.push({
@@ -1123,6 +1320,7 @@ document.addEventListener('click', e => {
 
   const removeMemoryBtn = e.target.closest('.remove-memory');
   if (removeMemoryBtn) {
+    pushHistorySnapshot();
     const idx = Number(removeMemoryBtn.dataset.memoryIdx);
     if (state.features.memoriesList && state.features.memoriesList[idx]) {
       state.features.memoriesList.splice(idx, 1);
@@ -1136,6 +1334,7 @@ document.addEventListener('click', e => {
 
   const removeMemoryPhotoBtn = e.target.closest('.remove-memory-photo');
   if (removeMemoryPhotoBtn) {
+    pushHistorySnapshot();
     const idx = Number(removeMemoryPhotoBtn.dataset.memoryIdx);
     if (state.features.memoriesList && state.features.memoriesList[idx]) {
       state.features.memoriesList[idx].photoUrl = null;
@@ -1149,6 +1348,7 @@ document.addEventListener('click', e => {
 
   const moveMemoryBtn = e.target.closest('.move-memory');
   if (moveMemoryBtn) {
+    pushHistorySnapshot();
     const idx = Number(moveMemoryBtn.dataset.memoryIdx);
     const dir = moveMemoryBtn.dataset.memoryMove;
     const list = state.features.memoriesList;
@@ -1174,6 +1374,7 @@ document.addEventListener('click', e => {
     const tpl = state.presets?.templates?.[key];
     if (tpl) {
       if (confirm(`Apply "${tpl.name}" template? This will update questions, copy, and date options to match this occasion.`)) {
+        pushHistorySnapshot();
         state.templateId = key;
         if (tpl.content) state.content = structuredClone(tpl.content);
         if (tpl.moods) state.content.moods = structuredClone(tpl.moods);
@@ -1202,6 +1403,7 @@ document.addEventListener('click', e => {
 
   const musicPresetBtn = e.target.closest('[data-music-preset]');
   if (musicPresetBtn) {
+    pushHistorySnapshot();
     const key = musicPresetBtn.dataset.musicPreset;
     const name = musicPresetBtn.dataset.musicName;
     Object.assign(state.features, { music: true, musicUrl: key, musicName: name });
@@ -1215,6 +1417,7 @@ document.addEventListener('click', e => {
   const fixBtn = e.target.closest('[data-fix-key]');
   const actionBtn = e.target.closest('[data-action]');
   if (fixBtn) {
+    pushHistorySnapshot();
     const key = fixBtn.dataset.fixKey;
     const bg = fixBtn.dataset.bgColor;
     const currentVal = state.theme[key] || '#282223';
@@ -1231,6 +1434,7 @@ document.addEventListener('click', e => {
   if (actionBtn) {
     const act = actionBtn.dataset.action;
     if (act === 'reset-theme') {
+      pushHistorySnapshot();
       const presetKey = state.theme.preset || 'strawberry';
       const preset = state.presets.themes[presetKey] || state.presets.themes.strawberry;
       Object.assign(state.theme, preset, { preset: presetKey });
@@ -1241,10 +1445,11 @@ document.addEventListener('click', e => {
       return;
     }
     if (act === 'autofix-contrast') {
+      pushHistorySnapshot();
       const t = state.theme;
       const bg = t.background || '#FCFAF6';
       const card = t.card || '#FFFFFFEE';
-      const primary = t.primary || '#E6496F';
+      const primary = t.primary || '#FF4D7D';
 
       if (getContrastRatio(t.text || '#282223', bg) < 4.5) t.text = suggestReadableColor(t.text || '#282223', bg, 4.5);
       if (getContrastRatio(t.headingColor || t.text || '#20191B', bg) < 4.5) t.headingColor = suggestReadableColor(t.headingColor || '#20191B', bg, 4.5);
@@ -1262,6 +1467,7 @@ document.addEventListener('click', e => {
 
   const sourceTab = e.target.closest('.set-music-source');
   if (sourceTab) {
+    pushHistorySnapshot();
     const src = sourceTab.dataset.source;
     state.features.musicSource = src;
     if (src === 'spotify') {
@@ -1287,6 +1493,7 @@ document.addEventListener('click', e => {
 
   const playlistMoveBtn = e.target.closest('.playlist-move-btn');
   if (playlistMoveBtn) {
+    pushHistorySnapshot();
     const dir = playlistMoveBtn.dataset.playlistMove;
     const idx = Number(playlistMoveBtn.dataset.playlistIdx);
     const list = state.features.playlist || [];
@@ -1308,6 +1515,7 @@ document.addEventListener('click', e => {
 
   const playlistDefaultBtn = e.target.closest('.playlist-default-btn');
   if (playlistDefaultBtn) {
+    pushHistorySnapshot();
     const idx = Number(playlistDefaultBtn.dataset.playlistIdx);
     const list = state.features.playlist || [];
     list.forEach((s, i) => { s.default = (i === idx); });
@@ -1325,6 +1533,7 @@ document.addEventListener('click', e => {
 
   const playlistDelBtn = e.target.closest('.playlist-delete-btn');
   if (playlistDelBtn) {
+    pushHistorySnapshot();
     const idx = Number(playlistDelBtn.dataset.playlistIdx);
     const list = state.features.playlist || [];
     const removed = list.splice(idx, 1)[0];
@@ -1352,12 +1561,14 @@ document.addEventListener('click', e => {
   }
 
   if (themeButton) {
+    pushHistorySnapshot();
     Object.assign(state.theme, state.presets.themes[themeButton.dataset.themePreset], { preset: themeButton.dataset.themePreset });
     render();
     updateThemePreview();
     scheduleSave();
   }
   if (favoriteButton) {
+    pushHistorySnapshot();
     state.content.moods.forEach((m, i) => m.favorite = i === Number(favoriteButton.dataset.favoriteIndex));
     render();
     scheduleSave();
@@ -1365,6 +1576,7 @@ document.addEventListener('click', e => {
   if (add) {
     e.preventDefault();
     if (add.dataset.list === 'moods' && state.content.moods.length < 10) {
+      pushHistorySnapshot();
       state.content.moods.push({ title: 'New date idea ✨', description: 'Add a little description', favorite: false });
       render();
       scheduleSave();
@@ -1372,6 +1584,7 @@ document.addEventListener('click', e => {
   }
   if (remove) {
     e.preventDefault();
+    pushHistorySnapshot();
     state.content[remove.dataset.list].splice(Number(remove.dataset.index), 1);
     if (remove.dataset.list === 'moods' && state.content.moods.length && !state.content.moods.some(m => m.favorite)) {
       state.content.moods[0].favorite = true;
@@ -1383,8 +1596,24 @@ document.addEventListener('click', e => {
   if (e.target.id === 'remove-music') removeMusic();
   if (e.target.id === 'remove-voice') removeVoiceNote();
   if (e.target.id === 'record-voice-btn') toggleRecordVoice();
-  if (e.target.id === 'publish-inline' || e.target.id === 'publish-bottom-btn') publish();
+  if (e.target.id === 'publish' || e.target.id === 'publish-inline' || e.target.id === 'publish-bottom-btn') publish();
   if (e.target.closest('.copy-link')) copyLink();
+});
+
+// Keyboard shortcuts for Undo (Ctrl+Z) & Redo (Ctrl+Y / Ctrl+Shift+Z)
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    if (e.shiftKey) {
+      e.preventDefault();
+      performRedo();
+    } else {
+      e.preventDefault();
+      performUndo();
+    }
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    performRedo();
+  }
 });
 
 // Keyboard navigation for stepper
@@ -1404,6 +1633,16 @@ document.querySelector('#builder-stepper')?.addEventListener('keydown', e => {
   }
 });
 
+function applyPreviewZoom() {
+  const phone = document.querySelector('#phone-container');
+  const label = document.querySelector('#preview-zoom-label');
+  if (phone) {
+    phone.style.transform = `scale(${previewZoom})`;
+    phone.style.transformOrigin = 'top center';
+  }
+  if (label) label.textContent = `${Math.round(previewZoom * 100)}%`;
+}
+
 function renderLiveMockupOnly() {
   const mockupWrap = controls.querySelector('.live-theme-preview-wrap');
   const auditWrap = controls.querySelector('.contrast-audit-section');
@@ -1412,11 +1651,11 @@ function renderLiveMockupOnly() {
 }
 
 function updateThemePreview() {
-  const shell = preview.contentDocument?.querySelector('.invite-shell');
+  const shell = preview?.contentDocument?.querySelector('.invite-shell');
   if (!shell) return;
   const t = state.theme;
   shell.style.setProperty('--bg', t.background || '#FCFAF6');
-  shell.style.setProperty('--primary', t.primary || '#E6496F');
+  shell.style.setProperty('--primary', t.primary || '#FF4D7D');
   shell.style.setProperty('--secondary', t.secondary || '#F4E9DD');
   shell.style.setProperty('--accent', t.accent || t.primary || '#FF7B94');
   shell.style.setProperty('--heading-color', t.headingColor || t.heading_color || t.text || '#20191B');
@@ -1666,7 +1905,7 @@ async function uploadMusic(file) {
       state.features.musicName = defaultTrack.name || defaultTrack.title;
       state.features.musicStartOffset = defaultTrack.startTime;
     }
-    document.querySelector('#save-status').textContent = 'Music saved ✓';
+    document.querySelector('#save-status').textContent = '✓ Saved just now';
     render();
     preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
     toast(`Added "${file.name}" to playlist ♫`);
@@ -1707,7 +1946,7 @@ async function applySpotify(spotifyUrl) {
     state.features.musicSource = 'spotify';
     state.features.musicPlayerStyle = 'spotify';
     state.features.spotify = out.spotify;
-    document.querySelector('#save-status').textContent = 'Spotify linked ✓';
+    document.querySelector('#save-status').textContent = '✓ Saved just now';
     render();
     preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
     toast('Spotify music connected 🟢');
@@ -1793,7 +2032,7 @@ async function uploadVoiceNote(file) {
     Object.assign(state.features, { voiceNoteUrl: dataUrl, voiceNoteName: file.name });
     const savedOk = await save();
     if (savedOk) {
-      document.querySelector('#save-status').textContent = 'Voice note saved ✓';
+      document.querySelector('#save-status').textContent = '✓ Saved just now';
       render();
       preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
       toast('Voice note saved 🎙️');
@@ -1826,7 +2065,7 @@ async function uploadCoverPhoto(file) {
       Object.assign(state.features, { coverPhoto: true, coverPhotoUrl: dataUrl });
       const savedOk = await save();
       if (savedOk) {
-        document.querySelector('#save-status').textContent = 'Cover photo saved ✓';
+        document.querySelector('#save-status').textContent = '✓ Saved just now';
         render();
         preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
         toast('Cover photo added 🖼️');
@@ -1860,7 +2099,7 @@ async function uploadMemoryPhoto(idx, file) {
         state.features.memoriesList[idx].photoUrl = reader.result;
         const savedOk = await save();
         if (savedOk) {
-          document.querySelector('#save-status').textContent = 'Memory photo saved ✓';
+          document.querySelector('#save-status').textContent = '✓ Saved just now';
           render();
           preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
           toast('Memory photo uploaded 📷');
@@ -1899,7 +2138,7 @@ async function save() {
         body
       });
       if (version === saveVersion) {
-        document.querySelector('#save-status').textContent = r.ok ? '✓ Saved' : 'Save failed';
+        document.querySelector('#save-status').textContent = r.ok ? '✓ Saved just now' : 'Save failed';
         if (r.ok) preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
         else toast((await r.json()).error || 'Could not save changes.');
       }
@@ -1939,13 +2178,13 @@ function copyLink() {
   toast('Private link copied ✓');
 }
 
-document.querySelector('#publish').onclick = publish;
-document.querySelector('#save-draft').onclick = save;
+document.querySelector('#publish')?.addEventListener('click', publish);
+document.querySelector('#save-draft')?.addEventListener('click', save);
 
-document.querySelector('.preview-toolbar')?.addEventListener('click', e => {
+document.querySelector('.viewport-toggles')?.addEventListener('click', e => {
   const button = e.target.closest('[data-viewport]');
   if (!button) return;
-  document.querySelectorAll('.preview-toolbar button').forEach(item => item.classList.toggle('active', item === button));
+  document.querySelectorAll('.viewport-toggles button').forEach(item => item.classList.toggle('active', item === button));
   document.querySelector('#preview-pane').dataset.viewport = button.dataset.viewport;
 });
 
