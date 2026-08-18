@@ -1,10 +1,41 @@
-const root=document.querySelector('#builder'),id=root.dataset.id,controls=document.querySelector('#controls'),preview=document.querySelector('iframe'),csrf=document.querySelector('meta[name="csrf-token"]').content;
-let state,timer,saveVersion=0,saveQueue=Promise.resolve();
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const field=(label,path,value,type='text')=>`<label>${label}<input data-path="${path}" type="${type}" value="${esc(value)}" ${type==='text'?'maxlength="1000"':''}></label>`;
-const toggle=(label,path,value)=>`<label class="toggle"><input data-path="${path}" type="checkbox" ${value?'checked':''}><span></span>${label}</label>`;
-const featureInfo={Mascots:['🐻','Display adorable mascots throughout the invitation.'],'Tiny Mode':['⌗','Enable a compact and minimal layout for a cute vibe.'],'Cute-item collection':['♡','Show a collection of cute items to charm your recipient.'],Confetti:['⌁','Celebrate moments with a burst of confetti.'],'Funny Back buttons':['‹','Replace standard back buttons with fun alternatives.']};
-const featureToggle=(label,path,value)=>{const [icon,description]=featureInfo[label];return `<label class="feature-toggle"><i>${icon}</i><span><b>${label}</b><small>${description}</small></span><input data-path="${path}" type="checkbox" ${value?'checked':''}><em aria-hidden="true"></em></label>`;};
+const root = document.querySelector('#builder');
+const id = root.dataset.id;
+const controls = document.querySelector('#controls');
+const preview = document.querySelector('iframe');
+const csrf = document.querySelector('meta[name="csrf-token"]').content;
+
+let state;
+let timer;
+let saveVersion = 0;
+let saveQueue = Promise.resolve();
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const field = (label, path, value, type = 'text') => `<label>${label}<input data-path="${path}" type="${type}" value="${esc(value)}" ${type === 'text' ? 'maxlength="1000"' : ''}></label>`;
+const toggle = (label, path, value) => `<label class="toggle"><input data-path="${path}" type="checkbox" ${value ? 'checked' : ''}><span></span>${label}</label>`;
+const featureInfo = {
+  Mascots: ['🐻', 'Display adorable mascots throughout the invitation.'],
+  'Tiny Mode': ['⌗', 'Enable a compact and minimal layout for a cute vibe.'],
+  'Cute-item collection': ['♡', 'Show a collection of cute items to charm your recipient.'],
+  Confetti: ['⌁', 'Celebrate moments with a burst of confetti.'],
+  'Funny Back buttons': ['‹', 'Replace standard back buttons with fun alternatives.']
+};
+const featureToggle = (label, path, value) => {
+  const [icon, description] = featureInfo[label] || ['✨', 'Feature toggle'];
+  return `<label class="feature-toggle"><i>${icon}</i><span><b>${label}</b><small>${description}</small></span><input data-path="${path}" type="checkbox" ${value ? 'checked' : ''}><em aria-hidden="true"></em></label>`;
+};
+
+const BUILDER_STEPS = [
+  { id: 1, key: 'basics', title: 'Basics', subtitle: 'Names & title' },
+  { id: 2, key: 'template', title: 'Template', subtitle: 'Occasion preset' },
+  { id: 3, key: 'design', title: 'Design', subtitle: 'Colors & theme' },
+  { id: 4, key: 'content', title: 'Content', subtitle: 'Questions & copy' },
+  { id: 5, key: 'photos', title: 'Photos', subtitle: 'Cover & memories' },
+  { id: 6, key: 'features', title: 'Features', subtitle: 'Dates & mascots' },
+  { id: 7, key: 'music', title: 'Music', subtitle: 'Songs & voice note' },
+  { id: 8, key: 'publish', title: 'Publish', subtitle: 'Review & share' }
+];
+
+let currentStep = 1;
 
 fetch(`/api/invitations/${id}`)
   .then(r => {
@@ -18,6 +49,7 @@ fetch(`/api/invitations/${id}`)
     if (new URLSearchParams(location.search).has('created')) toast('Invitation created 🎉 — customize or publish when ready.');
   })
   .catch(err => console.error('Failed to load invitation data:', err));
+
 const themeColorSpecs = [
   { key: 'background', label: 'Background', desc: 'Page background & ambient surface', defaultVal: '#FCFAF6' },
   { key: 'primary', label: 'Primary', desc: 'Main buttons & important accents', defaultVal: '#E6496F' },
@@ -107,9 +139,9 @@ function renderColorCards(t) {
         </div>
         <div class="color-input-row">
           <div class="color-picker-wrapper" title="Pick ${spec.label}">
-            <input type="color" value="${solidHex}" data-color-picker="${spec.key}">
+            <input type="color" value="${solidHex}" data-color-picker="${spec.key}" aria-label="${spec.label} color picker">
           </div>
-          <input type="text" class="color-hex-input" data-color-hex="${spec.key}" data-path="theme.${spec.key}" value="${esc(rawVal)}" maxlength="9" placeholder="#RRGGBB">
+          <input type="text" class="color-hex-input" data-color-hex="${spec.key}" data-path="theme.${spec.key}" value="${esc(rawVal)}" maxlength="9" placeholder="#RRGGBB" aria-label="${spec.label} hex code">
         </div>
       </div>
     `;
@@ -186,34 +218,591 @@ function renderLiveThemePreview(t) {
   `;
 }
 
-function render(){
-  const c=state.content,s=c.screens,t=state.theme,f=state.features;
-  const editableScreens=Object.entries(s).filter(([key])=>!['nickname','analysis'].includes(key));
-  controls.innerHTML=`
-    <details open><summary>1. Basics</summary><div class="section-body">${field('Your Name','inviterName',state.inviterName)}${field('Recipient Name','recipientName',state.recipientName)}${field('Invitation Title','title',state.title)}</div></details>
-    <details><summary>2. Occasion Template 📋 <small>Choose a curated story and vibe.</small></summary><div class="section-body"><p class="hint">Switching templates loads tailored copy, romantic questions, and mood options.</p><div class="template-picker-grid">${Object.entries(state.presets?.templates || {
-      'classic': { name: 'Classic Playful Invite ❤️', tagline: 'The viral romantic & playful banter experience' },
-      'romantic-dinner': { name: 'Candlelight Dinner 🍷✨', tagline: 'Intimate dinner date with soft romantic elegance' },
-      'coffee-casual': { name: 'Cozy Coffee & Conversations ☕🌿', tagline: 'Warm, relaxed coffee date with cozy aesthetic' },
-      'best-friend-date': { name: 'Best Friends Day Out 🍕🎈', tagline: 'High-energy, teasing Hinglish invite with food' },
-      'anniversary-special': { name: 'Anniversary Celebration 💍🥂', tagline: 'Heartfelt milestone invitation with romantic memories' }
-    }).map(([k,v]) => `<button type="button" class="template-card ${state.templateId === k ? 'active' : ''}" data-template-key="${k}"><b>${v.name}</b><small>${v.tagline}</small></button>`).join('')}</div></div></details>
-    <details open><summary>3. Theme Colors</summary><div class="section-body"><div class="theme-choices">${Object.entries(state.presets.themes).map(([k,v])=>`<button type="button" class="theme-choice ${t.preset===k?'active':''}" data-theme-preset="${k}"><i style="--swatch-a:${v.primary};--swatch-b:${v.secondary};--swatch-bg:${v.background}"></i><span>${v.name}</span></button>`).join('')}</div><p class="hint">Choose a preset or fine-tune the colors below.</p><div class="color-grid">${renderColorCards(t)}</div>${renderContrastAudit(t)}${renderLiveThemePreview(t)}</div></details>
-    <details><summary>4. Questions & copy</summary><div class="section-body"><div class="flow-map">${editableScreens.map(([k])=>`<a href="#screen-${k}">${k.replace(/([A-Z])/g,' $1')}</a>`).join('<span>↓</span>')}</div>${editableScreens.map(([key,v])=>`<fieldset id="screen-${key}"><legend>${key.replace(/([A-Z])/g,' $1')}</legend>${Object.entries(v).map(([k,val])=>`<label>${k}<textarea data-path="content.screens.${key}.${k}" maxlength="1000">${esc(val)}</textarea></label>`).join('')}</fieldset>`).join('')}</div></details>
-    <details class="cover-section"><summary>5. Cover Photo & Intro Visual 🖼️ <small>Add a personal photo or background.</small></summary><div class="section-body">${toggle('Show visual photo / background', 'features.coverPhoto', f.coverPhoto)}<label><span><b>Display Style</b><small>Choose how your photo appears in the invitation.</small></span><select data-path="features.coverPhotoStyle"><option value="polaroid" ${(f.coverPhotoStyle || 'polaroid') === 'polaroid' ? 'selected' : ''}>📸 Romantic Polaroid (with caption & tilt)</option><option value="hero" ${f.coverPhotoStyle === 'hero' ? 'selected' : ''}>🖼️ Hero Banner (clean & prominent)</option><option value="full-bg" ${f.coverPhotoStyle === 'full-bg' ? 'selected' : ''}>🌌 Full Background (with contrast protection)</option><option value="memory-card" ${f.coverPhotoStyle === 'memory-card' ? 'selected' : ''}>💌 Memory Card (soft glass frame)</option><option value="circular" ${f.coverPhotoStyle === 'circular' ? 'selected' : ''}>⭕ Circular Photo (with glowing ring)</option></select></label><label>Photo Caption / Note (optional)<input data-path="features.coverPhotoCaption" value="${esc(f.coverPhotoCaption || '')}" placeholder="e.g. Our favorite memory ✨" maxlength="80"></label><label>Accessibility Alt Text (optional)<input data-path="features.coverPhotoAlt" value="${esc(f.coverPhotoAlt || '')}" placeholder="e.g. Us laughing together at the cafe" maxlength="100"></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:6px;"><span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;"><b>Background Overlay Tint</b><span id="cover-overlay-label">${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}%</span></span><input data-path="features.coverPhotoOverlay" type="range" min="10" max="85" value="${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}"><small style="color:var(--muted);font-size:0.75rem;">Protects text readability over high-contrast photos.</small></label><label class="music-upload" style="margin-top:12px;"><span class="upload-icon">🖼️</span><b>${f.coverPhotoUrl ? 'Replace Photo' : 'Upload Couple / Background Photo'}</b><small>JPG, PNG, WebP or GIF · max 5 MB</small><span id="cover-upload-copy" class="button primary small">${f.coverPhotoUrl ? 'Change photo' : 'Choose photo'}</span><input id="cover-file" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*"></label>${f.coverPhotoUrl ? `<div class="cover-current"><img src="${esc(f.coverPhotoUrl)}" alt="${esc(f.coverPhotoAlt || 'Cover preview')}" class="cover-thumbnail"><div class="cover-meta"><b>Photo active (${f.coverPhotoStyle || 'polaroid'})</b><small>${esc(f.coverPhotoCaption || 'Opening screen visual')}</small></div><button id="remove-cover" class="icon-button" type="button" aria-label="Remove photo">×</button></div>` : ''}</div></details>
-    <details class="memories-section"><summary>6. Our Story & Memories 📸 <small>Add romantic scrapbook moments & timeline.</small></summary><div class="section-body">${toggle('Enable Our Story section', 'features.memories', f.memories)}<p class="hint">Showcase sweet photos, milestone dates, and memories that make asking them out special.</p><div class="memories-builder-list">${(f.memoriesList || []).map((m, idx) => `<fieldset class="memory-builder-item"><legend>Memory #${idx + 1} ${m.title ? `· ${esc(m.title)}` : ''}</legend><div style="display:grid;gap:8px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">Position #${idx + 1}</span><div style="display:flex;gap:4px;"><button type="button" class="button ghost small move-memory" data-memory-move="up" data-memory-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.4;"' : ''}>▲ Up</button><button type="button" class="button ghost small move-memory" data-memory-move="down" data-memory-idx="${idx}" ${idx === (f.memoriesList.length - 1) ? 'disabled style="opacity:0.4;"' : ''}>▼ Down</button></div></div><label>Title<input data-memory-idx="${idx}" data-memory-field="title" value="${esc(m.title || '')}" placeholder="e.g. First Meeting" maxlength="80"></label><label>Date / Milestone (optional)<input data-memory-idx="${idx}" data-memory-field="date" value="${esc(m.date || '')}" placeholder="e.g. 12 March 2024" maxlength="50"></label><label>Caption / Note<textarea data-memory-idx="${idx}" data-memory-field="caption" placeholder="The day everything started..." maxlength="400">${esc(m.caption || '')}</textarea></label><label class="music-upload" style="margin:4px 0;"><span class="upload-icon">📷</span><b>${m.photoUrl ? 'Replace Memory Photo' : 'Upload Memory Photo'}</b><small>JPG, PNG, WebP or GIF · max 5 MB</small><input class="memory-photo-file" data-memory-idx="${idx}" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*"></label>${m.photoUrl ? `<div class="cover-current"><img src="${esc(m.photoUrl)}" alt="Memory" class="cover-thumbnail"><div class="cover-meta"><b>Photo Attached</b><small>Visible in Our Story timeline</small></div><button class="icon-button remove-memory-photo" data-memory-idx="${idx}" type="button" aria-label="Remove photo">×</button></div>` : ''}<button class="button danger small remove-memory" data-memory-idx="${idx}" type="button" style="margin-top:6px;">Delete Memory</button></div></fieldset>`).join('')}<button class="button ghost small add-memory" type="button" ${(f.memoriesList || []).length >= 12 ? 'disabled' : ''}>+ Add Memory ${(f.memoriesList || []).length >= 12 ? '(Max 12)' : ''}</button></div></div></details>
-    <details><summary>7. Date Options</summary><div class="section-body"><p class="hint">Choose one featured date idea. The recipient selects the exact date and time after saying yes.</p>${c.moods.map((m,i)=>`<fieldset class="${m.favorite?'favorite-field':''}"><legend>Option ${i+1}${m.favorite?' · My favorite':''}</legend>${field('Title',`content.moods.${i}.title`,m.title)}${field('Description',`content.moods.${i}.description`,m.description)}<button type="button" class="favorite-option ${m.favorite?'active':''}" data-favorite-index="${i}">${m.favorite?'★ Featured & selected':'☆ Make my favorite'}</button></fieldset>`).join('')}<button class="button ghost small add" data-list="moods">+ Add option</button></div></details>
-    <details class="feature-section"><summary>8. Cute Features <small>Playful touches for the invitation.</small></summary><div class="section-body feature-list">${[['Mascots','mascots'],['Tiny Mode','tinyMode'],['Cute-item collection','collection'],['Confetti','confetti'],['Funny Back buttons','funnyBack']].map(([l,k])=>featureToggle(l,`features.${k}`,f[k])).join('')}<label class="mascot-select"><span><b>Mascot pack</b><small>Choose the characters shown in the invitation.</small></span><select data-path="features.mascotPack">${['original','yellow','blue','pink','bears','cats','bunnies','none'].map(x=>`<option ${f.mascotPack===x?'selected':''} value="${x}">${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></label></div></details>
-    <details class="music-section"><summary>9. Music & Soundtrack ♫ <small>Add multi-track playlists, audio trimming, or Spotify.</small></summary><div class="section-body"><div class="music-enable">${toggle('Enable music','features.music',f.music)}<small>Play your selected songs or Spotify track when the invitation is opened.</small></div><div class="music-source-tabs" style="display:flex;gap:6px;margin:10px 0 12px;"><button type="button" class="button small ${(f.musicSource || 'upload') === 'upload' ? 'primary' : 'ghost'} set-music-source" data-source="upload">♫ Upload / Presets</button><button type="button" class="button small ${f.musicSource === 'spotify' ? 'primary' : 'ghost'} set-music-source" data-source="spotify">🟢 Spotify</button></div>${f.musicSource === 'spotify' ? `<div class="spotify-builder-panel" style="display:grid;gap:10px;padding:12px;background:rgba(29,185,84,0.06);border:1.5px solid rgba(29,185,84,0.3);border-radius:14px;"><label><span><b>Paste Spotify Link</b><small>Track, Album, or Playlist URL</small></span><div style="display:flex;gap:6px;margin-top:4px;"><input id="spotify-url-input" value="${esc(f.spotify?.url || '')}" placeholder="https://open.spotify.com/track/..." style="flex:1;"><button type="button" class="button primary small" id="apply-spotify-btn">Link</button></div></label>${f.spotify?.embedUrl ? `<div class="spotify-preview-card" style="margin-top:6px;"><iframe src="${esc(f.spotify.embedUrl)}" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="border-radius:12px;border:none;"></iframe><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;"><small style="color:var(--muted);">✓ Spotify embed connected · Official controls</small><button type="button" class="button danger small" id="remove-spotify-btn">Remove Spotify</button></div></div>` : ''}<p class="hint" style="margin:0;font-size:0.73rem;color:#166534;">Spotify tracks use Spotify's official embed player. Custom start/end trimming is available for uploaded audio.</p></div>` : `<div class="playlist-builder-panel"><label class="music-upload" style="margin-bottom:12px;"><span class="upload-icon">↥</span><b>Upload custom song to playlist</b><small>MP3, M4A, OGG, or WAV · max 10 MB</small><span id="music-upload-copy" class="button ghost small">+ Add custom file</span><input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label><div class="playlist-items-list" style="display:grid;gap:10px;margin-bottom:14px;">${((f.playlist && f.playlist.length) ? f.playlist : (f.musicUrl ? [{id:'default',name:f.musicName||'Selected Song',artist:'Romantic soundtrack',mood:'romantic',url:f.musicUrl,startTime:f.musicStartOffset||0,endTime:null,duration:0,default:true,enabled:true}] : [])).map((song, idx, arr) => `<fieldset class="track-builder-item" style="border:1px solid #e8e3dc;border-radius:14px;padding:12px;background:#fff;margin:0;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:1.2rem;">${song.mood === 'latenight' ? '🌙' : song.mood === 'funny' ? '😂' : song.mood === 'emotional' ? '💔' : song.mood === 'dreamy' ? '✨' : '❤️'}</span><div style="flex:1;min-width:0;"><b style="display:block;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(song.name || song.title || 'Song')}</b><small style="color:var(--muted);font-size:0.72rem;">${esc(song.artist || (song.sourceType === 'preset' || (song.url && song.url.startsWith('preset:')) ? 'Preset Soundscape' : 'Custom track'))}${song.default ? ' · ★ Default track' : ''}</small></div><div style="display:flex;gap:4px;"><button type="button" class="button ghost small playlist-move-btn" data-playlist-move="up" data-playlist-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button><button type="button" class="button ghost small playlist-move-btn" data-playlist-move="down" data-playlist-idx="${idx}" ${idx === arr.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button><button type="button" class="button ghost small playlist-default-btn ${song.default ? 'primary' : ''}" data-playlist-idx="${idx}" title="Set as default song">★</button><button type="button" class="icon-button playlist-delete-btn" data-playlist-idx="${idx}" aria-label="Remove song">×</button></div></div>${(song.sourceType !== 'spotify' && (!song.url || !song.url.startsWith('https://open.spotify.com'))) ? `<div class="audio-trimmer-box" style="background:#faf8f5;border:1px solid #ede7df;border-radius:10px;padding:10px;margin-top:4px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">✂️ Audio Trimmer & Start/End</span><span class="trimmer-duration-label" style="font-size:0.72rem;color:var(--muted);">${song.duration ? `Duration: ${formatTime(song.duration)}` : (song.url && song.url.startsWith('preset:') ? 'Preset Loop' : '')}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><label style="font-size:0.75rem;margin:0;"><span>Start Time (MM:SS)</span><input type="text" class="track-time-input" data-time-field="startTime" data-track-idx="${idx}" value="${formatTime(song.startTime || 0)}" placeholder="00:00" style="padding:4px 8px;font-size:0.8rem;"></label><label style="font-size:0.75rem;margin:0;"><span>End Time (MM:SS)</span><input type="text" class="track-time-input" data-time-field="endTime" data-track-idx="${idx}" value="${song.endTime ? formatTime(song.endTime) : ''}" placeholder="${song.duration ? formatTime(song.duration) : 'Full song'}" style="padding:4px 8px;font-size:0.8rem;"></label></div><div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;"><button type="button" class="button ghost small preview-track-btn" data-preview-idx="${idx}" data-track-url="${esc(song.url)}" data-start-time="${song.startTime || 0}" data-end-time="${song.endTime || ''}">▶ Preview Selection</button><small style="font-size:0.7rem;color:var(--muted);">${song.startTime ? `From ${formatTime(song.startTime)}` : 'Starts at 00:00'}${song.endTime ? ` to ${formatTime(song.endTime)}` : ' (Full song)'}</small></div></div>` : ''}</fieldset>`).join('')}</div><p class="hint" style="margin:8px 0 4px;">Or add romantic preset soundscapes:</p><div class="music-mood-filters"><button type="button" class="mood-filter-btn active" data-music-filter="all">All</button><button type="button" class="mood-filter-btn" data-music-filter="romantic">❤️ Romantic</button><button type="button" class="mood-filter-btn" data-music-filter="latenight">🌙 Late Night</button><button type="button" class="mood-filter-btn" data-music-filter="funny">😂 Cute/Funny</button><button type="button" class="mood-filter-btn" data-music-filter="emotional">💔 Emotional</button><button type="button" class="mood-filter-btn" data-music-filter="dreamy">✨ Dreamy</button></div><div class="music-preset-grid">${(state.presets?.music || [{key:'preset:piano',name:'Piano Serenade 🎹',desc:'Soft emotive romantic piano',mood:'romantic'},{key:'preset:acoustic',name:'Acoustic Sunset 🎸',desc:'Warm fingerstyle acoustic melody',mood:'romantic'},{key:'preset:jazz',name:'Midnight Jazz 🎷',desc:'Slow, smooth late-night jazz',mood:'latenight'},{key:'preset:lofi',name:'Lo-fi Romance 🎧',desc:'Chill beats, warm vinyl, and cozy chords',mood:'latenight'},{key:'preset:ukulele',name:'Sweet Ukulele ☀️',desc:'Playful, sunny, cheerful vibe',mood:'funny'},{key:'preset:ballad',name:'Emotional Strings 🎻',desc:'Gentle, touching cello and violin',mood:'emotional'},{key:'preset:dreamy',name:'Celestial Starlight ✨',desc:'Ethereal ambient pads and sparkle bells',mood:'dreamy'}]).map(p=>`<button type="button" class="music-preset-btn ${f.musicUrl===p.key?'active':''}" data-music-preset="${p.key}" data-music-name="${esc(p.name)}" data-preset-mood="${p.mood||'romantic'}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}</div></div>`}<label style="margin-top:12px;"><span><b>Music Player Style</b><small>Choose how the audio player appears to the recipient.</small></span><select data-path="features.musicPlayerStyle"><option value="romantic" ${(f.musicPlayerStyle||'romantic')==='romantic'?'selected':''}>💿 Romantic Vinyl (Animated disc & full player)</option><option value="glass" ${f.musicPlayerStyle==='glass'?'selected':''}>💎 Glassmorphism (Frosted floating bar)</option><option value="minimal" ${f.musicPlayerStyle==='minimal'?'selected':''}>💊 Minimal Pill (Compact play/mute)</option><option value="floating" ${f.musicPlayerStyle==='floating'?'selected':''}>💖 Floating Bubble (Corner pulsating button)</option><option value="compact" ${f.musicPlayerStyle==='compact'?'selected':''}>🏷️ Compact Badge (Single-line card)</option><option value="ambient" ${f.musicPlayerStyle==='ambient'?'selected':''}>🌌 Hidden Label / Icon Only (Discreet sound)</option><option value="spotify" ${f.musicPlayerStyle==='spotify'?'selected':''}>🟢 Spotify Card</option></select></label><label style="margin-top:10px;"><span><b>Player Screen Position</b><small>Choose where the music widget is docked on screen.</small></span><select data-path="features.musicPlayerPosition"><option value="bottom-right" ${(f.musicPlayerPosition||'bottom-right')==='bottom-right'?'selected':''}>↘ Bottom Right (Default)</option><option value="bottom-left" ${f.musicPlayerPosition==='bottom-left'?'selected':''}>↙ Bottom Left</option><option value="top-right" ${f.musicPlayerPosition==='top-right'?'selected':''}>↗ Top Right</option><option value="top-left" ${f.musicPlayerPosition==='top-left'?'selected':''}>↖ Top Left</option><option value="center-right" ${f.musicPlayerPosition==='center-right'?'selected':''}>→ Center Right</option><option value="center-left" ${f.musicPlayerPosition==='center-left'?'selected':''}>← Center Left</option><option value="custom" ${f.musicPlayerPosition==='custom'?'selected':''}>📍 Custom Draggable Position</option></select></label>${f.musicPlayerPosition === 'custom' ? `<div class="custom-position-canvas-card" style="margin-top:8px;padding:12px;background:#f7f4ee;border:1.5px dashed #d8cebf;border-radius:14px;text-align:center;"><small style="display:block;font-weight:700;margin-bottom:6px;color:var(--text);">Drag player to customize dock position</small><div id="position-preview-canvas" style="position:relative;width:200px;height:120px;margin:0 auto;background:#fff;border:1px solid #ccc;border-radius:10px;overflow:hidden;box-shadow:inset 0 2px 6px rgba(0,0,0,0.05);touch-action:none;"><div id="position-drag-handle" style="position:absolute;left:${(f.musicCustomPosition?.x || 0.8) * 100}%;top:${(f.musicCustomPosition?.y || 0.8) * 100}%;transform:translate(-50%,-50%);padding:4px 8px;background:var(--primary);color:#fff;border-radius:20px;font-size:0.65rem;font-weight:700;cursor:grab;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.2);">♫ Player</div></div><small style="display:block;margin-top:4px;color:var(--muted);font-size:0.68rem;">Normalized: X: ${Math.round((f.musicCustomPosition?.x || 0.8)*100)}% · Y: ${Math.round((f.musicCustomPosition?.y || 0.8)*100)}%</small></div>` : ''}<label style="margin-top:10px;"><span><b>Playback Mode</b><small>How tracks transition during playback.</small></span><select data-path="features.musicPlaybackMode"><option value="playlist" ${(f.musicPlaybackMode||'playlist')==='playlist'?'selected':''}>⏭ Play selected tracks in order (Playlist)</option><option value="loop-track" ${f.musicPlaybackMode==='loop-track'?'selected':''}>🔂 Loop current track</option><option value="loop-playlist" ${f.musicPlaybackMode==='loop-playlist'?'selected':''}>🔁 Loop playlist</option><option value="once" ${f.musicPlaybackMode==='once'?'selected':''}>⏹ Play once</option></select></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:14px;"><span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;"><b>Default Volume</b><span id="music-vol-label">${f.musicVolume || 35}%</span></span><input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume || 35}"></label><p class="music-safety">♡ Your song never forcefully autoplays. It starts gracefully after the recipient opens the invitation.</p></div></details>
-    <details class="music-section"><summary>10. Personal Voice Note 🎙️ <small>Add your personal voice message.</small></summary><div class="section-body"><p class="hint">Record with your mic or upload an audio file. The background song will automatically duck when your voice note plays!</p><div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;"><button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button><span id="recording-timer" style="font-weight:700;font-size:0.85rem;display:none;color:#ff625f;">● 0:00</span></div><label class="music-upload"><span class="upload-icon">↥</span><b>Upload recorded voice note</b><small>MP3, M4A, OGG, WAV, or AAC · max 10 MB</small><span id="voice-upload-copy" class="button ghost small">Choose voice file</span><input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*"></label>${f.voiceNoteUrl?`<div class="music-current" style="margin-top:12px;"><span class="music-note">🎙️</span><div><b>${esc(f.voiceNoteName||'Personal Voice Note')}</b><small>Ready to play in invitation</small></div><button id="remove-voice" class="icon-button" type="button" aria-label="Remove voice note">×</button></div>`:''}</div></details>
-    <details><summary>11. Final Message</summary><div class="section-body">${field('Secret heading','content.screens.secret.heading',s.secret.heading)}<label>Secret message<textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret.body)}</textarea></label></div></details>
-    <details><summary>12. Publish</summary><div class="section-body"><p>Status: <b>${state.status}</b></p><button class="button primary" id="publish-inline">Publish Invitation ❤️</button>${state.status==='published'?`<div class="share-box"><input readonly value="${location.origin}/i/${state.token}"><button class="button small copy-link">Copy Link</button></div>`:''}</div></details>`;
-  if (f.musicPlayerPosition === 'custom') {
+function renderStepper() {
+  const stepperEl = document.querySelector('#builder-stepper');
+  if (!stepperEl) return;
+  stepperEl.innerHTML = `
+    <div class="stepper-track" role="tablist" aria-label="Editor Step Navigation">
+      ${BUILDER_STEPS.map((s, i) => {
+        const isActive = currentStep === s.id;
+        const isCompleted = currentStep > s.id;
+        return `
+          <button type="button" 
+                  class="step-btn ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" 
+                  data-step="${s.id}" 
+                  role="tab" 
+                  aria-selected="${isActive}" 
+                  aria-controls="step-panel-${s.id}" 
+                  id="step-tab-${s.id}" 
+                  ${isActive ? 'aria-current="step"' : ''}
+                  tabindex="${isActive ? '0' : '-1'}">
+            <span class="step-badge">${isCompleted ? '✓' : s.id}</span>
+            <span class="step-text">
+              <strong class="step-label">${s.title}</strong>
+              <small class="step-sub">${s.subtitle}</small>
+            </span>
+          </button>
+          ${i < BUILDER_STEPS.length - 1 ? '<span class="step-divider" aria-hidden="true"></span>' : ''}
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function goToStep(stepId, smooth = true) {
+  const next = Math.max(1, Math.min(BUILDER_STEPS.length, Number(stepId)));
+  currentStep = next;
+  renderStepper();
+
+  document.querySelectorAll('.step-panel').forEach(panel => {
+    const isTarget = Number(panel.dataset.step) === currentStep;
+    panel.classList.toggle('active', isTarget);
+    panel.hidden = !isTarget;
+  });
+
+  const activeBtn = document.querySelector(`.step-btn[data-step="${currentStep}"]`);
+  if (activeBtn) {
+    activeBtn.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'nearest', inline: 'center' });
+  }
+
+  const controlsEl = document.querySelector('#controls');
+  if (controlsEl) {
+    controlsEl.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  if (currentStep === 7 && state?.features?.musicPlayerPosition === 'custom') {
     setTimeout(setupPositionCanvas, 50);
   }
 }
-function setPath(path,value){const bits=path.split('.');let obj=state;for(let i=0;i<bits.length-1;i++)obj=obj[bits[i]];obj[bits.at(-1)]=value;scheduleSave();}
-controls.addEventListener('input',e=>{
+
+function render() {
+  const c = state.content;
+  const s = c.screens;
+  const t = state.theme;
+  const f = state.features;
+  const editableScreens = Object.entries(s).filter(([key]) => !['nickname', 'analysis'].includes(key));
+
+  renderStepper();
+
+  controls.innerHTML = `
+    <!-- STEP 1: BASICS -->
+    <section class="step-panel ${currentStep === 1 ? 'active' : ''}" id="step-panel-1" data-step="1" role="tabpanel" aria-labelledby="step-tab-1" ${currentStep === 1 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 1 of 8 · Basics</span>
+        <h2>Invitation Basics</h2>
+        <p>Set your name, your recipient's name, and an inviting title.</p>
+      </div>
+      <div class="step-panel-body">
+        ${field('Your Name', 'inviterName', state.inviterName)}
+        ${field('Recipient Name', 'recipientName', state.recipientName)}
+        ${field('Invitation Title', 'title', state.title)}
+      </div>
+      <div class="step-panel-footer">
+        <div></div>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="2">Next: Template →</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: TEMPLATE -->
+    <section class="step-panel ${currentStep === 2 ? 'active' : ''}" id="step-panel-2" data-step="2" role="tabpanel" aria-labelledby="step-tab-2" ${currentStep === 2 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 2 of 8 · Template</span>
+        <h2>Occasion Templates</h2>
+        <p>Choose a curated romantic storyline, vibe, and playful questions.</p>
+      </div>
+      <div class="step-panel-body">
+        <p class="hint">Switching templates loads tailored copy, romantic questions, and mood options.</p>
+        <div class="template-picker-grid">
+          ${Object.entries(state.presets?.templates || {
+            'classic': { name: 'Classic Playful Invite ❤️', tagline: 'The viral romantic & playful banter experience' },
+            'romantic-dinner': { name: 'Candlelight Dinner 🍷✨', tagline: 'Intimate dinner date with soft romantic elegance' },
+            'coffee-casual': { name: 'Cozy Coffee & Conversations ☕🌿', tagline: 'Warm, relaxed coffee date with cozy aesthetic' },
+            'best-friend-date': { name: 'Best Friends Day Out 🍕🎈', tagline: 'High-energy, teasing Hinglish invite with food' },
+            'anniversary-special': { name: 'Anniversary Celebration 💍🥂', tagline: 'Heartfelt milestone invitation with romantic memories' }
+          }).map(([k, v]) => `
+            <button type="button" class="template-card ${state.templateId === k ? 'active' : ''}" data-template-key="${k}">
+              <b>${v.name}</b>
+              <small>${v.tagline}</small>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <div class="step-panel-footer">
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="1">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="3">Next: Design →</button>
+      </div>
+    </section>
+
+    <!-- STEP 3: DESIGN -->
+    <section class="step-panel ${currentStep === 3 ? 'active' : ''}" id="step-panel-3" data-step="3" role="tabpanel" aria-labelledby="step-tab-3" ${currentStep === 3 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 3 of 8 · Design</span>
+        <h2>Theme Colors & Styling</h2>
+        <p>Pick a romantic color palette or fine-tune individual colors.</p>
+      </div>
+      <div class="step-panel-body">
+        <div class="theme-choices">
+          ${Object.entries(state.presets.themes).map(([k, v]) => `
+            <button type="button" class="theme-choice ${t.preset === k ? 'active' : ''}" data-theme-preset="${k}">
+              <i style="--swatch-a:${v.primary};--swatch-b:${v.secondary};--swatch-bg:${v.background}"></i>
+              <span>${v.name}</span>
+            </button>
+          `).join('')}
+        </div>
+        <p class="hint">Fine-tune individual colors below (auto-checked for readability):</p>
+        <div class="color-grid">
+          ${renderColorCards(t)}
+        </div>
+        ${renderContrastAudit(t)}
+        ${renderLiveThemePreview(t)}
+      </div>
+      <div class="step-panel-footer">
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="2">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="4">Next: Content →</button>
+      </div>
+    </section>
+
+    <!-- STEP 4: CONTENT -->
+    <section class="step-panel ${currentStep === 4 ? 'active' : ''}" id="step-panel-4" data-step="4" role="tabpanel" aria-labelledby="step-tab-4" ${currentStep === 4 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 4 of 8 · Content</span>
+        <h2>Questions & Screen Copy</h2>
+        <p>Personalize the exact words and questions on every screen.</p>
+      </div>
+      <div class="step-panel-body">
+        <div class="flow-map">
+          ${editableScreens.map(([k]) => `<a href="#screen-${k}">${k.replace(/([A-Z])/g, ' $1')}</a>`).join('<span>↓</span>')}
+        </div>
+        ${editableScreens.map(([key, v]) => `
+          <fieldset id="screen-${key}">
+            <legend>${key.replace(/([A-Z])/g, ' $1')}</legend>
+            ${Object.entries(v).map(([k, val]) => `
+              <label>${k}
+                <textarea data-path="content.screens.${key}.${k}" maxlength="1000">${esc(val)}</textarea>
+              </label>
+            `).join('')}
+          </fieldset>
+        `).join('')}
+        <fieldset id="screen-secret">
+          <legend>Secret Final Message</legend>
+          ${field('Secret heading', 'content.screens.secret.heading', s.secret?.heading || '')}
+          <label>Secret message
+            <textarea data-path="content.screens.secret.body" maxlength="1000">${esc(s.secret?.body || '')}</textarea>
+          </label>
+        </fieldset>
+      </div>
+      <div class="step-panel-footer">
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="3">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="5">Next: Photos →</button>
+      </div>
+    </section>
+
+    <!-- STEP 5: PHOTOS & MEMORIES -->
+    <section class="step-panel ${currentStep === 5 ? 'active' : ''}" id="step-panel-5" data-step="5" role="tabpanel" aria-labelledby="step-tab-5" ${currentStep === 5 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 5 of 8 · Photos & Memories</span>
+        <h2>Cover Photo & Our Story</h2>
+        <p>Add a personal cover photo and memorable timeline moments.</p>
+      </div>
+      <div class="step-panel-body">
+        <div class="sub-panel">
+          <h3>Cover Photo & Intro Visual</h3>
+          ${toggle('Show visual photo / background', 'features.coverPhoto', f.coverPhoto)}
+          <label>
+            <span><b>Display Style</b><small>Choose how your photo appears in the invitation.</small></span>
+            <select data-path="features.coverPhotoStyle">
+              <option value="polaroid" ${(f.coverPhotoStyle || 'polaroid') === 'polaroid' ? 'selected' : ''}>📸 Romantic Polaroid (with caption & tilt)</option>
+              <option value="hero" ${f.coverPhotoStyle === 'hero' ? 'selected' : ''}>🖼️ Hero Banner (clean & prominent)</option>
+              <option value="full-bg" ${f.coverPhotoStyle === 'full-bg' ? 'selected' : ''}>🌌 Full Background (with contrast protection)</option>
+              <option value="memory-card" ${f.coverPhotoStyle === 'memory-card' ? 'selected' : ''}>💌 Memory Card (soft glass frame)</option>
+              <option value="circular" ${f.coverPhotoStyle === 'circular' ? 'selected' : ''}>⭕ Circular Photo (with glowing ring)</option>
+            </select>
+          </label>
+          <label>Photo Caption / Note (optional)
+            <input data-path="features.coverPhotoCaption" value="${esc(f.coverPhotoCaption || '')}" placeholder="e.g. Our favorite memory ✨" maxlength="80">
+          </label>
+          <label>Accessibility Alt Text (optional)
+            <input data-path="features.coverPhotoAlt" value="${esc(f.coverPhotoAlt || '')}" placeholder="e.g. Us laughing together at the cafe" maxlength="100">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
+            <span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;">
+              <b>Background Overlay Tint</b>
+              <span id="cover-overlay-label">${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}%</span>
+            </span>
+            <input data-path="features.coverPhotoOverlay" type="range" min="10" max="85" value="${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}">
+            <small style="color:var(--muted);font-size:0.75rem;">Protects text readability over high-contrast photos.</small>
+          </label>
+          <label class="music-upload" style="margin-top:12px;">
+            <span class="upload-icon">🖼️</span>
+            <b>${f.coverPhotoUrl ? 'Replace Photo' : 'Upload Couple / Background Photo'}</b>
+            <small>JPG, PNG, WebP or GIF · max 5 MB</small>
+            <span id="cover-upload-copy" class="button primary small">${f.coverPhotoUrl ? 'Change photo' : 'Choose photo'}</span>
+            <input id="cover-file" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*">
+          </label>
+          ${f.coverPhotoUrl ? `
+            <div class="cover-current">
+              <img src="${esc(f.coverPhotoUrl)}" alt="${esc(f.coverPhotoAlt || 'Cover preview')}" class="cover-thumbnail">
+              <div class="cover-meta">
+                <b>Photo active (${f.coverPhotoStyle || 'polaroid'})</b>
+                <small>${esc(f.coverPhotoCaption || 'Opening screen visual')}</small>
+              </div>
+              <button id="remove-cover" class="icon-button" type="button" aria-label="Remove photo">×</button>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="sub-panel" style="margin-top:20px;">
+          <h3>Our Story & Memories Scrapbook</h3>
+          ${toggle('Enable Our Story timeline section', 'features.memories', f.memories)}
+          <p class="hint">Showcase sweet milestone photos, dates, and memories leading up to your date ask.</p>
+          <div class="memories-builder-list">
+            ${(f.memoriesList || []).map((m, idx) => `
+              <fieldset class="memory-builder-item">
+                <legend>Memory #${idx + 1} ${m.title ? `· ${esc(m.title)}` : ''}</legend>
+                <div style="display:grid;gap:8px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">Position #${idx + 1}</span>
+                    <div style="display:flex;gap:4px;">
+                      <button type="button" class="button ghost small move-memory" data-memory-move="up" data-memory-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.4;"' : ''}>▲ Up</button>
+                      <button type="button" class="button ghost small move-memory" data-memory-move="down" data-memory-idx="${idx}" ${idx === (f.memoriesList.length - 1) ? 'disabled style="opacity:0.4;"' : ''}>▼ Down</button>
+                    </div>
+                  </div>
+                  <label>Title
+                    <input data-memory-idx="${idx}" data-memory-field="title" value="${esc(m.title || '')}" placeholder="e.g. First Coffee Together" maxlength="80">
+                  </label>
+                  <label>Date / Milestone (optional)
+                    <input data-memory-idx="${idx}" data-memory-field="date" value="${esc(m.date || '')}" placeholder="e.g. 12 March 2024" maxlength="50">
+                  </label>
+                  <label>Caption / Note
+                    <textarea data-memory-idx="${idx}" data-memory-field="caption" placeholder="The day everything started..." maxlength="400">${esc(m.caption || '')}</textarea>
+                  </label>
+                  <label class="music-upload" style="margin:4px 0;">
+                    <span class="upload-icon">📷</span>
+                    <b>${m.photoUrl ? 'Replace Memory Photo' : 'Upload Memory Photo'}</b>
+                    <small>JPG, PNG, WebP or GIF · max 5 MB</small>
+                    <input class="memory-photo-file" data-memory-idx="${idx}" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*">
+                  </label>
+                  ${m.photoUrl ? `
+                    <div class="cover-current">
+                      <img src="${esc(m.photoUrl)}" alt="Memory" class="cover-thumbnail">
+                      <div class="cover-meta">
+                        <b>Photo Attached</b>
+                        <small>Visible in Our Story timeline</small>
+                      </div>
+                      <button class="icon-button remove-memory-photo" data-memory-idx="${idx}" type="button" aria-label="Remove photo">×</button>
+                    </div>
+                  ` : ''}
+                  <button class="button danger small remove-memory" data-memory-idx="${idx}" type="button" style="margin-top:6px;">Delete Memory</button>
+                </div>
+              </fieldset>
+            `).join('')}
+            <button class="button ghost small add-memory" type="button" ${(f.memoriesList || []).length >= 12 ? 'disabled' : ''}>+ Add Memory ${(f.memoriesList || []).length >= 12 ? '(Max 12)' : ''}</button>
+          </div>
+        </div>
+      </div>
+      <div class="step-panel-footer">
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="4">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="6">Next: Features →</button>
+      </div>
+    </section>
+
+    <!-- STEP 6: DATE IDEAS & FEATURES -->
+    <section class="step-panel ${currentStep === 6 ? 'active' : ''}" id="step-panel-6" data-step="6" role="tabpanel" aria-labelledby="step-tab-6" ${currentStep === 6 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 6 of 8 · Features</span>
+        <h2>Date Ideas & Playful Touches</h2>
+        <p>Set date choices, mascots, confetti celebrations, and playful surprises.</p>
+      </div>
+      <div class="step-panel-body">
+        <div class="sub-panel">
+          <h3>Date Ideas / Moods</h3>
+          <p class="hint">Choose one featured idea. Your recipient can also pick their preferred date and time.</p>
+          ${c.moods.map((m, i) => `
+            <fieldset class="${m.favorite ? 'favorite-field' : ''}">
+              <legend>Option ${i + 1}${m.favorite ? ' · My favorite' : ''}</legend>
+              ${field('Title', `content.moods.${i}.title`, m.title)}
+              ${field('Description', `content.moods.${i}.description`, m.description)}
+              <button type="button" class="favorite-option ${m.favorite ? 'active' : ''}" data-favorite-index="${i}">
+                ${m.favorite ? '★ Featured & selected' : '☆ Make my favorite'}
+              </button>
+            </fieldset>
+          `).join('')}
+          <button class="button ghost small add" data-list="moods">+ Add option</button>
+        </div>
+
+        <div class="sub-panel" style="margin-top:20px;">
+          <h3>Playful Touches</h3>
+          <div class="feature-list">
+            ${[['Mascots', 'mascots'], ['Tiny Mode', 'tinyMode'], ['Cute-item collection', 'collection'], ['Confetti', 'confetti'], ['Funny Back buttons', 'funnyBack']].map(([l, k]) => featureToggle(l, `features.${k}`, f[k])).join('')}
+            <label class="mascot-select">
+              <span><b>Mascot pack</b><small>Choose the animated characters shown throughout.</small></span>
+              <select data-path="features.mascotPack">
+                ${['original', 'yellow', 'blue', 'pink', 'bears', 'cats', 'bunnies', 'none'].map(x => `<option ${f.mascotPack === x ? 'selected' : ''} value="${x}">${x[0].toUpperCase() + x.slice(1)}</option>`).join('')}
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="step-panel-footer">
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="5">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="7">Next: Music →</button>
+      </div>
+    </section>
+
+    <!-- STEP 7: MUSIC & VOICE -->
+    <section class="step-panel ${currentStep === 7 ? 'active' : ''}" id="step-panel-7" data-step="7" role="tabpanel" aria-labelledby="step-tab-7" ${currentStep === 7 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 7 of 8 · Music & Voice</span>
+        <h2>Soundtracks & Voice Note</h2>
+        <p>Set background music, audio start/end trimming, or record a personal voice note.</p>
+      </div>
+      <div class="step-panel-body">
+        <div class="sub-panel">
+          <h3>Background Music</h3>
+          <div class="music-enable">
+            ${toggle('Enable background soundtrack', 'features.music', f.music)}
+            <small>Starts gracefully when the invitation is opened (never forceful autoplay).</small>
+          </div>
+
+          <div class="music-source-tabs" style="display:flex;gap:6px;margin:10px 0 12px;">
+            <button type="button" class="button small ${(f.musicSource || 'upload') === 'upload' ? 'primary' : 'ghost'} set-music-source" data-source="upload">♫ Upload / Presets</button>
+            <button type="button" class="button small ${f.musicSource === 'spotify' ? 'primary' : 'ghost'} set-music-source" data-source="spotify">🟢 Spotify</button>
+          </div>
+
+          ${f.musicSource === 'spotify' ? `
+            <div class="spotify-builder-panel" style="display:grid;gap:10px;padding:12px;background:rgba(29,185,84,0.06);border:1.5px solid rgba(29,185,84,0.3);border-radius:14px;">
+              <label>
+                <span><b>Paste Spotify Link</b><small>Track, Album, or Playlist URL</small></span>
+                <div style="display:flex;gap:6px;margin-top:4px;">
+                  <input id="spotify-url-input" value="${esc(f.spotify?.url || '')}" placeholder="https://open.spotify.com/track/..." style="flex:1;">
+                  <button type="button" class="button primary small" id="apply-spotify-btn">Link</button>
+                </div>
+              </label>
+              ${f.spotify?.embedUrl ? `
+                <div class="spotify-preview-card" style="margin-top:6px;">
+                  <iframe src="${esc(f.spotify.embedUrl)}" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="border-radius:12px;border:none;"></iframe>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                    <small style="color:var(--muted);">✓ Spotify embed connected · Official controls</small>
+                    <button type="button" class="button danger small" id="remove-spotify-btn">Remove Spotify</button>
+                  </div>
+                </div>
+              ` : ''}
+              <p class="hint" style="margin:0;font-size:0.73rem;color:#166534;">Spotify tracks use Spotify's official embed player. Custom start/end trimming is available for uploaded audio.</p>
+            </div>
+          ` : `
+            <div class="playlist-builder-panel">
+              <label class="music-upload" style="margin-bottom:12px;">
+                <span class="upload-icon">↥</span>
+                <b>Upload custom song to playlist</b>
+                <small>MP3, M4A, OGG, or WAV · max 10 MB</small>
+                <span id="music-upload-copy" class="button ghost small">+ Add custom file</span>
+                <input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*">
+              </label>
+              <div class="playlist-items-list" style="display:grid;gap:10px;margin-bottom:14px;">
+                ${((f.playlist && f.playlist.length) ? f.playlist : (f.musicUrl ? [{ id: 'default', name: f.musicName || 'Selected Song', artist: 'Romantic soundtrack', mood: 'romantic', url: f.musicUrl, startTime: f.musicStartOffset || 0, endTime: null, duration: 0, default: true, enabled: true }] : [])).map((song, idx, arr) => `
+                  <fieldset class="track-builder-item" style="border:1px solid #e8e3dc;border-radius:14px;padding:12px;background:#fff;margin:0;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <span style="font-size:1.2rem;">${song.mood === 'latenight' ? '🌙' : song.mood === 'funny' ? '😂' : song.mood === 'emotional' ? '💔' : song.mood === 'dreamy' ? '✨' : '❤️'}</span>
+                      <div style="flex:1;min-width:0;">
+                        <b style="display:block;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(song.name || song.title || 'Song')}</b>
+                        <small style="color:var(--muted);font-size:0.72rem;">${esc(song.artist || (song.sourceType === 'preset' || (song.url && song.url.startsWith('preset:')) ? 'Preset Soundscape' : 'Custom track'))}${song.default ? ' · ★ Default track' : ''}</small>
+                      </div>
+                      <div style="display:flex;gap:4px;">
+                        <button type="button" class="button ghost small playlist-move-btn" data-playlist-move="up" data-playlist-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                        <button type="button" class="button ghost small playlist-move-btn" data-playlist-move="down" data-playlist-idx="${idx}" ${idx === arr.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                        <button type="button" class="button ghost small playlist-default-btn ${song.default ? 'primary' : ''}" data-playlist-idx="${idx}" title="Set as default song">★</button>
+                        <button type="button" class="icon-button playlist-delete-btn" data-playlist-idx="${idx}" aria-label="Remove song">×</button>
+                      </div>
+                    </div>
+                    ${(song.sourceType !== 'spotify' && (!song.url || !song.url.startsWith('https://open.spotify.com'))) ? `
+                      <div class="audio-trimmer-box" style="background:#faf8f5;border:1px solid #ede7df;border-radius:10px;padding:10px;margin-top:4px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                          <span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">✂️ Audio Trimmer & Start/End</span>
+                          <span class="trimmer-duration-label" style="font-size:0.72rem;color:var(--muted);">${song.duration ? `Duration: ${formatTime(song.duration)}` : (song.url && song.url.startsWith('preset:') ? 'Preset Loop' : '')}</span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                          <label style="font-size:0.75rem;margin:0;">
+                            <span>Start Time (MM:SS)</span>
+                            <input type="text" class="track-time-input" data-time-field="startTime" data-track-idx="${idx}" value="${formatTime(song.startTime || 0)}" placeholder="00:00" style="padding:4px 8px;font-size:0.8rem;">
+                          </label>
+                          <label style="font-size:0.75rem;margin:0;">
+                            <span>End Time (MM:SS)</span>
+                            <input type="text" class="track-time-input" data-time-field="endTime" data-track-idx="${idx}" value="${song.endTime ? formatTime(song.endTime) : ''}" placeholder="${song.duration ? formatTime(song.duration) : 'Full song'}" style="padding:4px 8px;font-size:0.8rem;">
+                          </label>
+                        </div>
+                        <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                          <button type="button" class="button ghost small preview-track-btn" data-preview-idx="${idx}" data-track-url="${esc(song.url)}" data-start-time="${song.startTime || 0}" data-end-time="${song.endTime || ''}">▶ Preview Selection</button>
+                          <small style="font-size:0.7rem;color:var(--muted);">${song.startTime ? `From ${formatTime(song.startTime)}` : 'Starts at 00:00'}${song.endTime ? ` to ${formatTime(song.endTime)}` : ' (Full song)'}</small>
+                        </div>
+                      </div>
+                    ` : ''}
+                  </fieldset>
+                `).join('')}
+              </div>
+              <p class="hint" style="margin:8px 0 4px;">Or choose romantic preset soundscapes:</p>
+              <div class="music-mood-filters">
+                <button type="button" class="mood-filter-btn active" data-music-filter="all">All</button>
+                <button type="button" class="mood-filter-btn" data-music-filter="romantic">❤️ Romantic</button>
+                <button type="button" class="mood-filter-btn" data-music-filter="latenight">🌙 Late Night</button>
+                <button type="button" class="mood-filter-btn" data-music-filter="funny">😂 Cute/Funny</button>
+                <button type="button" class="mood-filter-btn" data-music-filter="emotional">💔 Emotional</button>
+                <button type="button" class="mood-filter-btn" data-music-filter="dreamy">✨ Dreamy</button>
+              </div>
+              <div class="music-preset-grid">
+                ${(state.presets?.music || [{ key: 'preset:piano', name: 'Piano Serenade 🎹', desc: 'Soft emotive romantic piano', mood: 'romantic' }, { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸', desc: 'Warm fingerstyle acoustic melody', mood: 'romantic' }, { key: 'preset:jazz', name: 'Midnight Jazz 🎷', desc: 'Slow, smooth late-night jazz', mood: 'latenight' }, { key: 'preset:lofi', name: 'Lo-fi Romance 🎧', desc: 'Chill beats, warm vinyl, and cozy chords', mood: 'latenight' }, { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️', desc: 'Playful, sunny, cheerful vibe', mood: 'funny' }, { key: 'preset:ballad', name: 'Emotional Strings 🎻', desc: 'Gentle, touching cello and violin', mood: 'emotional' }, { key: 'preset:dreamy', name: 'Celestial Starlight ✨', desc: 'Ethereal ambient pads and sparkle bells', mood: 'dreamy' }]).map(p => `
+                  <button type="button" class="music-preset-btn ${f.musicUrl === p.key ? 'active' : ''}" data-music-preset="${p.key}" data-music-name="${esc(p.name)}" data-preset-mood="${p.mood || 'romantic'}">
+                    <b>${p.name}</b>
+                    <small>${p.desc}</small>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `}
+
+          <label style="margin-top:12px;">
+            <span><b>Music Player Style</b><small>Choose how the audio player appears to the recipient.</small></span>
+            <select data-path="features.musicPlayerStyle">
+              <option value="romantic" ${(f.musicPlayerStyle || 'romantic') === 'romantic' ? 'selected' : ''}>💿 Romantic Vinyl (Animated disc & full player)</option>
+              <option value="glass" ${f.musicPlayerStyle === 'glass' ? 'selected' : ''}>💎 Glassmorphism (Frosted floating bar)</option>
+              <option value="minimal" ${f.musicPlayerStyle === 'minimal' ? 'selected' : ''}>💊 Minimal Pill (Compact play/mute)</option>
+              <option value="floating" ${f.musicPlayerStyle === 'floating' ? 'selected' : ''}>💖 Floating Bubble (Corner pulsating button)</option>
+              <option value="compact" ${f.musicPlayerStyle === 'compact' ? 'selected' : ''}>🏷️ Compact Badge (Single-line card)</option>
+              <option value="ambient" ${f.musicPlayerStyle === 'ambient' ? 'selected' : ''}>🌌 Hidden Label / Icon Only (Discreet sound)</option>
+              <option value="spotify" ${f.musicPlayerStyle === 'spotify' ? 'selected' : ''}>🟢 Spotify Card</option>
+            </select>
+          </label>
+
+          <label style="margin-top:10px;">
+            <span><b>Player Screen Position</b><small>Choose where the music widget is docked on screen.</small></span>
+            <select data-path="features.musicPlayerPosition">
+              <option value="bottom-right" ${(f.musicPlayerPosition || 'bottom-right') === 'bottom-right' ? 'selected' : ''}>↘ Bottom Right (Default)</option>
+              <option value="bottom-left" ${f.musicPlayerPosition === 'bottom-left' ? 'selected' : ''}>↙ Bottom Left</option>
+              <option value="top-right" ${f.musicPlayerPosition === 'top-right' ? 'selected' : ''}>↗ Top Right</option>
+              <option value="top-left" ${f.musicPlayerPosition === 'top-left' ? 'selected' : ''}>↖ Top Left</option>
+              <option value="center-right" ${f.musicPlayerPosition === 'center-right' ? 'selected' : ''}>→ Center Right</option>
+              <option value="center-left" ${f.musicPlayerPosition === 'center-left' ? 'selected' : ''}>← Center Left</option>
+              <option value="custom" ${f.musicPlayerPosition === 'custom' ? 'selected' : ''}>📍 Custom Draggable Position</option>
+            </select>
+          </label>
+
+          ${f.musicPlayerPosition === 'custom' ? `
+            <div class="custom-position-canvas-card" style="margin-top:8px;padding:12px;background:#f7f4ee;border:1.5px dashed #d8cebf;border-radius:14px;text-align:center;">
+              <small style="display:block;font-weight:700;margin-bottom:6px;color:var(--text);">Drag player to customize dock position</small>
+              <div id="position-preview-canvas" style="position:relative;width:200px;height:120px;margin:0 auto;background:#fff;border:1px solid #ccc;border-radius:10px;overflow:hidden;box-shadow:inset 0 2px 6px rgba(0,0,0,0.05);touch-action:none;">
+                <div id="position-drag-handle" style="position:absolute;left:${(f.musicCustomPosition?.x || 0.8) * 100}%;top:${(f.musicCustomPosition?.y || 0.8) * 100}%;transform:translate(-50%,-50%);padding:4px 8px;background:var(--primary);color:#fff;border-radius:20px;font-size:0.65rem;font-weight:700;cursor:grab;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.2);">♫ Player</div>
+              </div>
+              <small style="display:block;margin-top:4px;color:var(--muted);font-size:0.68rem;">Normalized: X: ${Math.round((f.musicCustomPosition?.x || 0.8) * 100)}% · Y: ${Math.round((f.musicCustomPosition?.y || 0.8) * 100)}%</small>
+            </div>
+          ` : ''}
+
+          <label style="margin-top:10px;">
+            <span><b>Playback Mode</b><small>How tracks transition during playback.</small></span>
+            <select data-path="features.musicPlaybackMode">
+              <option value="playlist" ${(f.musicPlaybackMode || 'playlist') === 'playlist' ? 'selected' : ''}>⏭ Play selected tracks in order (Playlist)</option>
+              <option value="loop-track" ${f.musicPlaybackMode === 'loop-track' ? 'selected' : ''}>🔂 Loop current track</option>
+              <option value="loop-playlist" ${f.musicPlaybackMode === 'loop-playlist' ? 'selected' : ''}>🔁 Loop playlist</option>
+              <option value="once" ${f.musicPlaybackMode === 'once' ? 'selected' : ''}>⏹ Play once</option>
+            </select>
+          </label>
+
+          <label style="display:flex;flex-direction:column;gap:4px;margin-top:14px;">
+            <span style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;">
+              <b>Default Volume</b>
+              <span id="music-vol-label">${f.musicVolume || 35}%</span>
+            </span>
+            <input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume || 35}">
+          </label>
+        </div>
+
+        <div class="sub-panel" style="margin-top:20px;">
+          <h3>Personal Voice Note 🎙️</h3>
+          <p class="hint">Record with your mic or upload an audio file. The background music automatically ducks when your voice note plays!</p>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+            <button id="record-voice-btn" type="button" class="button primary small">🎙️ Start Recording</button>
+            <span id="recording-timer" style="font-weight:700;font-size:0.85rem;display:none;color:#ff625f;">● 0:00</span>
+          </div>
+          <label class="music-upload">
+            <span class="upload-icon">↥</span>
+            <b>Upload recorded voice note</b>
+            <small>MP3, M4A, OGG, WAV, or AAC · max 10 MB</small>
+            <span id="voice-upload-copy" class="button ghost small">Choose voice file</span>
+            <input id="voice-file" type="file" accept=".mp3,.m4a,.ogg,.wav,.webm,.aac,audio/*">
+          </label>
+          ${f.voiceNoteUrl ? `
+            <div class="music-current" style="margin-top:12px;">
+              <span class="music-note">🎙️</span>
+              <div>
+                <b>${esc(f.voiceNoteName || 'Personal Voice Note')}</b>
+                <small>Ready to play in invitation</small>
+              </div>
+              <button id="remove-voice" class="icon-button" type="button" aria-label="Remove voice note">×</button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <div class="step-panel-footer">
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="6">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="8">Next: Publish →</button>
+      </div>
+    </section>
+
+    <!-- STEP 8: PUBLISH -->
+    <section class="step-panel ${currentStep === 8 ? 'active' : ''}" id="step-panel-8" data-step="8" role="tabpanel" aria-labelledby="step-tab-8" ${currentStep === 8 ? '' : 'hidden'}>
+      <div class="step-panel-header">
+        <span class="step-kicker">Step 8 of 8 · Publish</span>
+        <h2>Review & Share</h2>
+        <p>Publish your date invitation and get your private share link.</p>
+      </div>
+      <div class="step-panel-body">
+        <div class="publish-status-card" style="padding:16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-weight:700;font-size:0.95rem;">Publication Status</span>
+            <span class="status ${state.status === 'published' ? 'published' : 'draft'}">${state.status}</span>
+          </div>
+          <p style="margin:0;font-size:0.85rem;color:var(--color-text-muted);">
+            ${state.status === 'published' ? 'Your invitation is live and ready to be opened by your recipient.' : 'Your invitation is currently in draft mode. Click Publish below to make the link live.'}
+          </p>
+        </div>
+
+        <button class="button primary" id="publish-inline" style="width:100%;min-height:48px;font-size:1rem;margin-bottom:16px;">
+          ${state.status === 'published' ? 'Update & Re-Publish Invitation ♥' : 'Publish Invitation ❤️'}
+        </button>
+
+        ${state.status === 'published' ? `
+          <div class="share-box-panel" style="padding:16px;background:var(--color-surface-soft);border:1px solid var(--color-border);border-radius:var(--radius-lg);">
+            <h4 style="margin:0 0 8px;font-size:0.9rem;">Your Private Invitation Link:</h4>
+            <div class="share-box" style="display:flex;gap:8px;">
+              <input readonly value="${location.origin}/i/${state.token}" id="publish-link-input" style="flex:1;">
+              <button type="button" class="button small copy-link">Copy Link</button>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+              <a class="button small ghost" target="_blank" href="/i/${state.token}">↗ Open Public Link</a>
+              <a class="button small ghost" target="_blank" href="/dashboard/invitations/${id}/preview">◉ Editor Preview</a>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+      <div class="step-panel-footer">
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="7">← Previous</button>
+        <button type="button" class="button primary" id="publish-bottom-btn">Publish Invitation ❤️</button>
+      </div>
+    </section>
+  `;
+
+  if (f.musicPlayerPosition === 'custom' && currentStep === 7) {
+    setTimeout(setupPositionCanvas, 50);
+  }
+}
+
+function setPath(path, value) {
+  const bits = path.split('.');
+  let obj = state;
+  for (let i = 0; i < bits.length - 1; i++) obj = obj[bits[i]];
+  obj[bits.at(-1)] = value;
+  scheduleSave();
+}
+
+controls.addEventListener('input', e => {
   if (e.target.dataset.colorPicker) {
     const key = e.target.dataset.colorPicker;
     state.theme[key] = e.target.value.toUpperCase();
@@ -226,10 +815,10 @@ controls.addEventListener('input',e=>{
   }
   if (e.target.dataset.memoryField) {
     const idx = Number(e.target.dataset.memoryIdx);
-    const field = e.target.dataset.memoryField;
+    const fld = e.target.dataset.memoryField;
     if (!state.features.memoriesList) state.features.memoriesList = [];
     if (state.features.memoriesList[idx]) {
-      state.features.memoriesList[idx][field] = e.target.value;
+      state.features.memoriesList[idx][fld] = e.target.value;
       scheduleSave();
     }
     return;
@@ -238,14 +827,18 @@ controls.addEventListener('input',e=>{
     const label = controls.querySelector('#music-vol-label');
     if (label) label.textContent = `${e.target.value}%`;
   }
+  if (e.target.dataset.path === 'features.coverPhotoOverlay') {
+    const label = controls.querySelector('#cover-overlay-label');
+    if (label) label.textContent = `${e.target.value}%`;
+  }
   if (e.target.classList.contains('track-time-input')) {
     const idx = Number(e.target.dataset.trackIdx);
-    const field = e.target.dataset.timeField;
+    const fld = e.target.dataset.timeField;
     const sec = parseTime(e.target.value);
     if (state.features.playlist && state.features.playlist[idx]) {
-      if (field === 'startTime') {
+      if (fld === 'startTime') {
         state.features.playlist[idx].startTime = sec;
-      } else if (field === 'endTime') {
+      } else if (fld === 'endTime') {
         state.features.playlist[idx].endTime = e.target.value.trim() ? sec : null;
       }
       state.features.tracks = state.features.playlist;
@@ -253,13 +846,13 @@ controls.addEventListener('input',e=>{
     }
     return;
   }
-  if(!e.target.dataset.path)return;
-  setPath(e.target.dataset.path,e.target.type==='checkbox'?e.target.checked:e.target.value);
+  if (!e.target.dataset.path) return;
+  setPath(e.target.dataset.path, e.target.type === 'checkbox' ? e.target.checked : e.target.value);
   if (e.target.dataset.path === 'features.musicPlayerPosition') {
     render();
-    setupPositionCanvas();
+    if (e.target.value === 'custom') setupPositionCanvas();
   }
-  if(e.target.dataset.path.startsWith('theme.')){
+  if (e.target.dataset.path.startsWith('theme.')) {
     const key = e.target.dataset.path.replace('theme.', '');
     const picker = controls.querySelector(`[data-color-picker="${key}"]`);
     if (picker && e.target.value.startsWith('#') && e.target.value.length >= 7) picker.value = e.target.value.slice(0, 7);
@@ -267,23 +860,24 @@ controls.addEventListener('input',e=>{
     renderLiveMockupOnly();
   }
 });
-controls.addEventListener('change',e=>{
-  if(e.target.id==='cover-file'&&e.target.files[0])uploadCoverPhoto(e.target.files[0]);
-  if(e.target.classList.contains('memory-photo-file')&&e.target.files[0]){
+
+controls.addEventListener('change', e => {
+  if (e.target.id === 'cover-file' && e.target.files[0]) uploadCoverPhoto(e.target.files[0]);
+  if (e.target.classList.contains('memory-photo-file') && e.target.files[0]) {
     const idx = Number(e.target.dataset.memoryIdx);
     uploadMemoryPhoto(idx, e.target.files[0]);
   }
-  if((e.target.id==='music-file'||e.target.classList.contains('music-replace'))&&e.target.files[0])uploadMusic(e.target.files[0]);
-  if(e.target.id==='voice-file'&&e.target.files[0])uploadVoiceNote(e.target.files[0]);
+  if ((e.target.id === 'music-file' || e.target.classList.contains('music-replace')) && e.target.files[0]) uploadMusic(e.target.files[0]);
+  if (e.target.id === 'voice-file' && e.target.files[0]) uploadVoiceNote(e.target.files[0]);
   if (e.target.classList.contains('track-time-input')) {
     const idx = Number(e.target.dataset.trackIdx);
-    const field = e.target.dataset.timeField;
+    const fld = e.target.dataset.timeField;
     const sec = parseTime(e.target.value);
     if (state.features.playlist && state.features.playlist[idx]) {
-      if (field === 'startTime') {
+      if (fld === 'startTime') {
         state.features.playlist[idx].startTime = sec;
         e.target.value = formatTime(sec);
-      } else if (field === 'endTime') {
+      } else if (fld === 'endTime') {
         state.features.playlist[idx].endTime = e.target.value.trim() ? sec : null;
         e.target.value = state.features.playlist[idx].endTime ? formatTime(state.features.playlist[idx].endTime) : '';
       }
@@ -293,9 +887,29 @@ controls.addEventListener('change',e=>{
     }
   }
 });
-controls.addEventListener('click',e=>{
-  const add=e.target.closest('.add'),remove=e.target.closest('.remove'),themeButton=e.target.closest('[data-theme-preset]'),favoriteButton=e.target.closest('[data-favorite-index]');
+
+document.addEventListener('click', e => {
+  // Stepper Tab Click
+  const stepBtn = e.target.closest('[data-step]');
+  if (stepBtn && stepBtn.closest('#builder-stepper')) {
+    goToStep(stepBtn.dataset.step);
+    return;
+  }
+
+  // Previous / Next button click
+  const navBtn = e.target.closest('[data-nav-step]');
+  if (navBtn) {
+    goToStep(navBtn.dataset.navStep);
+    return;
+  }
+
+  // Controls-delegated clicks
+  const add = e.target.closest('.add');
+  const remove = e.target.closest('.remove');
+  const themeButton = e.target.closest('[data-theme-preset]');
+  const favoriteButton = e.target.closest('[data-favorite-index]');
   const addMemoryBtn = e.target.closest('.add-memory');
+
   if (addMemoryBtn) {
     if (!state.features.memoriesList) state.features.memoriesList = [];
     if (state.features.memoriesList.length < 12) {
@@ -314,6 +928,7 @@ controls.addEventListener('click',e=>{
     }
     return;
   }
+
   const removeMemoryBtn = e.target.closest('.remove-memory');
   if (removeMemoryBtn) {
     const idx = Number(removeMemoryBtn.dataset.memoryIdx);
@@ -326,6 +941,7 @@ controls.addEventListener('click',e=>{
     }
     return;
   }
+
   const removeMemoryPhotoBtn = e.target.closest('.remove-memory-photo');
   if (removeMemoryPhotoBtn) {
     const idx = Number(removeMemoryPhotoBtn.dataset.memoryIdx);
@@ -338,6 +954,7 @@ controls.addEventListener('click',e=>{
     }
     return;
   }
+
   const moveMemoryBtn = e.target.closest('.move-memory');
   if (moveMemoryBtn) {
     const idx = Number(moveMemoryBtn.dataset.memoryIdx);
@@ -358,6 +975,7 @@ controls.addEventListener('click',e=>{
     }
     return;
   }
+
   const templateCard = e.target.closest('[data-template-key]');
   if (templateCard) {
     const key = templateCard.dataset.templateKey;
@@ -378,6 +996,7 @@ controls.addEventListener('click',e=>{
     }
     return;
   }
+
   const musicFilterBtn = e.target.closest('[data-music-filter]');
   if (musicFilterBtn) {
     const filter = musicFilterBtn.dataset.musicFilter;
@@ -388,8 +1007,9 @@ controls.addEventListener('click',e=>{
     });
     return;
   }
+
   const musicPresetBtn = e.target.closest('[data-music-preset]');
-  if(musicPresetBtn) {
+  if (musicPresetBtn) {
     const key = musicPresetBtn.dataset.musicPreset;
     const name = musicPresetBtn.dataset.musicName;
     Object.assign(state.features, { music: true, musicUrl: key, musicName: name });
@@ -399,9 +1019,10 @@ controls.addEventListener('click',e=>{
     toast(`Selected soundtrack: ${name} ♫`);
     return;
   }
+
   const fixBtn = e.target.closest('[data-fix-key]');
   const actionBtn = e.target.closest('[data-action]');
-  if(fixBtn) {
+  if (fixBtn) {
     const key = fixBtn.dataset.fixKey;
     const bg = fixBtn.dataset.bgColor;
     const currentVal = state.theme[key] || '#282223';
@@ -414,7 +1035,8 @@ controls.addEventListener('click',e=>{
     toast(`Adjusted ${key} to ${suggested} for optimal contrast ✓`);
     return;
   }
-  if(actionBtn) {
+
+  if (actionBtn) {
     const act = actionBtn.dataset.action;
     if (act === 'reset-theme') {
       const presetKey = state.theme.preset || 'strawberry';
@@ -431,7 +1053,7 @@ controls.addEventListener('click',e=>{
       const bg = t.background || '#FCFAF6';
       const card = t.card || '#FFFFFFEE';
       const primary = t.primary || '#E6496F';
-      
+
       if (getContrastRatio(t.text || '#282223', bg) < 4.5) t.text = suggestReadableColor(t.text || '#282223', bg, 4.5);
       if (getContrastRatio(t.headingColor || t.text || '#20191B', bg) < 4.5) t.headingColor = suggestReadableColor(t.headingColor || '#20191B', bg, 4.5);
       if (getContrastRatio(t.muted || '#70686A', bg) < 3.5) t.muted = suggestReadableColor(t.muted || '#70686A', bg, 3.5);
@@ -445,6 +1067,7 @@ controls.addEventListener('click',e=>{
       return;
     }
   }
+
   const sourceTab = e.target.closest('.set-music-source');
   if (sourceTab) {
     const src = sourceTab.dataset.source;
@@ -459,6 +1082,7 @@ controls.addEventListener('click',e=>{
     scheduleSave();
     return;
   }
+
   if (e.target.id === 'apply-spotify-btn') {
     const input = controls.querySelector('#spotify-url-input');
     if (input) applySpotify(input.value);
@@ -468,6 +1092,7 @@ controls.addEventListener('click',e=>{
     removeSpotify();
     return;
   }
+
   const playlistMoveBtn = e.target.closest('.playlist-move-btn');
   if (playlistMoveBtn) {
     const dir = playlistMoveBtn.dataset.playlistMove;
@@ -488,13 +1113,12 @@ controls.addEventListener('click',e=>{
     scheduleSave();
     return;
   }
+
   const playlistDefaultBtn = e.target.closest('.playlist-default-btn');
   if (playlistDefaultBtn) {
     const idx = Number(playlistDefaultBtn.dataset.playlistIdx);
     const list = state.features.playlist || [];
-    list.forEach((s, i) => {
-      s.default = (i === idx);
-    });
+    list.forEach((s, i) => { s.default = (i === idx); });
     if (list[idx]) {
       state.features.musicUrl = list[idx].url;
       state.features.musicName = list[idx].name;
@@ -506,6 +1130,7 @@ controls.addEventListener('click',e=>{
     toast(`Set "${list[idx]?.name}" as default track ★`);
     return;
   }
+
   const playlistDelBtn = e.target.closest('.playlist-delete-btn');
   if (playlistDelBtn) {
     const idx = Number(playlistDelBtn.dataset.playlistIdx);
@@ -527,21 +1152,64 @@ controls.addEventListener('click',e=>{
     toast(`Removed ${removed?.name || 'song'}`);
     return;
   }
+
   const previewTrackBtn = e.target.closest('.preview-track-btn');
   if (previewTrackBtn) {
     togglePreviewTrack(previewTrackBtn);
     return;
   }
-  if(themeButton){Object.assign(state.theme,state.presets.themes[themeButton.dataset.themePreset],{preset:themeButton.dataset.themePreset});render();updateThemePreview();scheduleSave();}
-  if(favoriteButton){state.content.moods.forEach((m,i)=>m.favorite=i===Number(favoriteButton.dataset.favoriteIndex));render();scheduleSave();}
-  if(add){e.preventDefault();if(add.dataset.list==='moods'&&state.content.moods.length<10)state.content.moods.push({title:'New date idea ✨',description:'Add a little description',favorite:false});render();scheduleSave();}
-  if(remove){e.preventDefault();state.content[remove.dataset.list].splice(Number(remove.dataset.index),1);if(remove.dataset.list==='moods'&&state.content.moods.length&&!state.content.moods.some(m=>m.favorite))state.content.moods[0].favorite=true;render();scheduleSave();}
-  if(e.target.id==='remove-cover')removeCoverPhoto();
-  if(e.target.id==='remove-music')removeMusic();
-  if(e.target.id==='remove-voice')removeVoiceNote();
-  if(e.target.id==='record-voice-btn')toggleRecordVoice();
-  if(e.target.id==='publish-inline')publish();
-  if(e.target.closest('.copy-link'))copyLink();
+
+  if (themeButton) {
+    Object.assign(state.theme, state.presets.themes[themeButton.dataset.themePreset], { preset: themeButton.dataset.themePreset });
+    render();
+    updateThemePreview();
+    scheduleSave();
+  }
+  if (favoriteButton) {
+    state.content.moods.forEach((m, i) => m.favorite = i === Number(favoriteButton.dataset.favoriteIndex));
+    render();
+    scheduleSave();
+  }
+  if (add) {
+    e.preventDefault();
+    if (add.dataset.list === 'moods' && state.content.moods.length < 10) {
+      state.content.moods.push({ title: 'New date idea ✨', description: 'Add a little description', favorite: false });
+      render();
+      scheduleSave();
+    }
+  }
+  if (remove) {
+    e.preventDefault();
+    state.content[remove.dataset.list].splice(Number(remove.dataset.index), 1);
+    if (remove.dataset.list === 'moods' && state.content.moods.length && !state.content.moods.some(m => m.favorite)) {
+      state.content.moods[0].favorite = true;
+    }
+    render();
+    scheduleSave();
+  }
+  if (e.target.id === 'remove-cover') removeCoverPhoto();
+  if (e.target.id === 'remove-music') removeMusic();
+  if (e.target.id === 'remove-voice') removeVoiceNote();
+  if (e.target.id === 'record-voice-btn') toggleRecordVoice();
+  if (e.target.id === 'publish-inline' || e.target.id === 'publish-bottom-btn') publish();
+  if (e.target.closest('.copy-link')) copyLink();
+});
+
+// Keyboard navigation for stepper
+document.querySelector('#builder-stepper')?.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    goToStep(currentStep + 1);
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    goToStep(currentStep - 1);
+  } else if (e.key === 'Home') {
+    e.preventDefault();
+    goToStep(1);
+  } else if (e.key === 'End') {
+    e.preventDefault();
+    goToStep(BUILDER_STEPS.length);
+  }
 });
 
 function renderLiveMockupOnly() {
@@ -551,9 +1219,9 @@ function renderLiveMockupOnly() {
   if (auditWrap) auditWrap.outerHTML = renderContrastAudit(state.theme);
 }
 
-function updateThemePreview(){
-  const shell=preview.contentDocument?.querySelector('.invite-shell');
-  if(!shell)return;
+function updateThemePreview() {
+  const shell = preview.contentDocument?.querySelector('.invite-shell');
+  if (!shell) return;
   const t = state.theme;
   shell.style.setProperty('--bg', t.background || '#FCFAF6');
   shell.style.setProperty('--primary', t.primary || '#E6496F');
@@ -566,6 +1234,7 @@ function updateThemePreview(){
   shell.style.setProperty('--button-text', t.buttonText || '#FFFFFF');
   shell.style.setProperty('--border', t.border || '#EADFE1');
 }
+
 function audioBufferToWavBlob(buffer) {
   const numChannels = 1;
   const sampleRate = buffer.sampleRate;
@@ -768,7 +1437,7 @@ async function compressAudioFile(file) {
   }
 }
 
-async function uploadMusic(file){
+async function uploadMusic(file) {
   const copy = document.querySelector('#music-upload-copy');
   if (copy) copy.textContent = `Optimizing ${file.name}…`;
   document.querySelector('#save-status').textContent = 'Uploading music…';
@@ -816,8 +1485,8 @@ async function uploadMusic(file){
   }
 }
 
-async function removeMusic(){
-  if(!confirm('Remove all songs from this invitation?')) return;
+async function removeMusic() {
+  if (!confirm('Remove all songs from this invitation?')) return;
   const r = await fetch(`/api/invitations/${id}/music`, { method: 'DELETE', headers: { 'x-csrf-token': csrf } });
   if (r.ok) {
     stopBuilderAudioPreview();
@@ -1011,12 +1680,96 @@ async function uploadMemoryPhoto(idx, file) {
     toast('Failed to upload memory photo.');
   }
 }
-function scheduleSave(){document.querySelector('#save-status').textContent='Saving…';clearTimeout(timer);timer=setTimeout(save,650);}
-// Serialize autosaves: an older theme snapshot can never arrive after a newer one.
-async function save(){clearTimeout(timer);const version=++saveVersion,body=JSON.stringify({inviterName:state.inviterName,recipientName:state.recipientName,title:state.title,theme:state.theme,content:state.content,features:state.features});const run=async()=>{try{const r=await fetch(`/api/invitations/${id}`,{method:'PUT',headers:{'content-type':'application/json','x-csrf-token':csrf},body});if(version===saveVersion){document.querySelector('#save-status').textContent=r.ok?'Saved ✓':'Save failed';if(r.ok)preview.src=preview.src.split('?')[0]+`?embed=1&t=${Date.now()}`;else toast((await r.json()).error||'Could not save changes.');}return r.ok;}catch{if(version===saveVersion){document.querySelector('#save-status').textContent='Save failed';toast('Could not save changes.');}return false;}};saveQueue=saveQueue.then(run,run);return saveQueue;}
-async function publish(){if(!await save())return;const r=await fetch(`/api/invitations/${id}/status`,{method:'POST',headers:{'content-type':'application/json','x-csrf-token':csrf},body:JSON.stringify({status:'published'})});let out={};try{out=await r.json();}catch{}if(r.ok){state.status='published';render();toast('Invitation published with your latest theme 🎉');}else toast(out.error||'Could not publish invitation.');}
-function copyLink(){navigator.clipboard.writeText(`${location.origin}/i/${state.token}`);toast('Private link copied ✓');}
-document.querySelector('#publish').onclick=publish;document.querySelector('#save-draft').onclick=save;
-document.querySelector('.preview-toolbar')?.addEventListener('click',e=>{const button=e.target.closest('[data-viewport]');if(!button)return;document.querySelectorAll('.preview-toolbar button').forEach(item=>item.classList.toggle('active',item===button));document.querySelector('#preview-pane').dataset.viewport=button.dataset.viewport;});
-document.querySelector('.mobile-tabs').onclick=e=>{const tab=e.target.dataset.tab;if(!tab)return;document.querySelectorAll('.mobile-tabs button').forEach(b=>b.classList.toggle('active',b===e.target));root.classList.toggle('show-preview',tab==='preview');};
-function toast(message){let el=document.querySelector('.toast');if(!el){el=document.createElement('div');el.className='toast';document.body.append(el);}el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);}
+
+function scheduleSave() {
+  document.querySelector('#save-status').textContent = 'Saving…';
+  clearTimeout(timer);
+  timer = setTimeout(save, 650);
+}
+
+// Serialize autosaves: an older snapshot can never overwrite a newer one.
+async function save() {
+  clearTimeout(timer);
+  const version = ++saveVersion;
+  const body = JSON.stringify({
+    inviterName: state.inviterName,
+    recipientName: state.recipientName,
+    title: state.title,
+    theme: state.theme,
+    content: state.content,
+    features: state.features
+  });
+  const run = async () => {
+    try {
+      const r = await fetch(`/api/invitations/${id}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+        body
+      });
+      if (version === saveVersion) {
+        document.querySelector('#save-status').textContent = r.ok ? 'Saved ✓' : 'Save failed';
+        if (r.ok) preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+        else toast((await r.json()).error || 'Could not save changes.');
+      }
+      return r.ok;
+    } catch {
+      if (version === saveVersion) {
+        document.querySelector('#save-status').textContent = 'Save failed';
+        toast('Could not save changes.');
+      }
+      return false;
+    }
+  };
+  saveQueue = saveQueue.then(run, run);
+  return saveQueue;
+}
+
+async function publish() {
+  if (!await save()) return;
+  const r = await fetch(`/api/invitations/${id}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+  let out = {};
+  try { out = await r.json(); } catch {}
+  if (r.ok) {
+    state.status = 'published';
+    render();
+    toast('Invitation published with your latest theme 🎉');
+  } else {
+    toast(out.error || 'Could not publish invitation.');
+  }
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(`${location.origin}/i/${state.token}`);
+  toast('Private link copied ✓');
+}
+
+document.querySelector('#publish').onclick = publish;
+document.querySelector('#save-draft').onclick = save;
+document.querySelector('.preview-toolbar')?.addEventListener('click', e => {
+  const button = e.target.closest('[data-viewport]');
+  if (!button) return;
+  document.querySelectorAll('.preview-toolbar button').forEach(item => item.classList.toggle('active', item === button));
+  document.querySelector('#preview-pane').dataset.viewport = button.dataset.viewport;
+});
+document.querySelector('.mobile-tabs').onclick = e => {
+  const tab = e.target.dataset.tab;
+  if (!tab) return;
+  document.querySelectorAll('.mobile-tabs button').forEach(b => b.classList.toggle('active', b === e.target));
+  root.classList.toggle('show-preview', tab === 'preview');
+};
+
+function toast(message) {
+  let el = document.querySelector('.toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'toast';
+    document.body.append(el);
+  }
+  el.textContent = message;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}

@@ -843,7 +843,43 @@ app.post('/api/invitations', requireUser, requireCsrf, async (req, res) => {
 app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
   const row = await ownedInvitation(req.params.id, req.session.userId);
   if (!row) return res.status(404).send(await page('Invitation not found', '<main class="empty"><h1>Invitation not found.</h1><p>The invitation you requested does not exist or you do not have access to it.</p><a class="button primary" href="/dashboard">Return to Dashboard</a></main>', req));
-  res.send(await page('Edit invitation', `<main id="builder" class="builder" data-id="${row.id}"><header class="builder-head"><div><a href="/dashboard">← Dashboard</a><h1>${escapeHtml(row.recipient_name)}'s invitation <span aria-hidden="true">✎</span></h1><span id="save-status">✓ All changes saved</span></div><div class="actions"><a class="button ghost small" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a><button id="save-draft" class="button ghost small">▣ Save draft</button><button id="publish" class="button primary small">Publish Invitation ♥</button></div></header><div class="mobile-tabs"><button data-tab="edit" class="active">Edit</button><button data-tab="preview">Preview</button></div><div class="builder-grid"><section id="controls" class="controls"></section><aside id="preview-pane" class="preview-pane"><div class="preview-toolbar" aria-label="Preview size"><button class="active" data-viewport="mobile">▯ Mobile</button><button data-viewport="tablet">▯ Tablet</button><button data-viewport="desktop">▱ Desktop</button></div><div class="phone"><iframe title="Live invitation preview" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe></div><span class="preview-dots" aria-hidden="true">● ○ ○ ○ ○</span></aside></div></main>`, req, '/assets/js/builder.js'));
+  res.send(await page('Edit invitation', `<main id="builder" class="builder" data-id="${row.id}">
+    <header class="builder-head">
+      <div class="builder-head-left">
+        <a class="builder-back" href="/dashboard">← Dashboard</a>
+        <div class="builder-title-group">
+          <h1>${escapeHtml(row.recipient_name)}'s invitation <span class="edit-badge" aria-hidden="true">✎</span></h1>
+        </div>
+        <span id="save-status" class="save-status">✓ All changes saved</span>
+      </div>
+      <div class="actions">
+        <a class="button ghost small" target="_blank" href="/dashboard/invitations/${row.id}/preview">◉ Preview</a>
+        <button id="save-draft" class="button ghost small">▣ Save draft</button>
+        <button id="publish" class="button primary small">Publish Invitation ♥</button>
+      </div>
+    </header>
+    <div class="mobile-tabs" role="tablist" aria-label="Mobile View Toggle">
+      <button data-tab="edit" class="active" role="tab" aria-selected="true">✎ Edit</button>
+      <button data-tab="preview" role="tab" aria-selected="false">◉ Preview</button>
+    </div>
+    <div class="builder-stepper-wrap">
+      <nav class="builder-stepper" id="builder-stepper" aria-label="Editor Steps" role="tablist"></nav>
+    </div>
+    <div class="builder-grid">
+      <section id="controls" class="controls"></section>
+      <aside id="preview-pane" class="preview-pane">
+        <div class="preview-toolbar" aria-label="Preview size">
+          <button class="active" data-viewport="mobile">▯ Mobile</button>
+          <button data-viewport="tablet">▯ Tablet</button>
+          <button data-viewport="desktop">▱ Desktop</button>
+        </div>
+        <div class="phone">
+          <iframe title="Live invitation preview" src="/dashboard/invitations/${row.id}/preview?embed=1"></iframe>
+        </div>
+        <span class="preview-dots" aria-hidden="true">● ○ ○ ○ ○</span>
+      </aside>
+    </div>
+  </main>`, req, '/assets/js/builder.js'));
 });
 
 app.get('/api/invitations/:id', requireUser, async (req, res) => { const row = await ownedInvitation(req.params.id, req.session.userId); if (!row) return res.status(404).json({ error:'Not found.' }); res.json({ ...invitationDTO(row), presets: { themes, music: musicPresets, templates: invitationTemplates }, csrf: csrf(req) }); });

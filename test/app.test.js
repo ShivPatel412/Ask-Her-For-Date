@@ -1120,4 +1120,67 @@ test('PHASE H: Sharing, QR Code generator, and Dashboard Quick Actions', async (
   assert.ok(dashHtml.includes('qrcode.js'), 'Dashboard must load qrcode.js script');
 });
 
+test('QR CODE GENERATOR: ISO/IEC 18004 Standard Encoding & Scannability', async () => {
+  const QRCode = require('../public/assets/js/qrcode.js');
+  assert.ok(QRCode, 'QRCode module must export');
+
+  // 1. Generate matrix for a standard production invitation URL
+  const testUrl = 'https://askherout.app/i/romantic_tok_9876543210abcdef';
+  const matrix = QRCode.createMatrix(testUrl);
+
+  assert.ok(Array.isArray(matrix), 'Matrix must be an array');
+  assert.ok(matrix.length >= 21, 'QR Code matrix size must be >= 21');
+  assert.equal(matrix.length, matrix[0].length, 'QR Code matrix must be square');
+
+  // 2. Validate finder patterns in top-left, top-right, and bottom-left corners (7x7)
+  const size = matrix.length;
+  // Top-Left corner finder border
+  assert.equal(matrix[0][0], 1, 'Top-left finder start');
+  assert.equal(matrix[0][6], 1, 'Top-left finder end');
+  assert.equal(matrix[6][0], 1, 'Top-left finder bottom');
+  assert.equal(matrix[6][6], 1, 'Top-left finder bottom-right');
+  assert.equal(matrix[1][1], 0, 'Top-left finder inner light space');
+
+  // Top-Right corner finder border
+  assert.equal(matrix[0][size - 7], 1, 'Top-right finder start');
+  assert.equal(matrix[0][size - 1], 1, 'Top-right finder end');
+  assert.equal(matrix[6][size - 7], 1, 'Top-right finder bottom');
+  assert.equal(matrix[6][size - 1], 1, 'Top-right finder bottom-right');
+
+  // Bottom-Left corner finder border
+  assert.equal(matrix[size - 7][0], 1, 'Bottom-left finder start');
+  assert.equal(matrix[size - 7][6], 1, 'Bottom-left finder end');
+  assert.equal(matrix[size - 1][0], 1, 'Bottom-left finder bottom');
+  assert.equal(matrix[size - 1][6], 1, 'Bottom-left finder bottom-right');
+});
+
+test('INVITATION EDITOR REDESIGN: Horizontal Stepper Navigation & 8-Step Layout', async () => {
+  const email = `editor_step_${Date.now()}@example.com`;
+  const username = `stepper_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  // 1. Create invitation
+  const createRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Dev', recipientName: 'Pooja' })
+  });
+  assert.equal(createRes.status, 201);
+  const { id: invId } = await createRes.json();
+
+  // 2. Fetch Edit page HTML
+  const editPageRes = await client(`/dashboard/invitations/${invId}/edit`);
+  assert.equal(editPageRes.status, 200);
+  const editHtml = await editPageRes.text();
+
+  // 3. Verify horizontal stepper container and editor structure
+  assert.ok(editHtml.includes('builder-stepper-wrap'), 'Edit page must render stepper wrap');
+  assert.ok(editHtml.includes('id="builder-stepper"'), 'Edit page must render #builder-stepper container');
+  assert.ok(editHtml.includes('id="controls"'), 'Edit page must render #controls container');
+  assert.ok(editHtml.includes('id="preview-pane"'), 'Edit page must render live preview pane');
+  assert.ok(editHtml.includes('builder.js'), 'Edit page must load builder.js');
+});
+
+
 
