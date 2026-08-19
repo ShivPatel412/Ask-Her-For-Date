@@ -1,0 +1,380 @@
+{
+  "timestamp": "2026-08-15T13:47:37.474Z",
+  "version": "1.0",
+  "driver": "SQLite",
+  "tables": {
+    "users": [
+      {
+        "id": 1,
+        "email": "storage@example.com",
+        "username": "storageUser",
+        "password_hash": "$2b$12$Oa11aJ75Oxf091lLJ3lA8.CoQoxQiZm5.WQfiu8xtfWifB5SpT17S",
+        "whatsapp_number": "+91 98765 43210",
+        "role": "user",
+        "created_at": "2026-08-15 13:47:35",
+        "updated_at": "2026-08-15 13:47:35"
+      },
+      {
+        "id": 2,
+        "email": "other@example.com",
+        "username": "otherUser",
+        "password_hash": "$2b$12$6AVQzNTimxjIG7kCHS.Aqu5xvjfLJVHl52nUZtpeujlkwPeYPwCx2",
+        "whatsapp_number": "+91 98765 43210",
+        "role": "user",
+        "created_at": "2026-08-15 13:47:36",
+        "updated_at": "2026-08-15 13:47:36"
+      },
+      {
+        "id": 3,
+        "email": "hybrid@example.com",
+        "username": "hybridUser",
+        "password_hash": "$2b$12$ZstG79TtMmPelM2lnludx.oFpdL6AvR5WH/M101.EEFnHF9TKkH32",
+        "whatsapp_number": "+91 98765 43210",
+        "role": "user",
+        "created_at": "2026-08-15 13:47:36",
+        "updated_at": "2026-08-15 13:47:36"
+      },
+      {
+        "id": 4,
+        "email": "reliability@example.com",
+        "username": "relUser",
+        "password_hash": "$2b$12$drsJE8eI69pHrdY8nQ6kLeN1IL/Og3tjgBPzID9QoSyP5UT1ZCEwy",
+        "whatsapp_number": "+91 98765 43210",
+        "role": "user",
+        "created_at": "2026-08-15 13:47:36",
+        "updated_at": "2026-08-15 13:47:36"
+      },
+      {
+        "id": 5,
+        "email": "analytics@example.com",
+        "username": "analyticsUser",
+        "password_hash": "$2b$12$Wf122yB74rcX5fXPak2Zq.ehPSZBLzjdKbsNIRUHpU8IIyvGXiSBy",
+        "whatsapp_number": "+91 98765 43210",
+        "role": "user",
+        "created_at": "2026-08-15 13:47:37",
+        "updated_at": "2026-08-15 13:47:37"
+      }
+    ],
+    "web_sessions": [
+      {
+        "sid": "BlE2Xr86kPo8KtZdCSBJE6wJ-EHyAleG",
+        "data_json": "{\"cookie\":{\"originalMaxAge\":604800000,\"expires\":\"2026-08-22T13:47:35.619Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrf\":\"1NMFqhbNxRXllMQZYoo-8QWiDByOeCYb\",\"userId\":1,\"userRole\":\"user\"}",
+        "expires_at": 1787406455619
+      },
+      {
+        "sid": "nq3Fq7ohelSEqn_D9_Lc6NFd_fYvws1V",
+        "data_json": "{\"cookie\":{\"originalMaxAge\":604800000,\"expires\":\"2026-08-22T13:47:35.958Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrf\":\"edAH9xkY3zOvcOksUw8N2taSwXmmoheF\",\"userId\":2,\"userRole\":\"user\"}",
+        "expires_at": 1787406455958
+      },
+      {
+        "sid": "dHQD79NzeXXkS2h5rwfktX2gJ5mAGztT",
+        "data_json": "{\"cookie\":{\"originalMaxAge\":604800000,\"expires\":\"2026-08-22T13:47:36.346Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrf\":\"PNrLJAVTeLWRPpNA223-huiDo5xLovpi\",\"userId\":3,\"userRole\":\"user\"}",
+        "expires_at": 1787406456346
+      },
+      {
+        "sid": "sSqPlRfBp4aZn-hcDRARwmAkFVbpVCGA",
+        "data_json": "{\"cookie\":{\"originalMaxAge\":604800000,\"expires\":\"2026-08-22T13:47:36.610Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrf\":\"Zmnt473Hm4FhWHL6yQMZzZdil15mxgJx\",\"userId\":4,\"userRole\":\"user\"}",
+        "expires_at": 1787406456610
+      },
+      {
+        "sid": "e1GyABCUrRz9xQBI7PJI-uHqqh6Q414O",
+        "data_json": "{\"cookie\":{\"originalMaxAge\":604800000,\"expires\":\"2026-08-22T13:47:37.035Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrf\":\"MJgpe4jW-mEKj8FzgR3FWRxFtvA2DS7q\",\"userId\":5,\"userRole\":\"user\"}",
+        "expires_at": 1787406457035
+      },
+      {
+        "sid": "P34yJERcy94J7k1XviOKHKzMnOplm4zg",
+        "data_json": "{\"cookie\":{\"originalMaxAge\":604800000,\"expires\":\"2026-08-22T13:47:37.457Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrf\":\"aNvWB62vux0jIUCZq4TLNUP9ondE1AIv\"}",
+        "expires_at": 1787406457457
+      }
+    ],
+    "invitations": [
+      {
+        "id": 1,
+        "owner_user_id": 1,
+        "template_key": "best-friend-date",
+        "public_token": "dgXlPfbzihyGX1x6jnO8wA",
+        "inviter_name": "Alex",
+        "recipient_name": "Sam",
+        "title": "Something for you ❤️",
+        "status": "draft",
+        "theme_config_json": "{\"preset\":\"strawberry\",\"name\":\"Romantic\",\"background\":\"#FCFAF6\",\"primary\":\"#FF625F\",\"secondary\":\"#F4E9DD\",\"text\":\"#282223\",\"muted\":\"#70686A\",\"card\":\"#FFFFFFEE\",\"fontPreset\":\"romantic\",\"heading\":\"DM Serif Display\",\"body\":\"Poppins\"}",
+        "content_config_json": "{\"screens\":{\"intro\":{\"eyebrow\":\"Hey {{recipientName}} 👀\",\"heading\":\"I made something for you…\",\"body\":\"Made with way too much overthinking 😂\",\"primary\":\"Open it 👀\"},\"main\":{\"eyebrow\":\"Okay, ab main point pe aate hain… 👀\",\"heading\":\"Will you go on a date with me?\",\"body\":\"I really enjoy spending time with you, and I've been wanting to ask you this for a while.\",\"primary\":\"Haan, chalo 😌\",\"secondary\":\"Hmm… sochna padega 👀\",\"tertiary\":\"Convince me 😏\"},\"thinking\":{\"eyebrow\":\"← Ek baar question fir se dekh le? 👀\",\"heading\":\"One cute date? That’s it. 😌\",\"body\":\"No awkward pressure. Just food, fun, and me behaving (mostly). 😂\",\"primary\":\"Achha theek hai 😂\",\"secondary\":\"Pehle plan batao 👀\",\"tertiary\":\"Aur convince karo 😏\",\"quaternary\":\"Still thinking 🤭\"},\"convince\":{\"eyebrow\":\"← Accha accha, options fir se dikhao 😌\",\"heading\":\"Okay {{nickname}}, presentation starts now. 😂\",\"body\":\"Why you should say yes:\",\"primary\":\"Fineee, yes 😂❤️\",\"secondary\":\"Date idea dikhao 👀\",\"tertiary\":\"Hmm, aur effort chahiye 😏\"},\"benefits\":{\"eyebrow\":\"← Restart the drama 😂\",\"heading\":\"DATE BENEFITS PACKAGE™\",\"body\":\"Prepared specially for {{nickname}} 😂\",\"primary\":\"Okay okay, yes 😂❤️\",\"secondary\":\"Plan batao pehle 😌\",\"tertiary\":\"Still not convinced 😏\"},\"mood\":{\"eyebrow\":\"← Main question, please 😏\",\"heading\":\"Okay {{nickname}}, pick your mood 👀\",\"body\":\"You choose the vibe… baaki planning meri. 😌❤️\",\"primary\":\"Continue 👀\",\"secondary\":\"← Pick another vibe\"},\"finalAttempt\":{\"eyebrow\":\"← Okay, ek aur chance do 😭😂\",\"heading\":\"Okay okay… I see how it is. 😂\",\"body\":\"One proper date. No big promises. No awkward expectations. Just you, me, food, and a good time. 😌\",\"primary\":\"Chal theek hai, date pe chalte hain 😂\",\"secondary\":\"Surprise me 😏\",\"tertiary\":\"Best friend hi theek hai 😂\"},\"yes\":{\"eyebrow\":\"WAIT.\",\"heading\":\"IT'S A DATE.\",\"body\":\"Okay wow. This actually worked. 😂\",\"primary\":\"Okay, ab plan karte hain 👀\"},\"availability\":{\"eyebrow\":\"One last thing\",\"heading\":\"Pick our date & time 👀\",\"body\":\"Choose the exact moment and I’ll handle the rest. 😌\",\"primary\":\"Confirm date & time ❤️\"},\"success\":{\"eyebrow\":\"Perfect. 😌\",\"heading\":\"Baaki planning meri.\",\"body\":\"You picked the timing. You picked the vibe. You just have to show up. 😂\",\"primary\":\"Okay, ab plan karte hain 👀\"},\"decline\":{\"eyebrow\":\"Hahaha, okay. 😭😂\",\"heading\":\"Best-friend privileges remain fully active. 🤝\",\"body\":\"Message received. No awkwardness. No pressure.\\nUnlimited bakwaas, food plans, memes, and annoying each other continue as usual. 😂\\n\\nI'm still glad I asked.\",\"primary\":\"Done 🤝\"},\"secret\":{\"heading\":\"Jokes apart…\",\"body\":\"I made all this because asking you with a boring text didn't feel right.\\nWhatever happens, you're someone I genuinely love spending time with.\\nAnd I'm really happy you said yes. ❤️\",\"primary\":\"Okay bas, emotional mat ho 😂\"}},\"moods\":[{\"title\":\"Long Drive + Food 🚗🍟\",\"description\":\"Good playlist, long talks, and snacks.\",\"favorite\":true},{\"title\":\"Coffee + Walk ☕\",\"description\":\"Good conversations + long walk\"},{\"title\":\"Dinner + Dessert 🍝\",\"description\":\"Food first. Everything else later.\"},{\"title\":\"Movie + Food 🎬\",\"description\":\"We can judge each other's movie taste 😂\"},{\"title\":\"Fun Activity 🎳\",\"description\":\"Loser buys dessert.\"},{\"title\":\"Drinks + Party 🍸🎉\",\"description\":\"Music + drinks + questionable dancing 😂\"},{\"title\":\"Surprise Me ✨\",\"description\":\"Dangerous amount of trust 👀\"}]}",
+        "feature_config_json": "{\"mascots\":true,\"tinyMode\":true,\"collection\":true,\"confetti\":true,\"funnyBack\":true,\"music\":false,\"musicUrl\":null,\"musicName\":null,\"memories\":false,\"mascotPack\":\"original\",\"voiceNoteUrl\":null,\"voiceNoteName\":null}",
+        "created_at": "2026-08-15 13:47:35",
+        "updated_at": "2026-08-15T13:47:36.331Z",
+        "published_at": null
+      },
+      {
+        "id": 2,
+        "owner_user_id": 3,
+        "template_key": "best-friend-date",
+        "public_token": "k-U5AVlycpZkRg5uxpDTgA",
+        "inviter_name": "Host",
+        "recipient_name": "Guest",
+        "title": "Date Invitation",
+        "status": "draft",
+        "theme_config_json": "{\"heading\":\"DM Serif Display\",\"body\":\"Poppins\"}",
+        "content_config_json": "{}",
+        "feature_config_json": "{\"music\":true,\"musicUrl\":\"https://cdn.example.com/invitations/1/music/abc.mp3\",\"musicName\":\"remote.mp3\",\"voiceNoteUrl\":\"data:audio/mpeg;base64,SUQzAAAAAAB\",\"voiceNoteName\":\"voice.webm\"}",
+        "created_at": "2026-08-15 13:47:36",
+        "updated_at": "2026-08-15T13:47:36.602Z",
+        "published_at": null
+      },
+      {
+        "id": 3,
+        "owner_user_id": 4,
+        "template_key": "best-friend-date",
+        "public_token": "cHI2vAjtdTkwweE2oYy6Xw",
+        "inviter_name": "Rohan Sharma",
+        "recipient_name": "Ananya Roy",
+        "title": "Special Sunset Date",
+        "status": "disabled",
+        "theme_config_json": "{\"heading\":\"DM Serif Display\",\"body\":\"Poppins\"}",
+        "content_config_json": "{\"screens\":{\"main\":{\"heading\":\"Will you go on a sunset date with me?\"}}}",
+        "feature_config_json": "{\"musicUrl\":null,\"musicName\":null,\"voiceNoteUrl\":null,\"voiceNoteName\":null}",
+        "created_at": "2026-08-15 13:47:36",
+        "updated_at": "2026-08-15T13:47:37.005Z",
+        "published_at": "2026-08-15T13:47:36.909Z"
+      },
+      {
+        "id": 4,
+        "owner_user_id": 4,
+        "template_key": "best-friend-date",
+        "public_token": "xi8IQlW4yamZzFOsH6TP2w",
+        "inviter_name": "Rohan Sharma",
+        "recipient_name": "Ananya Roy",
+        "title": "Special Sunset Date (copy)",
+        "status": "draft",
+        "theme_config_json": "{\"heading\":\"DM Serif Display\",\"body\":\"Poppins\"}",
+        "content_config_json": "{\"screens\":{\"main\":{\"heading\":\"Will you go on a sunset date with me?\"}}}",
+        "feature_config_json": "{\"musicUrl\":null,\"musicName\":null,\"voiceNoteUrl\":null,\"voiceNoteName\":null}",
+        "created_at": "2026-08-15 13:47:36",
+        "updated_at": "2026-08-15 13:47:36",
+        "published_at": null
+      },
+      {
+        "id": 5,
+        "owner_user_id": 5,
+        "template_key": "best-friend-date",
+        "public_token": "kYmVggx6kQTwoSl5GOXd_g",
+        "inviter_name": "Priya",
+        "recipient_name": "Rahul",
+        "title": "Something for you ❤️",
+        "status": "published",
+        "theme_config_json": "{\"preset\":\"strawberry\",\"name\":\"Romantic\",\"background\":\"#FCFAF6\",\"primary\":\"#FF625F\",\"secondary\":\"#F4E9DD\",\"text\":\"#282223\",\"muted\":\"#70686A\",\"card\":\"#FFFFFFEE\",\"fontPreset\":\"romantic\",\"heading\":\"DM Serif Display\",\"body\":\"Poppins\"}",
+        "content_config_json": "{\"screens\":{\"intro\":{\"eyebrow\":\"Hey {{recipientName}} 👀\",\"heading\":\"I made something for you…\",\"body\":\"Made with way too much overthinking 😂\",\"primary\":\"Open it 👀\"},\"main\":{\"eyebrow\":\"Okay, ab main point pe aate hain… 👀\",\"heading\":\"Will you go on a date with me?\",\"body\":\"I really enjoy spending time with you, and I've been wanting to ask you this for a while.\",\"primary\":\"Haan, chalo 😌\",\"secondary\":\"Hmm… sochna padega 👀\",\"tertiary\":\"Convince me 😏\"},\"thinking\":{\"eyebrow\":\"← Ek baar question fir se dekh le? 👀\",\"heading\":\"One cute date? That’s it. 😌\",\"body\":\"No awkward pressure. Just food, fun, and me behaving (mostly). 😂\",\"primary\":\"Achha theek hai 😂\",\"secondary\":\"Pehle plan batao 👀\",\"tertiary\":\"Aur convince karo 😏\",\"quaternary\":\"Still thinking 🤭\"},\"convince\":{\"eyebrow\":\"← Accha accha, options fir se dikhao 😌\",\"heading\":\"Okay {{nickname}}, presentation starts now. 😂\",\"body\":\"Why you should say yes:\",\"primary\":\"Fineee, yes 😂❤️\",\"secondary\":\"Date idea dikhao 👀\",\"tertiary\":\"Hmm, aur effort chahiye 😏\"},\"benefits\":{\"eyebrow\":\"← Restart the drama 😂\",\"heading\":\"DATE BENEFITS PACKAGE™\",\"body\":\"Prepared specially for {{nickname}} 😂\",\"primary\":\"Okay okay, yes 😂❤️\",\"secondary\":\"Plan batao pehle 😌\",\"tertiary\":\"Still not convinced 😏\"},\"mood\":{\"eyebrow\":\"← Main question, please 😏\",\"heading\":\"Okay {{nickname}}, pick your mood 👀\",\"body\":\"You choose the vibe… baaki planning meri. 😌❤️\",\"primary\":\"Continue 👀\",\"secondary\":\"← Pick another vibe\"},\"finalAttempt\":{\"eyebrow\":\"← Okay, ek aur chance do 😭😂\",\"heading\":\"Okay okay… I see how it is. 😂\",\"body\":\"One proper date. No big promises. No awkward expectations. Just you, me, food, and a good time. 😌\",\"primary\":\"Chal theek hai, date pe chalte hain 😂\",\"secondary\":\"Surprise me 😏\",\"tertiary\":\"Best friend hi theek hai 😂\"},\"yes\":{\"eyebrow\":\"WAIT.\",\"heading\":\"IT'S A DATE.\",\"body\":\"Okay wow. This actually worked. 😂\",\"primary\":\"Okay, ab plan karte hain 👀\"},\"availability\":{\"eyebrow\":\"One last thing\",\"heading\":\"Pick our date & time 👀\",\"body\":\"Choose the exact moment and I’ll handle the rest. 😌\",\"primary\":\"Confirm date & time ❤️\"},\"success\":{\"eyebrow\":\"Perfect. 😌\",\"heading\":\"Baaki planning meri.\",\"body\":\"You picked the timing. You picked the vibe. You just have to show up. 😂\",\"primary\":\"Okay, ab plan karte hain 👀\"},\"decline\":{\"eyebrow\":\"Hahaha, okay. 😭😂\",\"heading\":\"Best-friend privileges remain fully active. 🤝\",\"body\":\"Message received. No awkwardness. No pressure.\\nUnlimited bakwaas, food plans, memes, and annoying each other continue as usual. 😂\\n\\nI'm still glad I asked.\",\"primary\":\"Done 🤝\"},\"secret\":{\"heading\":\"Jokes apart…\",\"body\":\"I made all this because asking you with a boring text didn't feel right.\\nWhatever happens, you're someone I genuinely love spending time with.\\nAnd I'm really happy you said yes. ❤️\",\"primary\":\"Okay bas, emotional mat ho 😂\"}},\"moods\":[{\"title\":\"Long Drive + Food 🚗🍟\",\"description\":\"Good playlist, long talks, and snacks.\",\"favorite\":true},{\"title\":\"Coffee + Walk ☕\",\"description\":\"Good conversations + long walk\"},{\"title\":\"Dinner + Dessert 🍝\",\"description\":\"Food first. Everything else later.\"},{\"title\":\"Movie + Food 🎬\",\"description\":\"We can judge each other's movie taste 😂\"},{\"title\":\"Fun Activity 🎳\",\"description\":\"Loser buys dessert.\"},{\"title\":\"Drinks + Party 🍸🎉\",\"description\":\"Music + drinks + questionable dancing 😂\"},{\"title\":\"Surprise Me ✨\",\"description\":\"Dangerous amount of trust 👀\"}]}",
+        "feature_config_json": "{\"mascots\":true,\"tinyMode\":true,\"collection\":true,\"confetti\":true,\"funnyBack\":true,\"music\":false,\"musicUrl\":null,\"musicName\":null,\"memories\":false,\"mascotPack\":\"original\"}",
+        "created_at": "2026-08-15 13:47:37",
+        "updated_at": "2026-08-15T13:47:37.317Z",
+        "published_at": "2026-08-15T13:47:37.317Z"
+      }
+    ],
+    "visitor_sessions": [],
+    "events": [],
+    "user_logs": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "email": "storage@example.com",
+        "action": "REGISTER",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:35.894Z"
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "email": "storage@example.com",
+        "action": "CREATE_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:35.930Z"
+      },
+      {
+        "id": 3,
+        "user_id": 2,
+        "email": "other@example.com",
+        "action": "REGISTER",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.204Z"
+      },
+      {
+        "id": 4,
+        "user_id": 1,
+        "email": "storage@example.com",
+        "action": "UPLOAD_MUSIC",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.271Z"
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "email": "storage@example.com",
+        "action": "UPLOAD_VOICE_NOTE",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.302Z"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "email": "storage@example.com",
+        "action": "DELETE_VOICE_NOTE",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.316Z"
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "email": "storage@example.com",
+        "action": "DELETE_MUSIC",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.332Z"
+      },
+      {
+        "id": 8,
+        "user_id": 3,
+        "email": "hybrid@example.com",
+        "action": "REGISTER",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.592Z"
+      },
+      {
+        "id": 9,
+        "user_id": 3,
+        "email": "hybrid@example.com",
+        "action": "CREATE_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.599Z"
+      },
+      {
+        "id": 10,
+        "user_id": 3,
+        "email": "hybrid@example.com",
+        "action": "UPDATE_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.602Z"
+      },
+      {
+        "id": 11,
+        "user_id": 4,
+        "email": "reliability@example.com",
+        "action": "REGISTER",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.856Z"
+      },
+      {
+        "id": 12,
+        "user_id": 4,
+        "email": "reliability@example.com",
+        "action": "CREATE_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.878Z"
+      },
+      {
+        "id": 13,
+        "user_id": 4,
+        "email": "reliability@example.com",
+        "action": "PUBLISH_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.909Z"
+      },
+      {
+        "id": 14,
+        "user_id": 4,
+        "email": "reliability@example.com",
+        "action": "UPDATE_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.940Z"
+      },
+      {
+        "id": 15,
+        "user_id": 4,
+        "email": "reliability@example.com",
+        "action": "DUPLICATE_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:36.972Z"
+      },
+      {
+        "id": 16,
+        "user_id": 4,
+        "email": "reliability@example.com",
+        "action": "STATUS_CHANGE",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:37.005Z"
+      },
+      {
+        "id": 17,
+        "user_id": 5,
+        "email": "analytics@example.com",
+        "action": "REGISTER",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:37.279Z"
+      },
+      {
+        "id": 18,
+        "user_id": 5,
+        "email": "analytics@example.com",
+        "action": "CREATE_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:37.302Z"
+      },
+      {
+        "id": 19,
+        "user_id": 5,
+        "email": "analytics@example.com",
+        "action": "PUBLISH_INVITATION",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:37.317Z"
+      },
+      {
+        "id": 20,
+        "user_id": 5,
+        "email": "analytics@example.com",
+        "action": "EMAIL_NOTIFICATION_SIMULATED",
+        "ip_address": "127.0.0.1",
+        "user_agent": "System",
+        "created_at": "2026-08-15T13:47:37.399Z"
+      },
+      {
+        "id": 21,
+        "user_id": 5,
+        "email": "analytics@example.com",
+        "action": "CLEAR_ANALYTICS",
+        "ip_address": "127.0.0.1",
+        "user_agent": "node",
+        "created_at": "2026-08-15T13:47:37.427Z"
+      }
+    ],
+    "email_notifications": [
+      {
+        "id": 1,
+        "invitation_id": 5,
+        "user_id": 5,
+        "recipient_email": "analytics@example.com",
+        "event_type": "YES ❤️",
+        "subject": "🎉 Rahul responded to your date invitation! (YES ❤️)",
+        "body_html": "\n      <!DOCTYPE html>\n      <html>\n      <head><meta charset=\"utf-8\"></head>\n      <body style=\"font-family:'Segoe UI',Roboto,Helvetica,sans-serif;background:#f9f6f2;color:#282223;padding:24px;margin:0;\">\n        <div style=\"max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,0.06);border:1px solid #ede8e3;\">\n          <div style=\"text-align:center;margin-bottom:20px;\">\n            <span style=\"font-size:36px;\">💌</span>\n            <h1 style=\"margin:8px 0 4px;font-size:22px;color:#ff625f;\">New Date Response!</h1>\n            <p style=\"margin:0;color:#70686a;font-size:14px;\">Hey <b>analyticsUser</b>, your invitation received a response.</p>\n          </div>\n          \n          <div style=\"background:#fff3f2;border-radius:14px;padding:16px 20px;margin-bottom:20px;border:1px solid #ffd8d6;text-align:center;\">\n            <span style=\"font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:700;color:#ff625f;\">Final Decision</span>\n            <div style=\"font-size:24px;font-weight:800;color:#282223;margin-top:4px;\">YES ❤️</div>\n          </div>\n\n          <table style=\"width:100%;margin-bottom:20px;font-size:14px;border-collapse:collapse;\">\n            <tr><td style=\"padding:6px 0;color:#888;\">Recipient:</td><td style=\"padding:6px 0;font-weight:700;text-align:right;\">Rahul (Rahul)</td></tr>\n            <tr><td style=\"padding:6px 0;color:#888;\">Chosen Vibe:</td><td style=\"padding:6px 0;font-weight:700;text-align:right;\">Not specified</td></tr>\n            <tr><td style=\"padding:6px 0;color:#888;\">Chosen Date & Time:</td><td style=\"padding:6px 0;font-weight:700;text-align:right;\">Not specified</td></tr>\n            <tr><td style=\"padding:6px 0;color:#888;\">Total Clicks/Steps:</td><td style=\"padding:6px 0;font-weight:700;text-align:right;\">3 actions</td></tr>\n          </table>\n\n          <div style=\"border-top:1px dashed #e2ded9;padding-top:16px;margin-top:16px;\">\n            <h3 style=\"font-size:14px;color:#70686a;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px;\">Detailed Clickstream & Interaction History:</h3>\n            <ul style=\"padding-left:16px;margin:0;font-size:13px;\">\n              <li style=\"margin-bottom:8px;line-height:1.4;\">\n        <span style=\"color:#888;font-family:monospace;font-size:12px;\">[01:47:37 pm]</span>\n        <strong style=\"color:#282223;\">invitation opened</strong>:\n        <span style=\"color:#555;\">intro</span>\n      </li><li style=\"margin-bottom:8px;line-height:1.4;\">\n        <span style=\"color:#888;font-family:monospace;font-size:12px;\">[01:47:37 pm]</span>\n        <strong style=\"color:#282223;\">screen view</strong>:\n        <span style=\"color:#555;\">question</span>\n      </li><li style=\"margin-bottom:8px;line-height:1.4;\">\n        <span style=\"color:#888;font-family:monospace;font-size:12px;\">[01:47:37 pm]</span>\n        <strong style=\"color:#282223;\">final yes</strong>:\n        <span style=\"color:#555;\">Haan, bilkul!</span>\n      </li>\n            </ul>\n          </div>\n\n          <div style=\"text-align:center;margin-top:28px;padding-top:16px;border-top:1px solid #eee;\">\n            <small style=\"color:#aaa;font-size:11px;\">Sent automatically by Ask Her For Date / Heartlink</small>\n          </div>\n        </div>\n      </body>\n      </html>\n    ",
+        "status": "SIMULATED",
+        "error_message": null,
+        "created_at": "2026-08-15 13:47:37"
+      }
+    ]
+  }
+}
