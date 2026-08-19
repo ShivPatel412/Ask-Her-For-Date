@@ -265,77 +265,6 @@ function renderColorCards(t) {
   }).join('');
 }
 
-function renderContrastAudit(t) {
-  const bg = t.background || '#FCFAF6';
-  const primary = t.primary || '#FF4D7D';
-  const heading = t.headingColor || t.text || '#20191B';
-  const text = t.text || '#282223';
-  const muted = t.muted || '#70686A';
-  const card = t.card || '#FFFFFFEE';
-  const btnText = t.buttonText || '#FFFFFF';
-
-  const pairs = [
-    { label: 'Text / Background', fgKey: 'text', fg: text, bg: bg, isLarge: false },
-    { label: 'Heading / Background', fgKey: 'headingColor', fg: heading, bg: bg, isLarge: true },
-    { label: 'Button Text / Primary', fgKey: 'buttonText', fg: btnText, bg: primary, isLarge: true },
-    { label: 'Text / Card', fgKey: 'text', fg: text, bg: card, isLarge: false }
-  ];
-
-  return `
-    <div class="contrast-audit-section">
-      <div class="audit-header">
-        <h4><span>⚡</span> WCAG Contrast Readability</h4>
-        <div class="theme-actions-bar">
-          <button type="button" class="button ghost small" data-action="autofix-contrast">✨ Auto-fix</button>
-        </div>
-      </div>
-      <div class="contrast-audit-table">
-        ${pairs.map(p => {
-          const ratio = getContrastRatio(p.fg, p.bg);
-          const rating = getContrastRating(ratio, p.isLarge);
-          const needsFix = ratio < (p.isLarge ? 3.0 : 4.5);
-          return `
-            <div class="contrast-row">
-              <span class="contrast-pair">${p.label}</span>
-              <div class="contrast-actions-cell">
-                <span class="contrast-badge ${rating.class}">${rating.symbol} ${rating.label} (${ratio.toFixed(1)}:1)</span>
-                ${needsFix ? `<button type="button" class="btn-fix-contrast" data-fix-key="${p.fgKey}" data-bg-color="${p.bg}">Fix</button>` : ''}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderLiveThemePreview(t) {
-  const primary = t.primary || '#FF4D7D';
-  const accent = t.accent || t.primary || '#7B61FF';
-  const heading = t.headingColor || t.text || '#FFFFFF';
-  const text = t.text || '#E7E2E8';
-  const muted = t.muted || '#7E7275';
-  const card = t.card || '#201C30EE';
-  const btnText = t.buttonText || '#FFFFFF';
-  const border = t.border || '#38324F';
-
-  return `
-    <div class="live-theme-preview-wrap">
-      <h4>Live Theme Palette Preview</h4>
-      <div class="live-theme-card-mockup" style="background: ${card}; border: 1px solid ${border}; color: ${text};">
-        <span class="mockup-eyebrow" style="color: ${accent}; background: color-mix(in srgb, ${accent} 15%, transparent); border: 1px solid color-mix(in srgb, ${accent} 30%, transparent);">Recommended</span>
-        <h3 class="mockup-heading" style="color: ${heading}; font-family: var(--font-display, Georgia, serif);">Let's make this moment special ❤️</h3>
-        <p class="mockup-body" style="color: ${text};">I really enjoy spending time with you. Made with love and a little overthinking.</p>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button type="button" class="mockup-btn-primary" style="background: linear-gradient(135deg, ${primary} 0%, ${accent} 100%); color: ${btnText};">Say Yes ❤️</button>
-          <button type="button" class="mockup-btn-secondary" style="border: 1.5px solid ${border}; color: ${text};">Maybe later 😏</button>
-        </div>
-        <small class="mockup-muted" style="color: ${muted};margin-top:8px;display:block;">Updated live · 100% Fun guaranteed</small>
-      </div>
-    </div>
-  `;
-}
-
 function renderStepper() {
   const stepperEl = document.querySelector('#builder-stepper');
   if (stepperEl) {
@@ -557,9 +486,6 @@ function render() {
             ${renderColorCards(t)}
           </div>
         </div>
-
-        ${renderContrastAudit(t)}
-        ${renderLiveThemePreview(t)}
       </div>
       <div class="step-panel-footer">
         <button type="button" class="button ghost step-nav-btn" data-nav-step="2">← Previous</button>
@@ -1069,7 +995,6 @@ controls.addEventListener('input', e => {
     const swatchBox = e.target.closest('.color-swatch-box');
     if (swatchBox) swatchBox.style.backgroundColor = state.theme[key];
     updateThemePreview();
-    renderLiveMockupOnly();
     scheduleSave();
     return;
   }
@@ -1122,7 +1047,6 @@ controls.addEventListener('input', e => {
       if (swatchBox) swatchBox.style.backgroundColor = e.target.value.slice(0, 7);
     }
     updateThemePreview();
-    renderLiveMockupOnly();
   }
 });
 
@@ -1595,13 +1519,6 @@ function applyPreviewZoom() {
     phone.style.transformOrigin = 'top center';
   }
   if (label) label.textContent = `${Math.round(previewZoom * 100)}%`;
-}
-
-function renderLiveMockupOnly() {
-  const mockupWrap = controls.querySelector('.live-theme-preview-wrap');
-  const auditWrap = controls.querySelector('.contrast-audit-section');
-  if (mockupWrap) mockupWrap.outerHTML = renderLiveThemePreview(state.theme);
-  if (auditWrap) auditWrap.outerHTML = renderContrastAudit(state.theme);
 }
 
 function updateThemePreview() {
