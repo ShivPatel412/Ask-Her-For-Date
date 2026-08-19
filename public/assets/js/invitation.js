@@ -33,7 +33,7 @@ const esc = (s) =>
     /[&<>"']/g,
     (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
+      c
       ],
   );
 const vars = (s) =>
@@ -90,7 +90,7 @@ async function initialize() {
         body: JSON.stringify({ visitorId: state.visitorId }),
       });
       state.sessionReady = r.ok;
-    } catch {}
+    } catch { }
     track("invitation_opened", "intro");
   }
   render();
@@ -118,7 +118,7 @@ async function track(
         body: JSON.stringify(body),
       });
       if (r.ok) return;
-    } catch {}
+    } catch { }
     if (i === 0) await new Promise((r) => setTimeout(r, 350));
   }
 }
@@ -150,19 +150,19 @@ function playAmbientPreset(key, volume = 0.35) {
     if (!AudioCtx) return;
     if (!synthCtx) synthCtx = new AudioCtx();
     if (synthCtx.state === "suspended") synthCtx.resume();
-    
+
     if (synthGain) {
       synthGain.gain.setValueAtTime(volume, synthCtx.currentTime);
       state.musicPlaying = true;
       updateMusicUI();
       return;
     }
-    
+
     synthGain = synthCtx.createGain();
     synthGain.gain.setValueAtTime(0.001, synthCtx.currentTime);
     synthGain.gain.exponentialRampToValueAtTime(Math.max(0.01, volume), synthCtx.currentTime + 1.2);
     synthGain.connect(synthCtx.destination);
-    
+
     const chordProgressions = {
       "preset:lofi": [[261.63, 329.63, 392.00, 493.88], [220.00, 261.63, 329.63, 392.00], [174.61, 220.00, 261.63, 329.63], [196.00, 246.94, 293.66, 349.23]],
       "preset:acoustic": [[261.63, 329.63, 392.00], [196.00, 246.94, 293.66], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63]],
@@ -172,28 +172,28 @@ function playAmbientPreset(key, volume = 0.35) {
       "preset:ballad": [[220.00, 261.63, 329.63, 392.00], [174.61, 220.00, 261.63, 329.63], [130.81, 164.81, 196.00, 246.94], [146.83, 174.61, 220.00, 261.63]],
       "preset:dreamy": [[369.99, 440.00, 554.37, 659.25], [293.66, 369.99, 440.00, 587.33], [246.94, 329.63, 369.99, 493.88], [277.18, 369.99, 440.00, 554.37]]
     };
-    
+
     const chords = chordProgressions[key] || chordProgressions["preset:lofi"];
     let step = 0;
-    
+
     function playChord() {
       if (!synthGain || !synthCtx || synthCtx.state === "closed") return;
       const currentNotes = chords[step % chords.length];
       const now = synthCtx.currentTime;
-      
+
       currentNotes.forEach((freq, i) => {
         const osc = synthCtx.createOscillator();
         const noteGain = synthCtx.createGain();
         osc.type = key === "preset:acoustic" || key === "preset:ukulele" ? "triangle" : (key === "preset:dreamy" ? "sine" : "triangle");
         osc.frequency.setValueAtTime(freq, now + i * 0.08);
-        
+
         noteGain.gain.setValueAtTime(0.0001, now + i * 0.08);
         noteGain.gain.linearRampToValueAtTime(0.07, now + i * 0.08 + 0.1);
         noteGain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 2.2);
-        
+
         osc.connect(noteGain);
         noteGain.connect(synthGain);
-        
+
         osc.start(now + i * 0.08);
         osc.stop(now + i * 0.08 + 2.4);
       });
@@ -203,7 +203,7 @@ function playAmbientPreset(key, volume = 0.35) {
     playChord();
     state.musicPlaying = true;
     updateMusicUI();
-  } catch (err) {}
+  } catch (err) { }
 }
 
 function stopAmbientPreset() {
@@ -211,7 +211,7 @@ function stopAmbientPreset() {
   if (synthGain && synthCtx) {
     try {
       synthGain.gain.setValueAtTime(0.0001, synthCtx.currentTime);
-    } catch {}
+    } catch { }
   }
   synthGain = null;
   state.musicPlaying = false;
@@ -263,7 +263,7 @@ function playSongAtIndex(idx) {
       musicAudio.src = song.url;
       const start = Number(song.startTime) || 0;
       musicAudio.currentTime = start;
-      musicAudio.play().catch(() => {});
+      musicAudio.play().catch(() => { });
     }
     updateMusicUI();
     render();
@@ -286,7 +286,7 @@ function handleTrackFinished() {
   if (mode === 'loop-track') {
     if (musicAudio) {
       musicAudio.currentTime = Number(currentSong?.startTime) || 0;
-      musicAudio.play().catch(() => {});
+      musicAudio.play().catch(() => { });
     }
     return;
   }
@@ -316,7 +316,7 @@ function handleTrackFinished() {
   } else {
     if (musicAudio) {
       musicAudio.currentTime = Number(currentSong?.startTime) || 0;
-      musicAudio.play().catch(() => {});
+      musicAudio.play().catch(() => { });
     }
   }
 }
@@ -329,7 +329,7 @@ function setupMusic() {
   const song = getCurrentSong();
   if (!song || !song.url) return;
   if (song.url.startsWith("preset:")) return;
-  
+
   if (
     !song.url.startsWith("/media/") &&
     !song.url.startsWith("data:audio/") &&
@@ -414,7 +414,7 @@ function setupVoiceNote() {
 }
 function duckMusic() {
   if (features.musicUrl && features.musicUrl.startsWith("preset:") && synthGain && synthCtx) {
-    try { synthGain.gain.setValueAtTime(0.015, synthCtx.currentTime); } catch {}
+    try { synthGain.gain.setValueAtTime(0.015, synthCtx.currentTime); } catch { }
     return;
   }
   if (!musicAudio) return;
@@ -423,7 +423,7 @@ function duckMusic() {
 }
 function restoreMusic() {
   if (features.musicUrl && features.musicUrl.startsWith("preset:") && synthGain && synthCtx) {
-    try { synthGain.gain.setValueAtTime(savedMusicVolume || 0.35, synthCtx.currentTime); } catch {}
+    try { synthGain.gain.setValueAtTime(savedMusicVolume || 0.35, synthCtx.currentTime); } catch { }
     return;
   }
   if (!musicAudio) return;
@@ -448,7 +448,7 @@ function updateVoiceUI() {
 function toggleVoiceNote() {
   if (!voiceAudio) return;
   if (voiceAudio.paused) {
-    voiceAudio.play().catch(() => {});
+    voiceAudio.play().catch(() => { });
   } else {
     voiceAudio.pause();
   }
@@ -665,7 +665,7 @@ function initDraggableMusicPlayer() {
 
     try {
       player.setPointerCapture(e.pointerId);
-    } catch {}
+    } catch { }
   };
 
   const onPointerMove = (e) => {
@@ -692,7 +692,7 @@ function initDraggableMusicPlayer() {
     player.classList.remove('is-dragging');
     try {
       player.releasePointerCapture(e.pointerId);
-    } catch {}
+    } catch { }
   };
 
   player.addEventListener('pointerdown', onPointerDown);
@@ -846,10 +846,10 @@ function applyBackgroundCover() {
       bgCover.className = "bg-cover-layer";
       document.body.prepend(bgCover);
     }
-  let content = "";
-  const s = screens[state.screen] || screens.intro;
-  applyBackgroundCover();
-  if (state.screen === "intro") {
+    let content = "";
+    const s = screens[state.screen] || screens.intro;
+    applyBackgroundCover();
+    if (state.screen === "intro") {
       confetti();
       sessionStorage.setItem(`hl-confetti-${data.token}`, "1");
     }
@@ -931,7 +931,7 @@ function finalAttemptScreen() {
   const yesScale = state.evasionStage === 1 ? 1.08 : state.evasionStage >= 2 ? 1.15 : 1;
   const yesClass = isEvasion ? "primary evasion-growing-yes" : "primary";
   const yesStyle = isEvasion ? `style="--yes-scale:${yesScale};"` : "";
-  
+
   const progressiveLabels = [
     s.tertiary || "Nahi yaar 😜",
     "Are you sure? 🥺",
@@ -940,14 +940,14 @@ function finalAttemptScreen() {
     "Getting shy now 👀",
     "Okay okay... 😌"
   ];
-  
+
   let rejectBtnText = progressiveLabels[Math.min(state.evasionStage, progressiveLabels.length - 1)];
   let rejectBtnClass = "respect";
   let rejectBtnAction = "rejectAttempt";
   if (state.evasionStage >= 1) {
     rejectBtnClass = "respect evasion-teleport sneaky-slide";
   }
-  
+
   const showDeclineLink = state.evasionStage >= 2;
   const isFourthAttempt = state.evasionStage >= 4;
 
@@ -1370,7 +1370,7 @@ async function shareDateCard() {
             });
             track("button_clicked", state.screen, "share_date_card");
             return;
-          } catch {}
+          } catch { }
         }
         try {
           await navigator.share({
@@ -1503,7 +1503,7 @@ function bind() {
           return;
         }
         if (musicAudio) {
-          musicAudio.paused ? musicAudio.play().catch(() => {}) : musicAudio.pause();
+          musicAudio.paused ? musicAudio.play().catch(() => { }) : musicAudio.pause();
         }
       }
       if (el.dataset.music === "mute") {
@@ -1543,7 +1543,7 @@ function bind() {
     musicAudio.muted = false;
     updateMusicUI();
   });
-  
+
   const teleportBtn = app.querySelector(".evasion-teleport");
   if (teleportBtn) {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1703,229 +1703,228 @@ function bind() {
           moveBtn(e.clientX, e.clientY);
         }
       }, { passive: true });
-          state.musicMuted = !state.musicMuted;
-          synthGain.gain.setValueAtTime(state.musicMuted ? 0.0001 : (savedMusicVolume || 0.35), synthCtx.currentTime);
-          el.textContent = state.musicMuted ? "🔇" : "🔊";
-          return;
-        }
-        if (musicAudio) {
-          musicAudio.muted = !musicAudio.muted;
-          updateMusicUI();
-        }
-      }
-      if (el.dataset.music === "prev") {
-        playPrevSong();
-      }
-      if (el.dataset.music === "next") {
-        playNextSong();
-      }
-      if (musicAudio && el.dataset.music === "back")
-        musicAudio.currentTime = Math.max(0, musicAudio.currentTime - 10);
-      if (musicAudio && el.dataset.music === "forward")
-        musicAudio.currentTime = Math.min(
-          musicAudio.duration || Infinity,
-          musicAudio.currentTime + 10,
-        );
-    }),
-  );
-  app.querySelector('[data-music="seek"]')?.addEventListener("input", (e) => {
-    e.target.style.setProperty("--music-progress", `${e.target.value}%`);
-    if (musicAudio.duration)
-      musicAudio.currentTime = (musicAudio.duration * e.target.value) / 100;
-  });
-  app.querySelector('[data-music="volume"]')?.addEventListener("input", (e) => {
-    musicAudio.volume = e.target.value / 100;
-    musicAudio.muted = false;
-    updateMusicUI();
-  });
-  
-  const teleportBtn = app.querySelector(".evasion-teleport");
-  if (teleportBtn) {
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!prefersReducedMotion) {
-      const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-      let currentOffset = { x: 0, y: 0 };
-      let lastMoveTime = 0;
-
-      const getSafePosition = (pointerX, pointerY) => {
-        const btnRect = teleportBtn.getBoundingClientRect();
-        const originLeft = btnRect.left - currentOffset.x;
-        const originTop = btnRect.top - currentOffset.y;
-        const originWidth = btnRect.width;
-        const originHeight = btnRect.height;
-        const originCenterX = originLeft + originWidth / 2;
-        const originCenterY = originTop + originHeight / 2;
-
-        const card = teleportBtn.closest(".invite-card") || document.body;
-        const cardRect = card.getBoundingClientRect();
-        const yesBtn = card.querySelector('[data-action="yes"]');
-        const yesRect = yesBtn ? yesBtn.getBoundingClientRect() : null;
-        const moodBtn = card.querySelector('[data-action="mood"]');
-        const moodRect = moodBtn ? moodBtn.getBoundingClientRect() : null;
-        const heading = card.querySelector(".closing-question") || card.querySelector("h2");
-        const headingRect = heading ? heading.getBoundingClientRect() : null;
-        const fallbackLink = card.querySelector(".fallback-friend-link");
-        const fallbackRect = fallbackLink ? fallbackLink.getBoundingClientRect() : null;
-
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const minMargin = 16;
-        const safeLeft = Math.max(minMargin, cardRect.left + 12);
-        const safeRight = Math.min(vw - minMargin, cardRect.right - 12);
-        const safeTop = Math.max(minMargin, cardRect.top + 12);
-        const safeBottom = Math.min(vh - minMargin, cardRect.bottom - 12);
-
-        const availableWidth = safeRight - safeLeft - originWidth;
-        const stepX = Math.min(65, Math.max(20, availableWidth * 0.35));
-        const stepY = vw < 480 ? 36 : 46;
-
-        const candidates = [
-          { x: -stepX, y: -stepY, rot: -2 },
-          { x: stepX, y: -stepY, rot: 2 },
-          { x: -stepX * 1.1, y: stepY * 0.85, rot: -1.5 },
-          { x: stepX * 1.1, y: stepY * 0.85, rot: 1.5 },
-          { x: 0, y: stepY * 1.1, rot: 0 },
-          { x: -stepX * 0.7, y: stepY * 1.2, rot: -2.5 },
-          { x: stepX * 0.7, y: stepY * 1.2, rot: 2.5 },
-          { x: -stepX * 1.2, y: -stepY * 0.5, rot: -1.5 },
-          { x: stepX * 1.2, y: -stepY * 0.5, rot: 1.5 },
-          { x: 0, y: -stepY * 0.85, rot: 0 }
-        ];
-
-        let bestCandidate = null;
-        let highestScore = -Infinity;
-
-        for (const cand of candidates) {
-          // Prevent immediately repeating the previous position
-          if (Math.hypot(cand.x - currentOffset.x, cand.y - currentOffset.y) < 25) continue;
-
-          const candLeft = originLeft + cand.x;
-          const candRight = candLeft + originWidth;
-          const candTop = originTop + cand.y;
-          const candBottom = candTop + originHeight;
-          const candCenterX = originCenterX + cand.x;
-          const candCenterY = originCenterY + cand.y;
-
-          // 1. Strict Boundary Check (stays inside card and viewport)
-          if (candLeft < safeLeft || candRight > safeRight || candTop < safeTop || candBottom > safeBottom) {
-            continue;
-          }
-
-          // 2. Overlap Check with Yes Button
-          if (yesRect) {
-            const hasOverlap = candLeft < yesRect.right + 6 && candRight > yesRect.left - 6 && candTop < yesRect.bottom + 6 && candBottom > yesRect.top - 6;
-            if (hasOverlap) continue;
-          }
-
-          // 3. Overlap Check with Mood Button
-          if (moodRect) {
-            const hasOverlap = candLeft < moodRect.right && candRight > moodRect.left && candTop < moodRect.bottom && candBottom > moodRect.top;
-            if (hasOverlap) continue;
-          }
-
-          // 4. Overlap Check with Heading
-          if (headingRect) {
-            const hasOverlap = candLeft < headingRect.right && candRight > headingRect.left && candTop < headingRect.bottom && candBottom > headingRect.top;
-            if (hasOverlap) continue;
-          }
-
-          // 5. Overlap Check with Fallback Link
-          if (fallbackRect) {
-            const hasOverlap = candLeft < fallbackRect.right && candRight > fallbackRect.left && candTop < fallbackRect.bottom && candBottom > fallbackRect.top;
-            if (hasOverlap) continue;
-          }
-
-          let distFromPointer = 180;
-          if (pointerX != null && pointerY != null) {
-            distFromPointer = Math.hypot(candCenterX - pointerX, candCenterY - pointerY);
-          }
-
-          const distFromCardCenter = Math.hypot(
-            candCenterX - (cardRect.left + cardRect.width / 2),
-            candCenterY - (cardRect.top + cardRect.height / 2)
-          );
-
-          const score = distFromPointer * 1.6 - distFromCardCenter * 0.25;
-          if (score > highestScore) {
-            highestScore = score;
-            bestCandidate = cand;
-          }
-        }
-
-        if (!bestCandidate) {
-          const clampedX = Math.max(safeLeft - originLeft, Math.min(safeRight - (originLeft + originWidth), -20));
-          const clampedY = Math.max(safeTop - originTop, Math.min(safeBottom - (originTop + originHeight), 20));
-          bestCandidate = { x: clampedX, y: clampedY, rot: -1.5 };
-        }
-
-        return bestCandidate;
-      };
-
-      const moveBtn = (px, py) => {
-        const now = Date.now();
-        if (now - lastMoveTime < 130) return;
-        lastMoveTime = now;
-
-        const next = getSafePosition(px, py);
-        currentOffset = { x: next.x, y: next.y };
-        teleportBtn.style.transform = `translate3d(${next.x}px, ${next.y}px, 0) rotate(${next.rot || 0}deg) scale(0.98)`;
-        setTimeout(() => {
-          if (teleportBtn.isConnected) {
-            teleportBtn.style.transform = `translate3d(${next.x}px, ${next.y}px, 0) rotate(${next.rot || 0}deg) scale(1)`;
-          }
-        }, 160);
-      };
-
-      if (canHover) {
-        const onProximity = (e) => {
-          if (!teleportBtn.isConnected) {
-            window.removeEventListener("pointermove", onProximity);
-            return;
-          }
-          const rect = teleportBtn.getBoundingClientRect();
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
-          if (Math.hypot(e.clientX - cx, e.clientY - cy) < 80) {
-            moveBtn(e.clientX, e.clientY);
-          }
-        };
-        window.addEventListener("pointermove", onProximity, { passive: true });
-        teleportBtn.addEventListener("pointerenter", (e) => moveBtn(e.clientX, e.clientY));
-      }
-
-      teleportBtn.addEventListener("pointerdown", (e) => {
-        if (e.pointerType === "touch" || e.pointerType === "pen") {
-          moveBtn(e.clientX, e.clientY);
-        }
-      }, { passive: true });
-
-      teleportBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.clientX || e.clientY) {
-          moveBtn(e.clientX, e.clientY);
-        }
-        act("rejectAttempt", "evasion_intercepted");
-      });
-
-      const onResize = () => {
-        if (!teleportBtn.isConnected) {
-          window.removeEventListener("resize", onResize);
-          return;
-        }
-        currentOffset = { x: 0, y: 0 };
-        teleportBtn.style.transform = "translate3d(0px, 0px, 0)";
-      };
-      window.addEventListener("resize", onResize, { passive: true });
+      state.musicMuted = !state.musicMuted;
+      synthGain.gain.setValueAtTime(state.musicMuted ? 0.0001 : (savedMusicVolume || 0.35), synthCtx.currentTime);
+      el.textContent = state.musicMuted ? "🔇" : "🔊";
+      return;
+    }
+    if (musicAudio) {
+      musicAudio.muted = !musicAudio.muted;
+      updateMusicUI();
     }
   }
-  
-  app.querySelectorAll("[data-voice]").forEach((el) => {
-    el.addEventListener("click", toggleVoiceNote);
-  });
-
-  updateMusicUI();
+  if (el.dataset.music === "prev") {
+    playPrevSong();
+  }
+  if (el.dataset.music === "next") {
+    playNextSong();
+  }
+  if (musicAudio && el.dataset.music === "back")
+    musicAudio.currentTime = Math.max(0, musicAudio.currentTime - 10);
+  if (musicAudio && el.dataset.music === "forward")
+    musicAudio.currentTime = Math.min(
+      musicAudio.duration || Infinity,
+      musicAudio.currentTime + 10,
+    );
 }
+;
+app.querySelector('[data-music="seek"]')?.addEventListener("input", (e) => {
+  e.target.style.setProperty("--music-progress", `${e.target.value}%`);
+  if (musicAudio.duration)
+    musicAudio.currentTime = (musicAudio.duration * e.target.value) / 100;
+});
+app.querySelector('[data-music="volume"]')?.addEventListener("input", (e) => {
+  musicAudio.volume = e.target.value / 100;
+  musicAudio.muted = false;
+  updateMusicUI();
+});
+
+const teleportBtn = app.querySelector(".evasion-teleport");
+if (teleportBtn) {
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!prefersReducedMotion) {
+    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    let currentOffset = { x: 0, y: 0 };
+    let lastMoveTime = 0;
+
+    const getSafePosition = (pointerX, pointerY) => {
+      const btnRect = teleportBtn.getBoundingClientRect();
+      const originLeft = btnRect.left - currentOffset.x;
+      const originTop = btnRect.top - currentOffset.y;
+      const originWidth = btnRect.width;
+      const originHeight = btnRect.height;
+      const originCenterX = originLeft + originWidth / 2;
+      const originCenterY = originTop + originHeight / 2;
+
+      const card = teleportBtn.closest(".invite-card") || document.body;
+      const cardRect = card.getBoundingClientRect();
+      const yesBtn = card.querySelector('[data-action="yes"]');
+      const yesRect = yesBtn ? yesBtn.getBoundingClientRect() : null;
+      const moodBtn = card.querySelector('[data-action="mood"]');
+      const moodRect = moodBtn ? moodBtn.getBoundingClientRect() : null;
+      const heading = card.querySelector(".closing-question") || card.querySelector("h2");
+      const headingRect = heading ? heading.getBoundingClientRect() : null;
+      const fallbackLink = card.querySelector(".fallback-friend-link");
+      const fallbackRect = fallbackLink ? fallbackLink.getBoundingClientRect() : null;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const minMargin = 16;
+      const safeLeft = Math.max(minMargin, cardRect.left + 12);
+      const safeRight = Math.min(vw - minMargin, cardRect.right - 12);
+      const safeTop = Math.max(minMargin, cardRect.top + 12);
+      const safeBottom = Math.min(vh - minMargin, cardRect.bottom - 12);
+
+      const availableWidth = safeRight - safeLeft - originWidth;
+      const stepX = Math.min(65, Math.max(20, availableWidth * 0.35));
+      const stepY = vw < 480 ? 36 : 46;
+
+      const candidates = [
+        { x: -stepX, y: -stepY, rot: -2 },
+        { x: stepX, y: -stepY, rot: 2 },
+        { x: -stepX * 1.1, y: stepY * 0.85, rot: -1.5 },
+        { x: stepX * 1.1, y: stepY * 0.85, rot: 1.5 },
+        { x: 0, y: stepY * 1.1, rot: 0 },
+        { x: -stepX * 0.7, y: stepY * 1.2, rot: -2.5 },
+        { x: stepX * 0.7, y: stepY * 1.2, rot: 2.5 },
+        { x: -stepX * 1.2, y: -stepY * 0.5, rot: -1.5 },
+        { x: stepX * 1.2, y: -stepY * 0.5, rot: 1.5 },
+        { x: 0, y: -stepY * 0.85, rot: 0 }
+      ];
+
+      let bestCandidate = null;
+      let highestScore = -Infinity;
+
+      for (const cand of candidates) {
+        // Prevent immediately repeating the previous position
+        if (Math.hypot(cand.x - currentOffset.x, cand.y - currentOffset.y) < 25) continue;
+
+        const candLeft = originLeft + cand.x;
+        const candRight = candLeft + originWidth;
+        const candTop = originTop + cand.y;
+        const candBottom = candTop + originHeight;
+        const candCenterX = originCenterX + cand.x;
+        const candCenterY = originCenterY + cand.y;
+
+        // 1. Strict Boundary Check (stays inside card and viewport)
+        if (candLeft < safeLeft || candRight > safeRight || candTop < safeTop || candBottom > safeBottom) {
+          continue;
+        }
+
+        // 2. Overlap Check with Yes Button
+        if (yesRect) {
+          const hasOverlap = candLeft < yesRect.right + 6 && candRight > yesRect.left - 6 && candTop < yesRect.bottom + 6 && candBottom > yesRect.top - 6;
+          if (hasOverlap) continue;
+        }
+
+        // 3. Overlap Check with Mood Button
+        if (moodRect) {
+          const hasOverlap = candLeft < moodRect.right && candRight > moodRect.left && candTop < moodRect.bottom && candBottom > moodRect.top;
+          if (hasOverlap) continue;
+        }
+
+        // 4. Overlap Check with Heading
+        if (headingRect) {
+          const hasOverlap = candLeft < headingRect.right && candRight > headingRect.left && candTop < headingRect.bottom && candBottom > headingRect.top;
+          if (hasOverlap) continue;
+        }
+
+        // 5. Overlap Check with Fallback Link
+        if (fallbackRect) {
+          const hasOverlap = candLeft < fallbackRect.right && candRight > fallbackRect.left && candTop < fallbackRect.bottom && candBottom > fallbackRect.top;
+          if (hasOverlap) continue;
+        }
+
+        let distFromPointer = 180;
+        if (pointerX != null && pointerY != null) {
+          distFromPointer = Math.hypot(candCenterX - pointerX, candCenterY - pointerY);
+        }
+
+        const distFromCardCenter = Math.hypot(
+          candCenterX - (cardRect.left + cardRect.width / 2),
+          candCenterY - (cardRect.top + cardRect.height / 2)
+        );
+
+        const score = distFromPointer * 1.6 - distFromCardCenter * 0.25;
+        if (score > highestScore) {
+          highestScore = score;
+          bestCandidate = cand;
+        }
+      }
+
+      if (!bestCandidate) {
+        const clampedX = Math.max(safeLeft - originLeft, Math.min(safeRight - (originLeft + originWidth), -20));
+        const clampedY = Math.max(safeTop - originTop, Math.min(safeBottom - (originTop + originHeight), 20));
+        bestCandidate = { x: clampedX, y: clampedY, rot: -1.5 };
+      }
+
+      return bestCandidate;
+    };
+
+    const moveBtn = (px, py) => {
+      const now = Date.now();
+      if (now - lastMoveTime < 130) return;
+      lastMoveTime = now;
+
+      const next = getSafePosition(px, py);
+      currentOffset = { x: next.x, y: next.y };
+      teleportBtn.style.transform = `translate3d(${next.x}px, ${next.y}px, 0) rotate(${next.rot || 0}deg) scale(0.98)`;
+      setTimeout(() => {
+        if (teleportBtn.isConnected) {
+          teleportBtn.style.transform = `translate3d(${next.x}px, ${next.y}px, 0) rotate(${next.rot || 0}deg) scale(1)`;
+        }
+      }, 160);
+    };
+
+    if (canHover) {
+      const onProximity = (e) => {
+        if (!teleportBtn.isConnected) {
+          window.removeEventListener("pointermove", onProximity);
+          return;
+        }
+        const rect = teleportBtn.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        if (Math.hypot(e.clientX - cx, e.clientY - cy) < 80) {
+          moveBtn(e.clientX, e.clientY);
+        }
+      };
+      window.addEventListener("pointermove", onProximity, { passive: true });
+      teleportBtn.addEventListener("pointerenter", (e) => moveBtn(e.clientX, e.clientY));
+    }
+
+    teleportBtn.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" || e.pointerType === "pen") {
+        moveBtn(e.clientX, e.clientY);
+      }
+    }, { passive: true });
+
+    teleportBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.clientX || e.clientY) {
+        moveBtn(e.clientX, e.clientY);
+      }
+      act("rejectAttempt", "evasion_intercepted");
+    });
+
+    const onResize = () => {
+      if (!teleportBtn.isConnected) {
+        window.removeEventListener("resize", onResize);
+        return;
+      }
+      currentOffset = { x: 0, y: 0 };
+      teleportBtn.style.transform = "translate3d(0px, 0px, 0)";
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+  }
+}
+
+app.querySelectorAll("[data-voice]").forEach((el) => {
+  el.addEventListener("click", toggleVoiceNote);
+});
+
+updateMusicUI();
 function go(screen, event = "screen_view", option = "") {
   state.previous = state.screen;
   state.screen = screen;
@@ -2091,7 +2090,7 @@ function playCelebrationChime() {
       osc.start(now);
       osc.stop(now + 1.3);
     });
-  } catch {}
+  } catch { }
 }
 
 function confetti() {
