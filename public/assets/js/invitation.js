@@ -13,6 +13,7 @@ const state = {
   date: "",
   selectedDate: "",
   selectedTime: "",
+  selectedLocation: "",
   calendarMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   mainVisits: 0,
   found: new Set(),
@@ -37,13 +38,18 @@ const esc = (s) =>
   );
 const vars = (s) =>
   String(s ?? "").replace(
-    /{{\s*(inviterName|recipientName|nickname|selectedMood)\s*}}/g,
+    /{{\s*(creatorName|inviterName|recipientName|nickname|selectedMood|activity|date|time|location)\s*}}/g,
     (_, k) =>
       ({
+        creatorName: data.inviterName,
         inviterName: data.inviterName,
         recipientName: data.recipientName,
         nickname: state.nickname || data.recipientName,
         selectedMood: state.mood,
+        activity: state.mood,
+        date: state.date ? formatDate(state.date.slice(0, 10)) : "",
+        time: state.selectedTime || "",
+        location: state.selectedLocation || "",
       })[k],
   );
 const text = (s) => esc(vars(s)).replace(/\n/g, "<br>");
@@ -457,7 +463,16 @@ function voiceNoteWidget() {
 function musicControl() {
   if (features.musicSource === 'spotify' && features.spotify?.embedUrl) {
     return `
-      <div class="music-player style-spotify" role="region" aria-label="Spotify music player">
+      <div class="music-player style-spotify ${state.musicMinimized ? "minimized" : ""}" role="region" aria-label="Spotify music player">
+        <div class="music-head spotify-dock-head">
+          <button class="music-minimize" data-music="minimize" aria-label="${state.musicMinimized ? "Expand player" : "Minimize player"}">${state.musicMinimized ? "⌃" : "⌄"}</button>
+          <span class="music-cover" aria-hidden="true">🟢</span>
+          <div class="music-meta">
+            <b>${text(features.spotify.title || features.musicName || "Spotify soundtrack")}</b>
+            <small>Tap Spotify controls to play</small>
+          </div>
+          <a href="${esc(features.spotify.url || 'https://open.spotify.com')}" target="_blank" rel="noopener noreferrer" aria-label="Open in Spotify">↗</a>
+        </div>
         <div class="spotify-embed-wrapper">
           <iframe
             style="border-radius:12px;border:none;"
@@ -470,11 +485,6 @@ function musicControl() {
             loading="lazy"
             title="Spotify Music">
           </iframe>
-        </div>
-        <div class="spotify-fallback-row">
-          <a href="${esc(features.spotify.url || 'https://open.spotify.com')}" target="_blank" rel="noopener noreferrer" class="spotify-open-link">
-            <span>Listen on Spotify ❤️</span>
-          </a>
         </div>
       </div>
     `;
@@ -940,6 +950,9 @@ function memoriesScreen() {
 }
 function finalAttemptScreen() {
   const s = screens.finalAttempt;
+  if (features.respectfulMode) {
+    return `<span class="eyebrow">${text(s.eyebrow)}</span><h1 class="closing-question">${text(s.heading)}</h1><div class="copy-note"><span>💐</span><div>${text(s.body)}</div></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "decline", "respect")}${btn(s.tertiary, "decline", "ghost")}</div>`;
+  }
   const isEvasion = state.evasionStage >= 1;
   const yesScale = state.evasionStage === 1 ? 1.08 : state.evasionStage >= 2 ? 1.15 : 1;
   const yesClass = isEvasion ? "primary evasion-growing-yes" : "primary";
@@ -989,6 +1002,9 @@ function mainScreen() {
   const memoriesBtn = (features.memories && features.memoriesList && features.memoriesList.length > 0)
     ? btn(`📸 Our Memories (${features.memoriesList.length})`, "memories", "ghost")
     : "";
+  if (features.respectfulMode) {
+    return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>💐</span><div>${text(s.body)}</div></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "decline", "respect")}${btn(s.tertiary, "decline", "ghost")}${memoriesBtn}</div>`;
+  }
   return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>✉️</span><div>${text(s.body)}</div></div><div class="love-envelope" aria-hidden="true"><i></i><span>✦</span></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "thinking")}${btn(s.tertiary, "convince")}${memoriesBtn}</div>`;
 }
 function benefitsScreen() {
@@ -1072,6 +1088,7 @@ function yesScreen() {
     <div class="evidence-note">📸 Screenshot this date pass · Evidence secured! 😂❤️</div>
     <div class="action-stack" style="margin-top:16px;">
       ${btn(s.primary || "It's a date ❤️", "availability", "primary")}
+      ${features.optionalScheduling ? btn("Skip scheduling for now", "success", "ghost") : ""}
     </div>
   `;
 }
@@ -1453,7 +1470,7 @@ function successScreen() {
   const s = screens.success,
     when = state.date ? formatDateTime(state.date) : "We decide 😌",
     plan = state.mood || "Food + Fun + Unlimited Bakwaas";
-  const message = encodeURIComponent(`Hey ${data.inviterName}! I said yes 😌❤️ Let's plan it now. I chose ${plan} and ${when}.`),
+  const message = encodeURIComponent(features.respectfulMode ? `Hey ${data.inviterName}, I'm ready to talk. I chose ${plan} and ${when}.` : `Hey ${data.inviterName}! I said yes 😌❤️ Let's plan it now. I chose ${plan} and ${when}.`),
     whatsapp = data.whatsappNumber
       ? `<a class="choice primary whatsapp-plan" data-action="complete" href="https://wa.me/${data.whatsappNumber}?text=${message}" target="_blank" rel="noopener noreferrer">Plan on WhatsApp 💬</a>`
       : "";
@@ -1809,6 +1826,7 @@ function act(action, value) {
   else if (action === "submitDate") {
     const date = state.selectedDate;
     const time = document.querySelector("[data-time]:checked")?.value || state.selectedTime;
+    state.selectedLocation = document.querySelector("[data-location]:checked")?.value || state.selectedLocation;
     const dateTime = date && time ? `${date}T${time}` : "";
     if (!dateTime) return toast("Please choose both a date and time.");
     if (new Date(dateTime) <= new Date()) return toast("Please choose a future date and time.");

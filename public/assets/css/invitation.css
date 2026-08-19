@@ -76,6 +76,22 @@
   box-sizing: border-box;
 }
 
+.preview-edit-bar {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #241a1e;
+  border: 1px solid rgba(234, 223, 225, 0.9);
+  box-shadow: 0 12px 32px rgba(43, 26, 32, 0.12);
+  backdrop-filter: blur(16px);
+  text-decoration: none;
+  font: 700 0.88rem var(--font-ui);
+}
+
 html, body, #app {
   width: 100%;
   min-height: 100%;
@@ -1985,6 +2001,46 @@ h2 {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   color: #ffffff;
+}
+
+.music-player.style-spotify .spotify-dock-head {
+  grid-template-columns: 28px 42px minmax(0, 1fr) 34px;
+  margin-bottom: 8px;
+}
+
+.music-player.style-spotify .music-meta b,
+.music-player.style-spotify .music-meta small {
+  color: #ffffff;
+}
+
+.music-player.style-spotify .music-cover {
+  background: #1ed760;
+  color: #101010;
+}
+
+.music-player.style-spotify a {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.music-player.style-spotify.minimized {
+  width: min(330px, calc(100vw - 28px));
+}
+
+.music-player.style-spotify.minimized .spotify-dock-head {
+  margin-bottom: 0;
+}
+
+.music-player.style-spotify.minimized .spotify-embed-wrapper {
+  display: none;
 }
 
 .spotify-embed-wrapper iframe {

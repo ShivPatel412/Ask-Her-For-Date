@@ -376,6 +376,10 @@ function render() {
   const s = c.screens;
   const t = state.theme;
   const f = state.features;
+  if (currentStep === 7) {
+    f.musicSource = 'spotify';
+    f.musicPlayerStyle = 'spotify';
+  }
 
   renderStepper();
 
@@ -406,10 +410,13 @@ function render() {
 
     <!-- STEP 2: TEMPLATE -->
     <section class="step-panel ${currentStep === 2 ? 'active' : ''}" id="step-panel-2" data-step="2" role="tabpanel" aria-labelledby="step-tab-2" ${currentStep === 2 ? '' : 'hidden'}>
-      <div class="step-panel-header">
-        <span class="step-kicker">Step 2 of 8 · Template</span>
-        <h2>Occasion Templates</h2>
-        <p>Choose a curated romantic storyline, vibe, and playful questions.</p>
+      <div class="step-panel-header with-action">
+        <div>
+          <span class="step-kicker">Step 2 of 8 · Template</span>
+          <h2>Occasion Templates</h2>
+          <p>Choose a curated romantic storyline, vibe, and playful questions.</p>
+        </div>
+        <button type="button" class="button ghost small btn-reset-preset" data-action="restore-template">↺ Restore Template</button>
       </div>
       <div class="step-panel-body">
         <p class="hint">Switching templates loads tailored copy, romantic questions, and mood options.</p>
@@ -708,7 +715,7 @@ function render() {
       <div class="step-panel-header">
         <span class="step-kicker">Step 7 of 8 · Music & Sound</span>
         <h2>Soundtracks & Voice Note</h2>
-        <p>Set background music, audio start/end trimming, or record a personal voice note.</p>
+        <p>Connect a Spotify track and optionally add a personal voice note.</p>
       </div>
       <div class="step-panel-body">
         <div class="editor-section-card">
@@ -718,16 +725,12 @@ function render() {
           ${customToggle('Enable background music', 'features.music', f.music, 'Starts gracefully when the invitation is opened (never forceful autoplay)')}
 
           <div class="music-source-segmented-tabs" style="margin:14px 0;">
-            <button type="button" class="source-tab-btn ${(f.musicSource || 'upload') === 'upload' ? 'active' : ''} set-music-source" data-source="upload">
-              ♫ Upload / Presets
-            </button>
-            <button type="button" class="source-tab-btn ${f.musicSource === 'spotify' ? 'active' : ''} set-music-source" data-source="spotify">
+            <button type="button" class="source-tab-btn active set-music-source" data-source="spotify">
               🟢 Spotify
             </button>
           </div>
 
-          ${f.musicSource === 'spotify' ? `
-            <div class="spotify-builder-card">
+          <div class="spotify-builder-card">
               <div class="form-group">
                 <label class="form-label">
                   <span class="label-title">Paste Spotify Track / Album / Playlist Link</span>
@@ -746,147 +749,11 @@ function render() {
                   </div>
                 </div>
               ` : ''}
-              <p class="hint" style="margin:8px 0 0;font-size:0.75rem;color:#166534;">Spotify tracks use Spotify's official embed player. Custom start/end trimming is available for uploaded audio.</p>
+              <p class="hint" style="margin:8px 0 0;font-size:0.75rem;color:#166534;">Spotify uses the official player, so playback and volume are controlled by Spotify after the recipient taps play.</p>
             </div>
-          ` : `
-            <div class="playlist-builder-panel">
-              <div class="modern-upload-card mini">
-                <div class="upload-icon-circle mini">↥</div>
-                <h4>Upload custom song to playlist</h4>
-                <p>MP3, M4A, OGG, or WAV · max 10 MB</p>
-                <label class="button ghost small upload-btn-label">
-                  <span id="music-upload-copy">+ Add Custom Song</span>
-                  <input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*" hidden>
-                </label>
-              </div>
-
-              <div class="playlist-items-list" style="display:grid;gap:10px;margin:14px 0;">
-                ${((f.playlist && f.playlist.length) ? f.playlist : (f.musicUrl ? [{ id: 'default', name: f.musicName || 'Selected Song', artist: 'Romantic soundtrack', mood: 'romantic', url: f.musicUrl, startTime: f.musicStartOffset || 0, endTime: null, duration: 0, default: true, enabled: true }] : [])).map((song, idx, arr) => `
-                  <div class="track-builder-item-card">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                      <span style="font-size:1.3rem;">${song.mood === 'latenight' ? '🌙' : song.mood === 'funny' ? '😂' : song.mood === 'emotional' ? '💔' : song.mood === 'dreamy' ? '✨' : '❤️'}</span>
-                      <div style="flex:1;min-width:0;">
-                        <b style="display:block;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(song.name || song.title || 'Song')}</b>
-                        <small style="color:var(--muted);font-size:0.74rem;">${esc(song.artist || (song.sourceType === 'preset' || (song.url && song.url.startsWith('preset:')) ? 'Preset Soundscape' : 'Custom track'))}${song.default ? ' · ★ Default' : ''}</small>
-                      </div>
-                      <div style="display:flex;gap:4px;">
-                        <button type="button" class="button ghost small playlist-move-btn" data-playlist-move="up" data-playlist-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
-                        <button type="button" class="button ghost small playlist-move-btn" data-playlist-move="down" data-playlist-idx="${idx}" ${idx === arr.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
-                        <button type="button" class="button ghost small playlist-default-btn ${song.default ? 'primary' : ''}" data-playlist-idx="${idx}" title="Set as default song">★</button>
-                        <button type="button" class="icon-button danger-icon playlist-delete-btn" data-playlist-idx="${idx}" aria-label="Remove song">×</button>
-                      </div>
-                    </div>
-                    ${(song.sourceType !== 'spotify' && (!song.url || !song.url.startsWith('https://open.spotify.com'))) ? `
-                      <div class="audio-trimmer-box">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                          <span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">✂️ Audio Trimmer & Start/End</span>
-                          <span class="trimmer-duration-label" style="font-size:0.72rem;color:var(--muted);">${song.duration ? `Duration: ${formatTime(song.duration)}` : (song.url && song.url.startsWith('preset:') ? 'Preset Loop' : '')}</span>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                          <div class="form-group" style="margin:0;">
-                            <label class="form-label" style="margin:0;"><span style="font-size:0.72rem;">Start Time (MM:SS)</span></label>
-                            <input type="text" class="track-time-input form-input" data-time-field="startTime" data-track-idx="${idx}" value="${formatTime(song.startTime || 0)}" placeholder="00:00" style="padding:4px 8px;font-size:0.8rem;min-height:36px;">
-                          </div>
-                          <div class="form-group" style="margin:0;">
-                            <label class="form-label" style="margin:0;"><span style="font-size:0.72rem;">End Time (MM:SS)</span></label>
-                            <input type="text" class="track-time-input form-input" data-time-field="endTime" data-track-idx="${idx}" value="${song.endTime ? formatTime(song.endTime) : ''}" placeholder="${song.duration ? formatTime(song.duration) : 'Full song'}" style="padding:4px 8px;font-size:0.8rem;min-height:36px;">
-                          </div>
-                        </div>
-                        <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-                          <button type="button" class="button ghost small preview-track-btn" data-preview-idx="${idx}" data-track-url="${esc(song.url)}" data-start-time="${song.startTime || 0}" data-end-time="${song.endTime || ''}">▶ Preview Selection</button>
-                          <small style="font-size:0.7rem;color:var(--muted);">${song.startTime ? `From ${formatTime(song.startTime)}` : 'Starts at 00:00'}${song.endTime ? ` to ${formatTime(song.endTime)}` : ' (Full song)'}</small>
-                        </div>
-                      </div>
-                    ` : ''}
-                  </div>
-                `).join('')}
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">
-                  <span class="label-title">Or choose romantic preset soundscapes:</span>
-                </label>
-                <div class="music-mood-filters">
-                  <button type="button" class="mood-filter-btn active" data-music-filter="all">All</button>
-                  <button type="button" class="mood-filter-btn" data-music-filter="romantic">❤️ Romantic</button>
-                  <button type="button" class="mood-filter-btn" data-music-filter="latenight">🌙 Late Night</button>
-                  <button type="button" class="mood-filter-btn" data-music-filter="funny">😂 Cute/Funny</button>
-                  <button type="button" class="mood-filter-btn" data-music-filter="emotional">💔 Emotional</button>
-                  <button type="button" class="mood-filter-btn" data-music-filter="dreamy">✨ Dreamy</button>
-                </div>
-                <div class="music-preset-grid">
-                  ${(state.presets?.music || [{ key: 'preset:piano', name: 'Piano Serenade 🎹', desc: 'Soft emotive romantic piano', mood: 'romantic' }, { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸', desc: 'Warm fingerstyle acoustic melody', mood: 'romantic' }, { key: 'preset:jazz', name: 'Midnight Jazz 🎷', desc: 'Slow, smooth late-night jazz', mood: 'latenight' }, { key: 'preset:lofi', name: 'Lo-fi Romance 🎧', desc: 'Chill beats, warm vinyl, and cozy chords', mood: 'latenight' }, { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️', desc: 'Playful, sunny, cheerful vibe', mood: 'funny' }, { key: 'preset:ballad', name: 'Emotional Strings 🎻', desc: 'Gentle, touching cello and violin', mood: 'emotional' }, { key: 'preset:dreamy', name: 'Celestial Starlight ✨', desc: 'Ethereal ambient pads and sparkle bells', mood: 'dreamy' }]).map(p => `
-                    <button type="button" class="music-preset-btn ${f.musicUrl === p.key ? 'active' : ''}" data-music-preset="${p.key}" data-music-name="${esc(p.name)}" data-preset-mood="${p.mood || 'romantic'}">
-                      <b>${p.name}</b>
-                      <small>${p.desc}</small>
-                    </button>
-                  `).join('')}
-                </div>
-              </div>
-            </div>
-          `}
-
-          <div class="form-group" style="margin-top:14px;">
-            <label class="form-label">
-              <span class="label-title">Music Player Style</span>
-              <small class="label-helper">Choose how the audio player appears to the recipient</small>
-            </label>
-            <select data-path="features.musicPlayerStyle" class="form-select">
-              <option value="romantic" ${(f.musicPlayerStyle || 'romantic') === 'romantic' ? 'selected' : ''}>💿 Romantic Vinyl (Animated disc & full player)</option>
-              <option value="glass" ${f.musicPlayerStyle === 'glass' ? 'selected' : ''}>💎 Glassmorphism (Frosted floating bar)</option>
-              <option value="minimal" ${f.musicPlayerStyle === 'minimal' ? 'selected' : ''}>💊 Minimal Pill (Compact play/mute)</option>
-              <option value="floating" ${f.musicPlayerStyle === 'floating' ? 'selected' : ''}>💖 Floating Bubble (Corner pulsating button)</option>
-              <option value="compact" ${f.musicPlayerStyle === 'compact' ? 'selected' : ''}>🏷️ Compact Badge (Single-line card)</option>
-              <option value="ambient" ${f.musicPlayerStyle === 'ambient' ? 'selected' : ''}>🌌 Hidden Label / Icon Only (Discreet sound)</option>
-              <option value="spotify" ${f.musicPlayerStyle === 'spotify' ? 'selected' : ''}>🟢 Spotify Card</option>
-            </select>
-          </div>
-
-          <div class="form-group" style="margin-top:12px;">
-            <label class="form-label">
-              <span class="label-title">Player Screen Position</span>
-              <small class="label-helper">Choose where the music widget is docked on screen</small>
-            </label>
-            <select data-path="features.musicPlayerPosition" class="form-select">
-              <option value="bottom-right" ${(f.musicPlayerPosition || 'bottom-right') === 'bottom-right' ? 'selected' : ''}>↘ Bottom Right (Default)</option>
-              <option value="bottom-left" ${f.musicPlayerPosition === 'bottom-left' ? 'selected' : ''}>↙ Bottom Left</option>
-              <option value="top-right" ${f.musicPlayerPosition === 'top-right' ? 'selected' : ''}>↗ Top Right</option>
-              <option value="top-left" ${f.musicPlayerPosition === 'top-left' ? 'selected' : ''}>↖ Top Left</option>
-              <option value="center-right" ${f.musicPlayerPosition === 'center-right' ? 'selected' : ''}>→ Center Right</option>
-              <option value="center-left" ${f.musicPlayerPosition === 'center-left' ? 'selected' : ''}>← Center Left</option>
-              <option value="custom" ${f.musicPlayerPosition === 'custom' ? 'selected' : ''}>📍 Custom Draggable Position</option>
-            </select>
-          </div>
-
-          ${f.musicPlayerPosition === 'custom' ? `
-            <div class="custom-position-canvas-card">
-              <small style="display:block;font-weight:700;margin-bottom:6px;color:var(--color-heading);">Drag player widget to customize dock position</small>
-              <div id="position-preview-canvas">
-                <div id="position-drag-handle" style="left:${(f.musicCustomPosition?.x || 0.8) * 100}%;top:${(f.musicCustomPosition?.y || 0.8) * 100}%;">♫ Player</div>
-              </div>
-              <small style="display:block;margin-top:6px;color:var(--muted);font-size:0.72rem;">Normalized: X: ${Math.round((f.musicCustomPosition?.x || 0.8) * 100)}% · Y: ${Math.round((f.musicCustomPosition?.y || 0.8) * 100)}%</small>
-            </div>
-          ` : ''}
-
-          <div class="form-group" style="margin-top:12px;">
-            <label class="form-label">
-              <span class="label-title">Playback Mode</span>
-              <small class="label-helper">How tracks transition during playback</small>
-            </label>
-            <select data-path="features.musicPlaybackMode" class="form-select">
-              <option value="playlist" ${(f.musicPlaybackMode || 'playlist') === 'playlist' ? 'selected' : ''}>⏭ Play selected tracks in order (Playlist)</option>
-              <option value="loop-track" ${f.musicPlaybackMode === 'loop-track' ? 'selected' : ''}>🔂 Loop current track</option>
-              <option value="loop-playlist" ${f.musicPlaybackMode === 'loop-playlist' ? 'selected' : ''}>🔁 Loop playlist</option>
-              <option value="once" ${f.musicPlaybackMode === 'once' ? 'selected' : ''}>⏹ Play once</option>
-            </select>
-          </div>
-
-          <div class="form-group" style="margin-top:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span class="label-title">Default Volume</span>
-              <span id="music-vol-label" style="font-size:0.82rem;font-weight:700;color:var(--color-primary);">${f.musicVolume || 35}%</span>
-            </div>
-            <input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume || 35}" class="form-range">
+          <div class="music-tip" style="margin-top:14px;">
+            <span>ⓘ</span>
+            <div><b>Recipient controls playback</b><br>Spotify does not allow websites to force autoplay or set volume. The player appears as a draggable, minimizable dock on the public invitation.</div>
           </div>
         </div>
 
@@ -986,6 +853,7 @@ function setPath(path, value) {
 }
 
 controls.addEventListener('input', e => {
+  if (e.target.tagName === 'SELECT') return;
   if (e.target.dataset.colorPicker) {
     pushHistorySnapshot();
     const key = e.target.dataset.colorPicker;
@@ -1051,6 +919,12 @@ controls.addEventListener('input', e => {
 });
 
 controls.addEventListener('change', e => {
+  if (e.target.dataset.path && e.target.tagName === 'SELECT') {
+    setPath(e.target.dataset.path, e.target.value);
+    render();
+    preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+    return;
+  }
   if (e.target.id === 'cover-file' && e.target.files[0]) uploadCoverPhoto(e.target.files[0]);
   if (e.target.classList.contains('memory-photo-file') && e.target.files[0]) {
     const idx = Number(e.target.dataset.memoryIdx);
@@ -1077,7 +951,19 @@ controls.addEventListener('change', e => {
   }
 });
 
-document.addEventListener('click', e => {
+controls.addEventListener('dragover', e => {
+  if (e.target.closest('#cover-dropzone')) e.preventDefault();
+});
+
+controls.addEventListener('drop', e => {
+  const zone = e.target.closest('#cover-dropzone');
+  if (!zone) return;
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file) uploadCoverPhoto(file);
+});
+
+document.addEventListener('click', async e => {
   // Stepper Tab Click
   const stepBtn = e.target.closest('[data-step]');
   if (stepBtn && stepBtn.closest('#builder-stepper')) {
@@ -1254,11 +1140,11 @@ document.addEventListener('click', e => {
       if (confirm(`Apply "${tpl.name}" template? This will update questions, copy, and date options to match this occasion.`)) {
         pushHistorySnapshot();
         state.templateId = key;
-        if (tpl.content) state.content = structuredClone(tpl.content);
-        if (tpl.moods) state.content.moods = structuredClone(tpl.moods);
+        if (tpl.content) state.content = { screens: structuredClone(tpl.content), moods: structuredClone(tpl.moods || state.content.moods || []) };
         if (tpl.themePreset && state.presets?.themes?.[tpl.themePreset]) {
           Object.assign(state.theme, state.presets.themes[tpl.themePreset], { preset: tpl.themePreset });
         }
+        if (tpl.features) Object.assign(state.features, structuredClone(tpl.features));
         render();
         preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
         scheduleSave();
@@ -1320,6 +1206,31 @@ document.addEventListener('click', e => {
       updateThemePreview();
       scheduleSave();
       toast(`Reset theme to ${preset.name} ✓`);
+      return;
+    }
+    if (act === 'restore-template') {
+      if (!confirm('Restore the original template?\n\nYour current customizations will be replaced with the original template settings.')) return;
+      pushHistorySnapshot();
+      document.querySelector('#save-status').textContent = 'Restoring…';
+      try {
+        await saveQueue;
+        const r = await fetch(`/api/invitations/${id}/restore-template`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+          body: '{}'
+        });
+        const out = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(out.error || 'Could not restore template.');
+        state = out;
+        render();
+        updateThemePreview();
+        preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+        document.querySelector('#save-status').textContent = '✓ Template restored';
+        toast('Original template restored ✓');
+      } catch (err) {
+        document.querySelector('#save-status').textContent = 'Restore failed';
+        toast(err.message || 'Could not restore template.');
+      }
       return;
     }
     if (act === 'autofix-contrast') {
@@ -1835,8 +1746,8 @@ async function removeSpotify() {
     });
     if (res.ok) {
       state.features.spotify = null;
-      state.features.musicSource = 'upload';
-      state.features.musicPlayerStyle = 'romantic';
+      state.features.musicSource = 'spotify';
+      state.features.musicPlayerStyle = 'spotify';
       if (!state.features.musicUrl && (!state.features.playlist || !state.features.playlist.length)) {
         state.features.music = false;
       }

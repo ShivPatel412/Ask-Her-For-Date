@@ -3,7 +3,8 @@ const themes = {
   blue: { name: 'Blue Trouble 💙', background: '#F4FAFF', primary: '#3B82F6', secondary: '#E8DEFF', accent: '#60A5FA', headingColor: '#0F172A', text: '#1E293B', muted: '#64748B', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#DCE7F5' },
   yellow: { name: 'Yellow Chaos 💛', background: '#FFFDF2', primary: '#D97706', secondary: '#FEF3C7', accent: '#F59E0B', headingColor: '#1C1612', text: '#2D241E', muted: '#786959', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#F0E5D0' },
   midnight: { name: 'Midnight Date 🌙', background: '#13111C', primary: '#F43F5E', secondary: '#312E4A', accent: '#FB7185', headingColor: '#FFFFFF', text: '#F1EDF7', muted: '#A59EB5', card: '#201C30EE', buttonText: '#FFFFFF', border: '#38324F' },
-  rose: { name: 'Rose Gold 🌹', background: '#FFF8F5', primary: '#C95A72', secondary: '#F9E4DE', accent: '#DE758C', headingColor: '#241418', text: '#332025', muted: '#7E676D', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#EBDCDD' }
+  rose: { name: 'Rose Gold 🌹', background: '#FFF8F5', primary: '#C95A72', secondary: '#F9E4DE', accent: '#DE758C', headingColor: '#241418', text: '#332025', muted: '#7E676D', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#EBDCDD' },
+  lavender: { name: 'Soft Lavender 💜', background: '#FCF8FF', primary: '#8B5CF6', secondary: '#F1E8FF', accent: '#C084FC', headingColor: '#261B2D', text: '#2F2734', muted: '#756879', card: '#FFFFFFEE', buttonText: '#FFFFFF', border: '#E7D8F3' }
 };
 
 const fonts = {
@@ -102,7 +103,7 @@ const invitationTemplates = {
     id: 'funny-proposal',
     name: 'Funny Proposal 😂',
     tagline: 'High-energy comedy, teasing & zero boring moments',
-    themePreset: 'lavender',
+    themePreset: 'yellow',
     content: {
       intro: { eyebrow: 'ATTENTION PLEASE 🚨', heading: 'Official formal date application…', body: 'Subject: Seeking permission to take you out on a world-class date.', primary: 'Review Application 📄' },
       main: { eyebrow: 'Non-negotiable offer 👀', heading: 'Will you go on a date with me?', body: 'Side effects may include laughing too hard and falling slightly in love.', primary: 'Application Accepted 😂❤️', secondary: 'Check resume 👀', tertiary: 'Interview questions 📋' },
@@ -128,7 +129,7 @@ const invitationTemplates = {
     id: 'long-distance',
     name: 'Long Distance 🌎',
     tagline: 'Miles apart, together at heart — reunion & virtual date',
-    themePreset: 'lavender',
+    themePreset: 'midnight',
     content: {
       intro: { eyebrow: 'Across every mile ✈️', heading: 'No distance can keep us apart…', body: 'Counting down every single second until I see you next. 🌎❤️', primary: 'Open our space 💌' },
       main: { eyebrow: 'Even across the map 🗺️❤️', heading: 'Will you go on a special date with me?', body: 'Whether it’s our next reunion in person or our favorite virtual candlelight dinner.', primary: 'Yes, across all miles ❤️✈️', secondary: 'Virtual or In-Person? 👀', tertiary: 'Reunion plans ✨' },
@@ -253,9 +254,58 @@ const invitationTemplates = {
       { title: 'Starlit Rooftop Romance 🌇✨', description: 'Skyline view, jazz musician, and intimate dining.' },
       { title: 'Cozy Fireside Fondue & Wine 🧀🍷', description: 'Cheese and chocolate fondue, warm fire, and acoustic playlist.' }
     ]
+  },
+  'sorry-make-things-right': {
+    id: 'sorry-make-things-right',
+    name: 'Sorry & Make Things Right 🥺💐',
+    tagline: 'A calm apology flow that respects boundaries',
+    themePreset: 'lavender',
+    fontPreset: 'modern',
+    features: { confetti: false, collection: false, funnyBack: false, music: false, respectfulMode: true, optionalScheduling: true },
+    content: {
+      intro: { eyebrow: 'A sincere note for {{recipientName}}', heading: 'I owe you a real apology.', body: 'No drama. No pressure. I just want to acknowledge what happened properly.', primary: 'Read it' },
+      main: { eyebrow: 'I am listening', heading: 'I am truly sorry.', body: 'You did not deserve what happened. I take responsibility, and I am not here to make excuses.', primary: "I'm ready to talk", secondary: 'I need more time', tertiary: 'Please give me space' },
+      thinking: { eyebrow: 'Your pace matters', heading: 'Take all the time you need.', body: 'I understand if you are not ready. Your comfort matters more than my timeline.', primary: "I'm ready to talk", secondary: 'Maybe later', tertiary: 'Please give me space', quaternary: 'Show me what changes' },
+      convince: { eyebrow: 'Accountability', heading: 'What I understand now', body: 'I understand that my actions hurt you. I should have handled things with more care, honesty, and respect.', primary: "I'm ready to talk", secondary: 'Meeting options', tertiary: 'I need space' },
+      benefits: { eyebrow: 'What will change', heading: 'Not just words.', body: 'I will listen first, not interrupt, respect your boundaries, and avoid repeating the same mistake.', primary: "I'm ready to talk", secondary: 'How can we talk?', tertiary: 'I need space' },
+      mood: { eyebrow: 'Only if comfortable', heading: 'How would you prefer to talk?', body: 'Choose whatever feels safest and easiest for you.', primary: 'Continue', secondary: '← Choose another option' },
+      finalAttempt: { eyebrow: 'One respectful question', heading: 'If and when you are comfortable, may I apologize properly?', body: 'You can say yes, ask for more time, or ask for space. I will respect it.', primary: "I'm ready to talk", secondary: 'I need more time', tertiary: 'Please give me space' },
+      yes: { eyebrow: 'Thank you for being open', heading: 'We can talk at your pace.', body: 'You choose the time and format. If you want to skip scheduling, that is okay too.', primary: 'Pick date & time' },
+      availability: { eyebrow: 'Optional scheduling', heading: 'Pick a time only if you want to.', body: 'Choose a date, time, and format—or skip this step.', primary: 'Confirm if comfortable' },
+      success: { eyebrow: 'Thank you', heading: 'I will respect the plan.', body: 'Thank you for giving me a chance to talk. I will listen and keep this respectful.', primary: 'Done' },
+      decline: { eyebrow: 'Choice respected', heading: 'I understand.', body: "I will respect your space and won't pressure you. I am still sorry for what happened.", primary: 'Done' },
+      secret: { heading: 'One more sincere note', body: 'I am not asking you to forget or forgive immediately. I just want to do better and respect whatever you need.', primary: 'Close' }
+    },
+    moods: [
+      { title: 'Coffee and conversation ☕', description: 'A calm public place, short and respectful.', favorite: true },
+      { title: 'Peaceful walk 🌿', description: 'Low-pressure conversation with space to pause.' },
+      { title: 'Phone call 📞', description: 'Talk from wherever feels comfortable.' },
+      { title: 'Video call 💻', description: 'Face-to-face without needing to meet.' },
+      { title: 'Message only 💬', description: 'No call, no meetup—just written words.' }
+    ]
   }
 };
 
+
+function normalizeTemplateId(templateId) {
+  const key = String(templateId || '').trim();
+  return invitationTemplates[key] ? key : '';
+}
+
+function getTemplateConfig(templateId = 'best-friend-date', inviterName = '', recipientName = '') {
+  const id = normalizeTemplateId(templateId) || 'best-friend-date';
+  const tpl = invitationTemplates[id] || invitationTemplates['best-friend-date'];
+  const cfg = defaultConfig(inviterName, recipientName);
+  const themePreset = themes[tpl.themePreset] ? tpl.themePreset : 'strawberry';
+  const fontPreset = fonts[tpl.fontPreset] ? tpl.fontPreset : (cfg.theme.fontPreset || 'romantic');
+  cfg.templateId = id;
+  cfg.title = tpl.name;
+  cfg.theme = { preset: themePreset, ...themes[themePreset], fontPreset, ...fonts[fontPreset] };
+  cfg.content = { ...structuredClone(defaultContent), ...structuredClone(tpl.content || {}) };
+  cfg.moods = structuredClone(tpl.moods || moods);
+  cfg.features = { ...cfg.features, ...structuredClone(tpl.features || {}) };
+  return cfg;
+}
 
 function defaultConfig(inviterName = '', recipientName = '') {
   return {
@@ -275,5 +325,7 @@ module.exports = {
   moods,
   musicPresets,
   invitationTemplates,
+  normalizeTemplateId,
+  getTemplateConfig,
   defaultConfig
 };

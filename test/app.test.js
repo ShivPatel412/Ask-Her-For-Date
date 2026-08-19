@@ -824,7 +824,7 @@ test('PHASE C: Our Memories timeline, scrapbook items, and preview rendering', a
   assert.ok(previewHtml.includes('"memories":true'), 'Preview initial data should have memories enabled');
 });
 
-test('PHASE D: Curated Occasion Templates (romantic dinner, coffee, anniversary)', async () => {
+test('PHASE D: Curated Occasion Templates, creation, and restore', async () => {
   const email = `templates_user_${Date.now()}@example.com`;
   const username = `templates_${Date.now()}`;
   const client = browser();
@@ -837,20 +837,41 @@ test('PHASE D: Curated Occasion Templates (romantic dinner, coffee, anniversary)
   });
   const inv = await invRes.json();
 
-  // 1. GET /api/invitations/:id should return all 9 presets.templates
+  // 1. GET /api/invitations/:id should return all 10 presets.templates
   const getRes = await client(`/api/invitations/${inv.id}`);
   assert.equal(getRes.status, 200);
   const dto = await getRes.json();
   assert.ok(dto.presets.templates, 'presets.templates must exist');
-  assert.ok(dto.presets.templates['classic'], 'Classic template must exist');
-  assert.ok(dto.presets.templates['best-friend-date'], 'Best friend template must exist');
-  assert.ok(dto.presets.templates['hinglish-proposal'], 'Hinglish proposal template must exist');
-  assert.ok(dto.presets.templates['funny-proposal'], 'Funny proposal template must exist');
-  assert.ok(dto.presets.templates['long-distance'], 'Long distance template must exist');
-  assert.ok(dto.presets.templates['anniversary-special'], 'Anniversary template must exist');
-  assert.ok(dto.presets.templates['first-date'], 'First date template must exist');
-  assert.ok(dto.presets.templates['birthday-date'], 'Birthday date template must exist');
-  assert.ok(dto.presets.templates['valentines-day'], 'Valentine template must exist');
+  const requiredTemplates = ['classic', 'best-friend-date', 'hinglish-proposal', 'funny-proposal', 'long-distance', 'anniversary-special', 'first-date', 'birthday-date', 'valentines-day', 'sorry-make-things-right'];
+  assert.equal(requiredTemplates.filter(k => dto.presets.templates[k]).length, 10, 'All 10 templates must exist');
+  for (const key of requiredTemplates) {
+    assert.ok(dto.presets.templates[key].name, `${key} must have a name`);
+    assert.ok(dto.presets.templates[key].tagline, `${key} must have a description`);
+    assert.ok(dto.presets.templates[key].content?.main?.heading, `${key} must have main question content`);
+    assert.ok(dto.presets.templates[key].moods?.length, `${key} must have activity options`);
+  }
+
+  const invalidTemplate = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Noah', recipientName: 'Allie', templateId: 'not-real' })
+  });
+  assert.equal(invalidTemplate.status, 400);
+
+  for (const key of requiredTemplates) {
+    const createTemplate = await client('/api/invitations', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+      body: JSON.stringify({ inviterName: 'Noah', recipientName: 'Allie', templateId: key })
+    });
+    assert.equal(createTemplate.status, 201, `${key} should create successfully`);
+    const created = await createTemplate.json();
+    const createdDto = await (await client(`/api/invitations/${created.id}`)).json();
+    assert.equal(createdDto.templateId, key);
+    assert.equal(createdDto.inviterName, 'Noah');
+    assert.equal(createdDto.recipientName, 'Allie');
+    assert.ok(createdDto.content.screens.main.heading);
+  }
 
   // 2. Apply hinglish-proposal template
   const hinglishTpl = dto.presets.templates['hinglish-proposal'];
@@ -868,6 +889,56 @@ test('PHASE D: Curated Occasion Templates (romantic dinner, coffee, anniversary)
     })
   });
   assert.equal(updateRes.status, 200);
+
+  const changedDto = await (await client(`/api/invitations/${inv.id}`)).json();
+  assert.match(changedDto.content.screens.main.heading, /date pe chalogi/);
+  const customUpdate = await client(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      inviterName: 'Noah',
+      recipientName: 'Allie',
+      title: 'Custom title',
+      theme: changedDto.theme,
+      content: { ...changedDto.content, screens: { ...changedDto.content.screens, main: { ...changedDto.content.screens.main, heading: 'Custom changed question?' } } },
+      features: changedDto.features
+    })
+  });
+  assert.equal(customUpdate.status, 200);
+  const restoreRes = await client(`/api/invitations/${inv.id}/restore-template`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: '{}'
+  });
+  assert.equal(restoreRes.status, 200);
+  const restored = await restoreRes.json();
+  assert.notEqual(restored.content.screens.main.heading, 'Custom changed question?');
+
+  const sorry = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Noah', recipientName: 'Allie', templateId: 'sorry-make-things-right' })
+  });
+  const sorryInv = await sorry.json();
+  const sorryDto = await (await client(`/api/invitations/${sorryInv.id}`)).json();
+  assert.equal(sorryDto.features.respectfulMode, true);
+  assert.equal(sorryDto.features.optionalScheduling, true);
+  assert.equal(sorryDto.features.confetti, false);
+
+  const reapplyHinglish = await client(`/api/invitations/${inv.id}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({
+      inviterName: 'Noah',
+      recipientName: 'Allie',
+      title: 'Hinglish Proposal 🇮🇳',
+      content: {
+        screens: hinglishTpl.content,
+        moods: hinglishTpl.moods
+      }
+    })
+  });
+  assert.equal(reapplyHinglish.status, 200);
 
   // 3. Publish and verify public invitation renders Hinglish copy
   const pubRes = await client(`/api/invitations/${inv.id}/status`, {

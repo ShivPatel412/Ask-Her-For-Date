@@ -10,7 +10,7 @@ const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const db = require('./lib/db');
 const { createSessionStore } = require('./lib/session');
-const { defaultConfig, themes, fonts, favoriteMood, musicPresets, invitationTemplates } = require('./src/template');
+const { defaultConfig, themes, fonts, favoriteMood, musicPresets, invitationTemplates, normalizeTemplateId, getTemplateConfig } = require('./src/template');
 
 const root = process.cwd();
 const isVercel = !!(process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NOW_REGION);
@@ -889,16 +889,50 @@ app.post('/dashboard/whatsapp', requireUser, requireCsrf, async (req,res)=>{
   res.redirect('/dashboard');
 });
 
-app.get('/dashboard/invitations/new', requireUser, async (req, res) => res.send(await page('New invitation', `<main class="new-wrap"><header><span class="eyebrow">Choose a starting point</span><h1>Create an invitation</h1><p>Quick Setup gets you a polished link in under a minute.</p></header><section class="template-card selected"><div class="template-art"><img src="/assets/images/landing/hero-couple.png" alt="Cute couple holding a heart"></div><div><span class="pill">Recommended</span><h2>Best Friend → Date ❤️</h2><p>Cute, funny Hinglish date invitation with playful choices, exact date planning, and original mascots.</p></div></section><div class="setup-grid"><form id="quick-form" class="panel stack"><h2>Quick Setup ⚡</h2><label>Your Name<input name="inviterName" required maxlength="60"></label><label>Their Name<input name="recipientName" required maxlength="60"></label><button class="button primary">Create Invitation ❤️</button></form><form id="custom-form" class="panel stack"><h2>Customize Everything ✨</h2><p>Start with the same polished template, then edit the flow, colors, date ideas, and cute features.</p><label>Your Name<input name="inviterName" required maxlength="60"></label><label>Their Name<input name="recipientName" required maxlength="60"></label><button class="button ghost">Open visual builder</button></form></div></main>`, req, '/assets/js/new.js')));
+app.get('/dashboard/invitations/new', requireUser, async (req, res) => {
+  const templates = Object.values(invitationTemplates);
+  const selected = templates.find(t => t.id === 'best-friend-date') || templates[0];
+  const cards = templates.map(t => {
+    const theme = themes[t.themePreset] || themes.strawberry;
+    return `<article class="new-template-card ${t.id === selected.id ? 'active' : ''}" data-template-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-pressed="${t.id === selected.id ? 'true' : 'false'}">
+      <div class="new-template-swatch" style="--swatch-bg:${escapeHtml(theme.background)};--swatch-primary:${escapeHtml(theme.primary)};--swatch-secondary:${escapeHtml(theme.secondary)}"><i></i><b></b><span></span></div>
+      <div><h3>${escapeHtml(t.name)}</h3><p>${escapeHtml(t.tagline || '')}</p></div>
+      <button type="button" class="template-mini-cta" data-template-select="${escapeHtml(t.id)}">Use Template</button>
+    </article>`;
+  }).join('');
+  const previewData = templates.map(t => ({ id: t.id, name: t.name, tagline: t.tagline, themePreset: t.themePreset, content: t.content, moods: t.moods, features: t.features || {} }));
+  res.send(await page('New invitation', `<main class="new-wrap template-select-wrap">
+    <header><span class="eyebrow">Choose a starting point</span><h1>Create an invitation from a template</h1><p>Pick one polished flow, preview it, then either publish as-is or customize everything.</p></header>
+    <section class="template-select-layout">
+      <div class="template-list-panel"><div class="template-list-head"><b>10 predesigned templates</b><span id="selected-template-label">${escapeHtml(selected.name)}</span></div><div class="new-template-grid">${cards}</div></div>
+      <aside class="template-preview-panel">
+        <div id="template-preview" class="template-live-preview" aria-live="polite"></div>
+        <form id="template-form" class="panel stack">
+          <input type="hidden" name="templateId" id="selected-template-id" value="${escapeHtml(selected.id)}">
+          <label>Your Name<input name="inviterName" required maxlength="60" placeholder="e.g. Vatsal"></label>
+          <label>Their Name<input name="recipientName" required maxlength="60" placeholder="e.g. Drasti"></label>
+          <div class="template-action-row">
+            <button class="button primary" type="submit" data-mode="preview">Use Template As-Is ❤️</button>
+            <button class="button ghost" type="submit" data-mode="customize">Customize Template ✨</button>
+          </div>
+        </form>
+      </aside>
+    </section>
+    <script id="template-data" type="application/json">${safeJSON(previewData)}</script>
+  </main>`, req, '/assets/js/new.js'));
+});
 
 app.post('/api/invitations', requireUser, requireCsrf, async (req, res) => {
   const inviterName = clean(req.body.inviterName, 60), recipientName = clean(req.body.recipientName, 60);
   if (!inviterName || !recipientName) return res.status(400).json({ error: 'Both names are required.' });
+  const requestedTemplate = clean(req.body.templateId || req.body.templateKey || '', 60);
+  if (requestedTemplate && !normalizeTemplateId(requestedTemplate)) return res.status(400).json({ error: 'Choose a valid invitation template.' });
+  const templateKey = normalizeTemplateId(requestedTemplate) || 'best-friend-date';
   const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
-  const cfg = defaultConfig(inviterName, recipientName), publicToken = token();
-  const result = await db.prepare(`INSERT INTO invitations (owner_user_id,public_token,inviter_name,recipient_name,title,theme_config_json,content_config_json,feature_config_json) VALUES (?,?,?,?,?,?,?,?)`).run(req.session.userId, publicToken, inviterName, recipientName, cfg.title, JSON.stringify(cfg.theme), JSON.stringify({ screens: cfg.content, moods: cfg.moods }), JSON.stringify(cfg.features));
+  const cfg = getTemplateConfig(templateKey, inviterName, recipientName), publicToken = token();
+  const result = await db.prepare(`INSERT INTO invitations (owner_user_id,template_key,public_token,inviter_name,recipient_name,title,theme_config_json,content_config_json,feature_config_json) VALUES (?,?,?,?,?,?,?,?,?)`).run(req.session.userId, templateKey, publicToken, inviterName, recipientName, cfg.title, JSON.stringify(cfg.theme), JSON.stringify({ screens: cfg.content, moods: cfg.moods }), JSON.stringify(cfg.features));
   if (user) await logUserActivity(req.session.userId, user.email, 'CREATE_INVITATION', req);
-  res.status(201).json({ id: result.lastInsertRowid, token: publicToken });
+  res.status(201).json({ id: result.lastInsertRowid, token: publicToken, templateId: templateKey });
 });
 
 app.get('/dashboard/invitations/:id/edit', requireUser, async (req, res) => {
@@ -986,6 +1020,24 @@ app.get('/api/invitations/:id', requireUser, async (req, res) => {
   } catch (err) {
     console.error('Error fetching invitation API:', err);
     res.status(500).json({ error: 'Failed to load invitation data.' });
+  }
+});
+app.post('/api/invitations/:id/restore-template', requireUser, requireCsrf, async (req, res) => {
+  try {
+    const row = await ownedInvitation(req.params.id, req.session.userId);
+    if (!row) return res.status(404).json({ error: 'Not found.' });
+    const templateKey = normalizeTemplateId(row.template_key);
+    if (!templateKey) return res.status(400).json({ error: 'This invitation does not have a restorable template.' });
+    const cfg = getTemplateConfig(templateKey, row.inviter_name, row.recipient_name);
+    await db.prepare(`UPDATE invitations SET theme_config_json=?,content_config_json=?,feature_config_json=?,updated_at=? WHERE id=? AND owner_user_id=?`)
+      .run(JSON.stringify(cfg.theme), JSON.stringify({ screens: cfg.content, moods: cfg.moods }), JSON.stringify(cfg.features), now(), row.id, row.owner_user_id);
+    const fresh = await ownedInvitation(req.params.id, req.session.userId);
+    const user = await db.prepare('SELECT email FROM users WHERE id=?').get(req.session.userId);
+    if (user) await logUserActivity(req.session.userId, user.email, 'RESTORE_TEMPLATE', req);
+    res.json({ ...invitationDTO(fresh), presets: { themes, music: musicPresets, templates: invitationTemplates }, csrf: csrf(req) });
+  } catch (err) {
+    console.error('Error restoring template:', err);
+    res.status(500).json({ error: 'Failed to restore template.' });
   }
 });
 app.put('/api/invitations/:id', requireUser, requireCsrf, async (req, res) => {
@@ -1590,7 +1642,8 @@ app.get('/dashboard/invitations/:id/preview', requireUser, async (req,res) => {
 app.get('/i/:token', async (req,res) => { const r=await db.prepare("SELECT i.*,u.whatsapp_number FROM invitations i JOIN users u ON u.id=i.owner_user_id WHERE i.public_token=? AND i.status='published'").get(req.params.token); if(!r)return res.status(404).send(await page('Invitation unavailable','<main class="empty"><h1>This invitation is unavailable.</h1><p>It may be a draft or temporarily disabled.</p></main>',req)); res.set('Cache-Control','no-store').send(invitationPage(r,false)); });
 function invitationPage(row, preview) {
   const cfg=invitationDTO(row), payload={...cfg,preview};
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta name="theme-color" content="${escapeHtml(cfg.theme.background)}"><title>${escapeHtml(cfg.title)}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700&family=Nunito:wght@500;700&family=Playfair+Display:wght@600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/css/invitation.css"></head><body><div id="app"></div><script id="invitation-data" type="application/json">${safeJSON(payload)}</script><script src="/assets/js/invitation.js" defer></script></body></html>`;
+  const previewBar = preview ? `<a class="preview-edit-bar" href="/dashboard/invitations/${row.id}/edit">Customize / Publish ↗</a>` : '';
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><meta name="theme-color" content="${escapeHtml(cfg.theme.background)}"><title>${escapeHtml(cfg.title)}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700&family=Nunito:wght@500;700&family=Playfair+Display:wght@600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/css/invitation.css"></head><body>${previewBar}<div id="app"></div><script id="invitation-data" type="application/json">${safeJSON(payload)}</script><script src="/assets/js/invitation.js" defer></script></body></html>`;
 }
 
 // SMTP Email Notification Alert System
