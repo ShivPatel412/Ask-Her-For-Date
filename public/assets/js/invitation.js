@@ -846,10 +846,64 @@ function applyBackgroundCover() {
       bgCover.className = "bg-cover-layer";
       document.body.prepend(bgCover);
     }
-    let content = "";
-    const s = screens[state.screen] || screens.intro;
-    applyBackgroundCover();
-    if (state.screen === "intro") {
+    bgCover.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(0,0,0,${opacity}), rgba(0,0,0,${opacity})), url('${esc(features.coverPhotoUrl)}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: opacity 0.4s ease;
+    `;
+  } else if (bgCover) {
+    bgCover.remove();
+  }
+}
+
+function render() {
+  let content = "";
+  const s = screens[state.screen] || screens.intro;
+  applyBackgroundCover();
+  if (state.screen === "intro") {
+    let coverHtml = "";
+    if (features.coverPhoto && features.coverPhotoUrl && features.coverPhotoStyle !== "full-bg") {
+      const style = features.coverPhotoStyle || "polaroid";
+      const alt = features.coverPhotoAlt || `Romantic photo for ${data.recipientName || "you"}`;
+      const caption = features.coverPhotoCaption ? `<span class="intro-cover-caption">${text(features.coverPhotoCaption)}</span>` : "";
+      coverHtml = `<div class="intro-cover-frame style-${esc(style)}"><div class="cover-img-wrap"><img class="intro-cover-img" src="${esc(features.coverPhotoUrl)}" alt="${esc(alt)}" loading="lazy" onerror="this.closest('.intro-cover-frame')?.remove()"></div>${caption}</div>`;
+    }
+    content = `${coverHtml}${copy(s, btn(s.primary, "open", "primary"))}`;
+  }
+  if (state.screen === "analysis") content = analysisScreen();
+  if (state.screen === "main") content = mainScreen();
+  if (state.screen === "memories") content = memoriesScreen();
+  if (state.screen === "thinking") content = thinkingScreen();
+  if (state.screen === "convince") content = convinceScreen();
+  if (state.screen === "benefits") content = benefitsScreen();
+  if (state.screen === "mood") content = moodScreen();
+  if (state.screen === "moodConfirm")
+    content = `<span class="eyebrow">Option chosen ✨</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div><div class="action-stack">${btn(screens.mood?.primary || "Continue", "yes", "primary")}${btn(screens.mood?.secondary || "← Choose another option", "mood")}</div>`;
+  if (state.screen === "finalAttempt") content = finalAttemptScreen();
+  if (state.screen === "yes") content = yesScreen();
+  if (state.screen === "availability") content = availabilityScreen();
+  if (state.screen === "success") content = successScreen();
+  if (state.screen === "decline") content = declineScreen();
+  if (state.screen === "space") content = spaceScreen();
+  app.innerHTML = shell(content);
+  bind();
+  initDraggableMusicPlayer();
+  updateMusicUI();
+  if (state.screen === "analysis")
+    requestAnimationFrame(() =>
+      document
+        .querySelectorAll(".bar i")
+        .forEach((el) => (el.style.width = el.dataset.width)),
+    );
+  if (state.screen === "yes" && !features.respectfulMode) {
+    playCelebrationChime();
+    if (features.confetti && !sessionStorage.getItem(`hl-confetti-${data.token}`)) {
       confetti();
       sessionStorage.setItem(`hl-confetti-${data.token}`, "1");
     }
