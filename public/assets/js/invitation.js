@@ -846,71 +846,45 @@ function applyBackgroundCover() {
       bgCover.className = "bg-cover-layer";
       document.body.prepend(bgCover);
     }
-    bgCover.style.cssText = `
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      background-image: linear-gradient(rgba(0,0,0,${opacity}), rgba(0,0,0,${opacity})), url('${esc(features.coverPhotoUrl)}');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      transition: opacity 0.4s ease;
-    `;
-  } else if (bgCover) {
-    bgCover.remove();
-  }
-}
-
-function render() {
   let content = "";
   const s = screens[state.screen] || screens.intro;
   applyBackgroundCover();
   if (state.screen === "intro") {
-    let coverHtml = "";
-    if (features.coverPhoto && features.coverPhotoUrl && features.coverPhotoStyle !== "full-bg") {
-      const style = features.coverPhotoStyle || "polaroid";
-      const alt = features.coverPhotoAlt || `Romantic photo for ${data.recipientName || "you"}`;
-      const caption = features.coverPhotoCaption ? `<span class="intro-cover-caption">${text(features.coverPhotoCaption)}</span>` : "";
-      coverHtml = `<div class="intro-cover-frame style-${esc(style)}"><div class="cover-img-wrap"><img class="intro-cover-img" src="${esc(features.coverPhotoUrl)}" alt="${esc(alt)}" loading="lazy" onerror="this.closest('.intro-cover-frame')?.remove()"></div>${caption}</div>`;
-    }
-    content = `${coverHtml}${copy(s, btn(s.primary, "open", "primary"))}`;
-  }
-  if (state.screen === "analysis") content = analysisScreen();
-  if (state.screen === "main") content = mainScreen();
-  if (state.screen === "memories") content = memoriesScreen();
-  if (state.screen === "thinking")
-    content = `${back(s.eyebrow)}${copy({ ...s, eyebrow: "", body: "" })}<div class="talk-points"><span>🥹 Come on ${text(state.nickname)}… ek date hi toh maang raha hoon</span><span>✨ I promise, achhi jagah leke jaunga</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "convince")}${btn(s.quaternary, "finalAttempt")}</div>`;
-  if (state.screen === "convince")
-    content = `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="reason-grid"><span><b>😌</b>Good company</span><span><b>🍕</b>Food involved</span><span><b>😂</b>Unlimited bakwaas</span><span><b>👀</b>Zero boring moments</span><span class="wide"><b>❤️</b>I really want to take YOU out</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "benefits")}</div>`;
-  if (state.screen === "benefits") content = benefitsScreen();
-  if (state.screen === "mood") content = moodScreen();
-  if (state.screen === "moodConfirm")
-    content = `<span class="eyebrow">Vibe selected ✨</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div>${btn(screens.mood.primary, "yes", "primary")}${btn(screens.mood.secondary, "mood")}`;
-  if (state.screen === "finalAttempt")
-    content = finalAttemptScreen();
-  if (state.screen === "yes") content = yesScreen();
-  if (state.screen === "availability") content = availabilityScreen();
-  if (state.screen === "success") content = successScreen();
-  if (state.screen === "decline") content = declineScreen();
-  app.innerHTML = shell(content);
-  bind();
-  initDraggableMusicPlayer();
-  updateMusicUI();
-  if (state.screen === "analysis")
-    requestAnimationFrame(() =>
-      document
-        .querySelectorAll(".bar i")
-        .forEach((el) => (el.style.width = el.dataset.width)),
-    );
-  if (state.screen === "yes") {
-    playCelebrationChime();
-    if (features.confetti && !sessionStorage.getItem(`hl-confetti-${data.token}`)) {
       confetti();
       sessionStorage.setItem(`hl-confetti-${data.token}`, "1");
     }
   }
 }
+
+function thinkingScreen() {
+  const s = screens.thinking;
+  if (features.respectfulMode) {
+    return `${back(s.eyebrow || "← Back")}${copy({ ...s, eyebrow: "" })}<div class="action-stack">${btn(s.primary, "readyToTalk", "primary")}${btn(s.secondary, "needsTime", "respect")}${btn(s.tertiary, "requestSpace", "ghost")}${s.quaternary ? btn(s.quaternary, "benefits") : ""}</div>`;
+  }
+  return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="talk-points"><span>🥹 Come on ${text(state.nickname)}… ek date hi toh maang raha hoon</span><span>✨ I promise, achhi jagah leke jaunga</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "convince")}${btn(s.quaternary, "finalAttempt")}</div>`;
+}
+function convinceScreen() {
+  const s = screens.convince;
+  if (features.respectfulMode) {
+    return `${back(s.eyebrow || "← Back")}${copy({ ...s, eyebrow: "" })}<div class="action-stack">${btn(s.primary, "readyToTalk", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "requestSpace", "ghost")}</div>`;
+  }
+  return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="reason-grid"><span><b>😌</b>Good company</span><span><b>🍕</b>Food involved</span><span><b>😂</b>Unlimited bakwaas</span><span><b>👀</b>Zero boring moments</span><span class="wide"><b>❤️</b>I really want to take YOU out</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "benefits")}</div>`;
+}
+function spaceScreen() {
+  return `
+    <span class="eyebrow">Choice respected 🌿</span>
+    <h1>I will respect your space.</h1>
+    <div class="copy-note">
+      <span>🌿</span>
+      <div>Thank you for being honest. I will not pressure you, and I will not send follow-up messages. Take all the time you need.</div>
+    </div>
+    <div class="status-chip">✓ Boundaries respected · No pressure</div>
+    <div class="action-stack" style="margin-top:20px;">
+      <button type="button" class="choice primary" data-action="complete">Done 🌿</button>
+    </div>
+  `;
+}
+
 function memoriesScreen() {
   const list = features.memoriesList || [];
   const items = list.map((m, i) => `
@@ -1729,6 +1703,201 @@ function bind() {
           moveBtn(e.clientX, e.clientY);
         }
       }, { passive: true });
+          state.musicMuted = !state.musicMuted;
+          synthGain.gain.setValueAtTime(state.musicMuted ? 0.0001 : (savedMusicVolume || 0.35), synthCtx.currentTime);
+          el.textContent = state.musicMuted ? "🔇" : "🔊";
+          return;
+        }
+        if (musicAudio) {
+          musicAudio.muted = !musicAudio.muted;
+          updateMusicUI();
+        }
+      }
+      if (el.dataset.music === "prev") {
+        playPrevSong();
+      }
+      if (el.dataset.music === "next") {
+        playNextSong();
+      }
+      if (musicAudio && el.dataset.music === "back")
+        musicAudio.currentTime = Math.max(0, musicAudio.currentTime - 10);
+      if (musicAudio && el.dataset.music === "forward")
+        musicAudio.currentTime = Math.min(
+          musicAudio.duration || Infinity,
+          musicAudio.currentTime + 10,
+        );
+    }),
+  );
+  app.querySelector('[data-music="seek"]')?.addEventListener("input", (e) => {
+    e.target.style.setProperty("--music-progress", `${e.target.value}%`);
+    if (musicAudio.duration)
+      musicAudio.currentTime = (musicAudio.duration * e.target.value) / 100;
+  });
+  app.querySelector('[data-music="volume"]')?.addEventListener("input", (e) => {
+    musicAudio.volume = e.target.value / 100;
+    musicAudio.muted = false;
+    updateMusicUI();
+  });
+  
+  const teleportBtn = app.querySelector(".evasion-teleport");
+  if (teleportBtn) {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!prefersReducedMotion) {
+      const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+      let currentOffset = { x: 0, y: 0 };
+      let lastMoveTime = 0;
+
+      const getSafePosition = (pointerX, pointerY) => {
+        const btnRect = teleportBtn.getBoundingClientRect();
+        const originLeft = btnRect.left - currentOffset.x;
+        const originTop = btnRect.top - currentOffset.y;
+        const originWidth = btnRect.width;
+        const originHeight = btnRect.height;
+        const originCenterX = originLeft + originWidth / 2;
+        const originCenterY = originTop + originHeight / 2;
+
+        const card = teleportBtn.closest(".invite-card") || document.body;
+        const cardRect = card.getBoundingClientRect();
+        const yesBtn = card.querySelector('[data-action="yes"]');
+        const yesRect = yesBtn ? yesBtn.getBoundingClientRect() : null;
+        const moodBtn = card.querySelector('[data-action="mood"]');
+        const moodRect = moodBtn ? moodBtn.getBoundingClientRect() : null;
+        const heading = card.querySelector(".closing-question") || card.querySelector("h2");
+        const headingRect = heading ? heading.getBoundingClientRect() : null;
+        const fallbackLink = card.querySelector(".fallback-friend-link");
+        const fallbackRect = fallbackLink ? fallbackLink.getBoundingClientRect() : null;
+
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const minMargin = 16;
+        const safeLeft = Math.max(minMargin, cardRect.left + 12);
+        const safeRight = Math.min(vw - minMargin, cardRect.right - 12);
+        const safeTop = Math.max(minMargin, cardRect.top + 12);
+        const safeBottom = Math.min(vh - minMargin, cardRect.bottom - 12);
+
+        const availableWidth = safeRight - safeLeft - originWidth;
+        const stepX = Math.min(65, Math.max(20, availableWidth * 0.35));
+        const stepY = vw < 480 ? 36 : 46;
+
+        const candidates = [
+          { x: -stepX, y: -stepY, rot: -2 },
+          { x: stepX, y: -stepY, rot: 2 },
+          { x: -stepX * 1.1, y: stepY * 0.85, rot: -1.5 },
+          { x: stepX * 1.1, y: stepY * 0.85, rot: 1.5 },
+          { x: 0, y: stepY * 1.1, rot: 0 },
+          { x: -stepX * 0.7, y: stepY * 1.2, rot: -2.5 },
+          { x: stepX * 0.7, y: stepY * 1.2, rot: 2.5 },
+          { x: -stepX * 1.2, y: -stepY * 0.5, rot: -1.5 },
+          { x: stepX * 1.2, y: -stepY * 0.5, rot: 1.5 },
+          { x: 0, y: -stepY * 0.85, rot: 0 }
+        ];
+
+        let bestCandidate = null;
+        let highestScore = -Infinity;
+
+        for (const cand of candidates) {
+          // Prevent immediately repeating the previous position
+          if (Math.hypot(cand.x - currentOffset.x, cand.y - currentOffset.y) < 25) continue;
+
+          const candLeft = originLeft + cand.x;
+          const candRight = candLeft + originWidth;
+          const candTop = originTop + cand.y;
+          const candBottom = candTop + originHeight;
+          const candCenterX = originCenterX + cand.x;
+          const candCenterY = originCenterY + cand.y;
+
+          // 1. Strict Boundary Check (stays inside card and viewport)
+          if (candLeft < safeLeft || candRight > safeRight || candTop < safeTop || candBottom > safeBottom) {
+            continue;
+          }
+
+          // 2. Overlap Check with Yes Button
+          if (yesRect) {
+            const hasOverlap = candLeft < yesRect.right + 6 && candRight > yesRect.left - 6 && candTop < yesRect.bottom + 6 && candBottom > yesRect.top - 6;
+            if (hasOverlap) continue;
+          }
+
+          // 3. Overlap Check with Mood Button
+          if (moodRect) {
+            const hasOverlap = candLeft < moodRect.right && candRight > moodRect.left && candTop < moodRect.bottom && candBottom > moodRect.top;
+            if (hasOverlap) continue;
+          }
+
+          // 4. Overlap Check with Heading
+          if (headingRect) {
+            const hasOverlap = candLeft < headingRect.right && candRight > headingRect.left && candTop < headingRect.bottom && candBottom > headingRect.top;
+            if (hasOverlap) continue;
+          }
+
+          // 5. Overlap Check with Fallback Link
+          if (fallbackRect) {
+            const hasOverlap = candLeft < fallbackRect.right && candRight > fallbackRect.left && candTop < fallbackRect.bottom && candBottom > fallbackRect.top;
+            if (hasOverlap) continue;
+          }
+
+          let distFromPointer = 180;
+          if (pointerX != null && pointerY != null) {
+            distFromPointer = Math.hypot(candCenterX - pointerX, candCenterY - pointerY);
+          }
+
+          const distFromCardCenter = Math.hypot(
+            candCenterX - (cardRect.left + cardRect.width / 2),
+            candCenterY - (cardRect.top + cardRect.height / 2)
+          );
+
+          const score = distFromPointer * 1.6 - distFromCardCenter * 0.25;
+          if (score > highestScore) {
+            highestScore = score;
+            bestCandidate = cand;
+          }
+        }
+
+        if (!bestCandidate) {
+          const clampedX = Math.max(safeLeft - originLeft, Math.min(safeRight - (originLeft + originWidth), -20));
+          const clampedY = Math.max(safeTop - originTop, Math.min(safeBottom - (originTop + originHeight), 20));
+          bestCandidate = { x: clampedX, y: clampedY, rot: -1.5 };
+        }
+
+        return bestCandidate;
+      };
+
+      const moveBtn = (px, py) => {
+        const now = Date.now();
+        if (now - lastMoveTime < 130) return;
+        lastMoveTime = now;
+
+        const next = getSafePosition(px, py);
+        currentOffset = { x: next.x, y: next.y };
+        teleportBtn.style.transform = `translate3d(${next.x}px, ${next.y}px, 0) rotate(${next.rot || 0}deg) scale(0.98)`;
+        setTimeout(() => {
+          if (teleportBtn.isConnected) {
+            teleportBtn.style.transform = `translate3d(${next.x}px, ${next.y}px, 0) rotate(${next.rot || 0}deg) scale(1)`;
+          }
+        }, 160);
+      };
+
+      if (canHover) {
+        const onProximity = (e) => {
+          if (!teleportBtn.isConnected) {
+            window.removeEventListener("pointermove", onProximity);
+            return;
+          }
+          const rect = teleportBtn.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          if (Math.hypot(e.clientX - cx, e.clientY - cy) < 80) {
+            moveBtn(e.clientX, e.clientY);
+          }
+        };
+        window.addEventListener("pointermove", onProximity, { passive: true });
+        teleportBtn.addEventListener("pointerenter", (e) => moveBtn(e.clientX, e.clientY));
+      }
+
+      teleportBtn.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "touch" || e.pointerType === "pen") {
+          moveBtn(e.clientX, e.clientY);
+        }
+      }, { passive: true });
 
       teleportBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -1768,21 +1937,39 @@ function act(action, value) {
   if (action === "open") {
     startMusic();
     go("main", "button_clicked", value);
-  } else if (action === "main") go("main", "back_to_main", value);
-  else if (
+  } else if (action === "main") {
+    go("main", "back_to_main", value);
+  } else if (
     ["thinking", "convince", "benefits", "finalAttempt"].includes(action)
-  )
+  ) {
     go(action, "button_clicked", value);
-  else if (action === "mood") go("mood", "button_clicked", value);
-  else if (action === "pickMood") {
+  } else if (action === "mood") {
+    go("mood", "button_clicked", value);
+  } else if (action === "pickMood") {
     const changed = state.moodChosen;
     state.mood = value;
     state.moodChosen = true;
     go("moodConfirm", changed ? "mood_changed" : "mood_selected", value);
+  } else if (action === "readyToTalk") {
+    state.evasionStage = 0;
+    track("response_ready_to_talk", state.screen, value || "Ready to talk");
+    go("yes", "screen_view", value || "Ready to talk");
   } else if (action === "yes") {
     state.evasionStage = 0;
-    track("final_yes", state.screen, value);
-    go("yes", "screen_view", value);
+    track("final_yes", state.screen, value || "Accepted");
+    go("yes", "screen_view", value || "Accepted");
+  } else if (action === "needsTime") {
+    state.evasionStage = 0;
+    track("response_needs_time", state.screen, value || "Needs more time");
+    go("decline", "screen_view", value || "Needs more time");
+  } else if (action === "requestSpace") {
+    state.evasionStage = 0;
+    track("response_requested_space", state.screen, value || "Requested space");
+    go("space", "screen_view", value || "Requested space");
+  } else if (action === "messageOnly") {
+    state.selectedLocation = "Message only";
+    track("response_message_only", state.screen, "Message only");
+    go("success", "screen_view", "Message only");
   } else if (action === "rejectAttempt") {
     if (state.evasionStage === 0) {
       state.evasionStage = 1;
@@ -1806,24 +1993,23 @@ function act(action, value) {
     }
   } else if (action === "forceDecline") {
     state.evasionStage = 0;
-    track("best_friend_result", "finalAttempt", "force_decline");
+    track("response_declined", "finalAttempt", "force_decline");
     go("decline", "screen_view", "decline");
   } else if (action === "decline") {
-    track("best_friend_result", "finalAttempt", value);
-    go("decline", "screen_view", value);
+    track("response_declined", "finalAttempt", value || "Declined");
+    go("decline", "screen_view", value || "Declined");
   } else if (action === "memories") {
     go("memories", "screen_view", "memories");
-  } else if (action === "availability")
+  } else if (action === "availability") {
     go("availability", "button_clicked", value);
-  else if (action === "calendarPrev" || action === "calendarNext") {
+  } else if (action === "calendarPrev" || action === "calendarNext") {
     state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() + (action === "calendarNext" ? 1 : -1), 1);
     render();
   } else if (action === "selectDate") {
     state.selectedTime = document.querySelector("[data-time]:checked")?.value || state.selectedTime;
     state.selectedDate = value;
     render();
-  }
-  else if (action === "submitDate") {
+  } else if (action === "submitDate") {
     const date = state.selectedDate;
     const time = document.querySelector("[data-time]:checked")?.value || state.selectedTime;
     state.selectedLocation = document.querySelector("[data-location]:checked")?.value || state.selectedLocation;

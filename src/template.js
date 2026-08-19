@@ -307,6 +307,70 @@ function getTemplateConfig(templateId = 'best-friend-date', inviterName = '', re
   return cfg;
 }
 
+function validateTemplateGraph(template) {
+  if (!template || !template.id) return { valid: false, error: 'Missing template or ID' };
+  const content = template.content || {};
+  const screens = content.screens || content;
+  const standardScreens = ['intro', 'main', 'thinking', 'convince', 'benefits', 'mood', 'finalAttempt', 'yes', 'availability', 'success', 'decline'];
+  const required = ['intro', 'main', 'yes', 'success', 'decline'];
+  for (const req of required) {
+    if (!screens[req]) return { valid: false, error: `Missing required screen ${req} in template ${template.id}` };
+  }
+  
+  // Graph reachability check
+  const visited = new Set();
+  const queue = ['intro'];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (visited.has(current)) continue;
+    visited.add(current);
+    
+    // Determine transitions for this screen
+    let nextScreens = [];
+    if (current === 'intro') nextScreens = ['main'];
+    else if (current === 'main') {
+      if (template.features?.respectfulMode) nextScreens = ['yes', 'decline', 'space'];
+      else nextScreens = ['yes', 'thinking', 'convince', 'memories'];
+    } else if (current === 'thinking') {
+      if (template.features?.respectfulMode) nextScreens = ['yes', 'decline', 'space', 'benefits', 'main'];
+      else nextScreens = ['yes', 'mood', 'convince', 'finalAttempt', 'main'];
+    } else if (current === 'convince') {
+      if (template.features?.respectfulMode) nextScreens = ['yes', 'mood', 'space', 'main'];
+      else nextScreens = ['yes', 'mood', 'benefits', 'main'];
+    } else if (current === 'benefits') {
+      if (template.features?.respectfulMode) nextScreens = ['yes', 'mood', 'space', 'main'];
+      else nextScreens = ['yes', 'mood', 'finalAttempt', 'main'];
+    } else if (current === 'mood') {
+      nextScreens = ['yes', 'moodConfirm', 'main'];
+    } else if (current === 'moodConfirm') {
+      nextScreens = ['yes', 'mood'];
+    } else if (current === 'finalAttempt') {
+      if (template.features?.respectfulMode) nextScreens = ['yes', 'decline', 'space'];
+      else nextScreens = ['yes', 'mood', 'decline'];
+    } else if (current === 'yes') {
+      nextScreens = ['availability', 'success'];
+    } else if (current === 'availability') {
+      nextScreens = ['success', 'decline', 'space'];
+    } else if (current === 'decline') {
+      nextScreens = ['intro']; // replay transition
+    }
+    
+    for (const nxt of nextScreens) {
+      if (nxt === 'memories' || nxt === 'space' || nxt === 'moodConfirm' || screens[nxt] || standardScreens.includes(nxt)) {
+        if (!visited.has(nxt) && !queue.includes(nxt) && nxt !== current) {
+          queue.push(nxt);
+        }
+      }
+    }
+  }
+  
+  const terminals = ['success', 'decline', 'space'];
+  const hasTerminal = terminals.some(t => visited.has(t));
+  if (!hasTerminal) return { valid: false, error: `No terminal screen reachable in template ${template.id}` };
+  
+  return { valid: true, reachableCount: visited.size, visited: Array.from(visited) };
+}
+
 function defaultConfig(inviterName = '', recipientName = '') {
   return {
     theme: { preset: 'strawberry', ...themes.strawberry, fontPreset: 'romantic', ...fonts.romantic },
@@ -327,5 +391,6 @@ module.exports = {
   invitationTemplates,
   normalizeTemplateId,
   getTemplateConfig,
+  validateTemplateGraph,
   defaultConfig
 };

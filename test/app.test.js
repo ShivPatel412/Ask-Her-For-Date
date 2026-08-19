@@ -1253,5 +1253,96 @@ test('INVITATION EDITOR REDESIGN: Horizontal Stepper Navigation & 8-Step Layout'
   assert.ok(editHtml.includes('builder.js'), 'Edit page must load builder.js');
 });
 
+test('TEMPLATE GRAPH VALIDATION & BUTTON FLOW SPECIFICATION (All 10 Templates)', async () => {
+  const { validateTemplateGraph, invitationTemplates } = require('../src/template');
 
+  // 1. Graph validation for all 10 templates
+  const templateKeys = Object.keys(invitationTemplates);
+  assert.equal(templateKeys.length, 10, 'All 10 templates must be defined');
 
+  for (const key of templateKeys) {
+    const tpl = invitationTemplates[key];
+    const validation = validateTemplateGraph(tpl);
+    assert.equal(validation.valid, true, `Graph validation for template ${key} failed: ${validation.error}`);
+    assert.ok(validation.reachableCount >= 4, `Template ${key} should have reachable screens`);
+  }
+
+  // 2. Creator setup and semantic response events testing
+  const email = `flow_spec_${Date.now()}@example.com`;
+  const username = `flow_spec_${Date.now()}`;
+  const client = browser();
+  const userCsrf = await register(client, username, email);
+
+  // Create an invitation with sorry template
+  const sorryRes = await client('/api/invitations', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ inviterName: 'Aarav', recipientName: 'Diya', templateId: 'sorry-make-things-right' })
+  });
+  assert.equal(sorryRes.status, 201);
+  const sorryData = await sorryRes.json();
+
+  // Publish sorry invitation
+  await client(`/api/invitations/${sorryData.id}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
+    body: JSON.stringify({ status: 'published' })
+  });
+
+  const visClient1 = browser();
+  const visId1 = `vis_sorry_${Date.now()}`;
+  await visClient1(`/api/invitations/${sorryData.token}/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ visitorId: visId1 })
+  });
+
+  // Post response_requested_space
+  const spaceEventRes = await visClient1(`/api/invitations/${sorryData.token}/events`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      visitorId: visId1,
+      eventName: 'response_requested_space',
+      screen: 'space',
+      optionValue: 'Please give me space'
+    })
+  });
+  assert.equal(spaceEventRes.status, 201);
+
+  // Check creator notifications
+  const notifRes1 = await client('/api/notifications');
+  assert.equal(notifRes1.status, 200);
+  const { notifications: notifs1 } = await notifRes1.json();
+  const spaceNotif = notifs1.find(n => n.type === 'requestedSpace');
+  assert.ok(spaceNotif, 'Should have received requestedSpace notification');
+  assert.equal(spaceNotif.icon, '🌿');
+  assert.equal(spaceNotif.title, 'Space Requested');
+
+  // Verify another session with response_ready_to_talk
+  const visClient2 = browser();
+  const visId2 = `vis_talk_${Date.now()}`;
+  await visClient2(`/api/invitations/${sorryData.token}/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ visitorId: visId2 })
+  });
+  const talkEventRes = await visClient2(`/api/invitations/${sorryData.token}/events`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      visitorId: visId2,
+      eventName: 'response_ready_to_talk',
+      screen: 'yes',
+      optionValue: "I'm ready to talk"
+    })
+  });
+  assert.equal(talkEventRes.status, 201);
+
+  const notifRes2 = await client('/api/notifications');
+  assert.equal(notifRes2.status, 200);
+  const notifs2 = (await notifRes2.json()).notifications;
+  const talkNotif = notifs2.find(n => n.type === 'readyToTalk');
+  assert.ok(talkNotif, 'Should have received readyToTalk notification');
+  assert.equal(talkNotif.icon, '🕊️');
+});

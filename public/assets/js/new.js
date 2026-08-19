@@ -62,6 +62,8 @@ function selectTemplate(id) {
     const active = card.dataset.templateId === id;
     card.classList.toggle('active', active);
     card.setAttribute('aria-pressed', active ? 'true' : 'false');
+    const badge = card.querySelector('.template-selected-badge');
+    if (badge) badge.textContent = active ? '✓ Selected' : '';
   });
   renderPreview();
 }

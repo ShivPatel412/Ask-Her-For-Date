@@ -896,7 +896,7 @@ app.get('/dashboard/invitations/new', requireUser, async (req, res) => {
     const theme = themes[t.themePreset] || themes.strawberry;
     return `<article class="new-template-card ${t.id === selected.id ? 'active' : ''}" data-template-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-pressed="${t.id === selected.id ? 'true' : 'false'}">
       <div class="new-template-swatch" style="--swatch-bg:${escapeHtml(theme.background)};--swatch-primary:${escapeHtml(theme.primary)};--swatch-secondary:${escapeHtml(theme.secondary)}"><i></i><b></b><span></span></div>
-      <div><h3>${escapeHtml(t.name)}</h3><p>${escapeHtml(t.tagline || '')}</p></div>
+      <div class="new-template-body"><div class="new-template-title-row"><h3>${escapeHtml(t.name)}</h3><span class="template-selected-badge">${t.id === selected.id ? '✓ Selected' : ''}</span></div><p>${escapeHtml(t.tagline || '')}</p></div>
       <button type="button" class="template-mini-cta" data-template-select="${escapeHtml(t.id)}">Use Template</button>
     </article>`;
   }).join('');
@@ -1551,13 +1551,38 @@ app.get('/api/notifications', requireUser, async (req, res) => {
       let message = `${name} interacted with your invitation`;
       let type = 'interaction';
 
-      if (e.event_name === 'session_start' || e.screen === 'intro' || e.event_name === 'invitation_opened') {
+      if (e.event_name === 'response_ready_to_talk') {
+        icon = '🕊️';
+        title = 'Ready to Talk';
+        message = `${name} is open to having a conversation.`;
+        type = 'readyToTalk';
+      } else if (e.event_name === 'response_requested_space') {
+        icon = '🌿';
+        title = 'Space Requested';
+        message = `${name} asked for space. Boundaries respected.`;
+        type = 'requestedSpace';
+      } else if (e.event_name === 'response_needs_time') {
+        icon = '⏳';
+        title = 'Needs More Time';
+        message = `${name} is taking time before deciding.`;
+        type = 'needsTime';
+      } else if (e.event_name === 'response_message_only') {
+        icon = '💬';
+        title = 'Message Only Preferred';
+        message = `${name} prefers chatting via text.`;
+        type = 'messageOnly';
+      } else if (e.event_name === 'response_another_plan') {
+        icon = '💭';
+        title = 'Different Plan Suggested';
+        message = `${name} requested an alternative plan.`;
+        type = 'anotherPlan';
+      } else if (e.event_name === 'session_start' || e.screen === 'intro' || e.event_name === 'invitation_opened') {
         if (!prefs.viewed) continue;
         icon = '💌';
         title = 'Invitation Opened';
         message = `${name} just opened your invitation!`;
         type = 'viewed';
-      } else if (e.event_name === 'response_yes' || e.screen === 'yes' || e.event_name === 'final_yes') {
+      } else if (e.event_name === 'response_yes' || e.screen === 'yes' || e.event_name === 'final_yes' || e.event_name === 'response_accepted') {
         if (!prefs.yes) continue;
         icon = '💖';
         title = 'She Said YES! 🎉';
@@ -1575,10 +1600,10 @@ app.get('/api/notifications', requireUser, async (req, res) => {
         title = 'Invitation Completed';
         message = `${name} finished the entire invitation journey!`;
         type = 'completed';
-      } else if (e.event_name === 'response_no' || e.screen === 'decline' || e.event_name === 'best_friend_result') {
+      } else if (e.event_name === 'response_no' || e.screen === 'decline' || e.event_name === 'best_friend_result' || e.event_name === 'response_declined') {
         icon = '🤝';
-        title = 'Best Friends Response';
-        message = `${name} responded: ${e.option_value || 'Best friends forever'}`;
+        title = 'Response Received';
+        message = `${name} responded: ${e.option_value || 'Best friends / Declined'}`;
         type = 'bestFriend';
       } else if (e.event_name === 'evasion_teleport' || e.event_name === 'evasion_triggered') {
         icon = '🏃💨';
@@ -1796,7 +1821,15 @@ app.post('/api/invitations/:token/session', publicLimit, async (req,res) => {
   const s = await db.prepare('SELECT id FROM visitor_sessions WHERE invitation_id=? AND visitor_id=?').get(inv.id,visitorId);
   res.status(201).json({visitorId,sessionId:s.id});
 });
-const allowedEvents=new Set(['invitation_opened','screen_view','button_clicked','back_to_main','nickname_selected','nickname_changed','mood_selected','mood_changed','availability_selected','main_question_view','final_yes','best_friend_result','completion','cute_item_found','tiny_mode','music_play','music_pause','evasion_triggered','evasion_teleport','evasion_error_modal','voice_note_played']);
+const allowedEvents = new Set([
+  'invitation_opened', 'screen_view', 'button_clicked', 'back_to_main',
+  'nickname_selected', 'nickname_changed', 'mood_selected', 'mood_changed',
+  'availability_selected', 'main_question_view', 'final_yes', 'best_friend_result',
+  'completion', 'cute_item_found', 'tiny_mode', 'music_play', 'music_pause',
+  'evasion_triggered', 'evasion_teleport', 'evasion_error_modal', 'voice_note_played',
+  'response_accepted', 'response_declined', 'response_needs_time', 'response_requested_space',
+  'response_message_only', 'response_ready_to_talk', 'response_another_plan'
+]);
 app.post('/api/invitations/:token/events', publicLimit, async (req,res) => {
   const inv=await db.prepare("SELECT id FROM invitations WHERE public_token=? AND status='published'").get(req.params.token); if(!inv)return res.status(404).json({error:'Not found.'});
   const visitorId=clean(req.body.visitorId,80), eventName=clean(req.body.eventName,50); if(!/^[A-Za-z0-9_-]{16,80}$/.test(visitorId)||!allowedEvents.has(eventName))return res.status(400).json({error:'Invalid event.'});
@@ -1816,16 +1849,28 @@ app.post('/api/invitations/:token/events', publicLimit, async (req,res) => {
     }
     updates.selected_availability = option;
   }
-  if(eventName==='final_yes')updates.final_result='YES ❤️';
-  if(eventName==='best_friend_result')updates.final_result='BEST FRIEND 🤝';
-  if(eventName==='completion')updates.completed=1;
-  if(eventName==='main_question_view')updates.main_question_visits=s.main_question_visits+1;
-  const keys=Object.keys(updates);
-  if(keys.length)await db.prepare(`UPDATE visitor_sessions SET ${keys.map(k=>`${k}=?`).join(',')},last_activity_at=? WHERE id=?`).run(...keys.map(k=>updates[k]),now(),s.id);
-  else await db.prepare('UPDATE visitor_sessions SET last_activity_at=? WHERE id=?').run(now(),s.id);
+  if (eventName === 'final_yes' || eventName === 'response_accepted') updates.final_result = 'YES ❤️';
+  if (eventName === 'best_friend_result' || eventName === 'response_declined') updates.final_result = 'BEST FRIEND 🤝';
+  if (eventName === 'response_needs_time') updates.final_result = 'NEEDS TIME ⏳';
+  if (eventName === 'response_requested_space') updates.final_result = 'REQUESTED SPACE 🌿';
+  if (eventName === 'response_message_only') updates.final_result = 'MESSAGE ONLY 💬';
+  if (eventName === 'response_ready_to_talk') updates.final_result = 'READY TO TALK 🕊️';
+  if (eventName === 'response_another_plan') updates.final_result = 'ANOTHER PLAN 💭';
+  if (eventName === 'completion') updates.completed = 1;
+  if (eventName === 'main_question_view') updates.main_question_visits = s.main_question_visits + 1;
+  const keys = Object.keys(updates);
+  if (keys.length) await db.prepare(`UPDATE visitor_sessions SET ${keys.map(k => `${k}=?`).join(',')},last_activity_at=? WHERE id=?`).run(...keys.map(k => updates[k]), now(), s.id);
+  else await db.prepare('UPDATE visitor_sessions SET last_activity_at=? WHERE id=?').run(now(), s.id);
   
-  if (['final_yes', 'best_friend_result', 'completion', 'availability_selected'].includes(eventName)) {
-    const eventType = eventName === 'final_yes' ? 'yes' : eventName === 'availability_selected' ? 'dateConfirmed' : 'completed';
+  if (['final_yes', 'response_accepted', 'response_ready_to_talk', 'response_needs_time', 'response_requested_space', 'response_message_only', 'response_declined', 'best_friend_result', 'completion', 'availability_selected'].includes(eventName)) {
+    const eventType = (eventName === 'final_yes' || eventName === 'response_accepted') ? 'yes'
+      : eventName === 'response_ready_to_talk' ? 'readyToTalk'
+      : eventName === 'response_needs_time' ? 'needsTime'
+      : eventName === 'response_requested_space' ? 'requestedSpace'
+      : eventName === 'response_message_only' ? 'messageOnly'
+      : eventName === 'availability_selected' ? 'dateConfirmed'
+      : (eventName === 'response_declined' || eventName === 'best_friend_result') ? 'declined'
+      : 'completed';
     try {
       await sendInvitationEmailAlert(inv.id, s.id, eventType);
     } catch {}
@@ -1834,7 +1879,7 @@ app.post('/api/invitations/:token/events', publicLimit, async (req,res) => {
 });
 
 app.get('/dashboard/invitations/:id/analytics',requireUser,async (req,res)=>{const r=await ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).send(await page('Not found.'));res.send(await page('Analytics',`<main class="analytics analytics-detail" data-id="${r.id}"><header class="page-head analytics-head"><div><nav class="analytics-breadcrumb" aria-label="Breadcrumb"><a href="/dashboard">← Dashboard</a><span>Invitation intelligence</span></nav><h1>${escapeHtml(r.recipient_name)}'s journey</h1><p>See how visitors move through the invitation and where they respond.</p></div><div class="actions"><button id="refresh" class="button ghost small">↻ Refresh</button><button id="reset" class="button danger small">Clear test data</button></div></header><div id="analytics-content" aria-live="polite"></div></main>`,req,'/assets/js/analytics.js'));});
-app.get('/api/invitations/:id/analytics',requireUser,async (req,res)=>{const r=await ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).json({error:'Not found.'});const sessions=await db.prepare('SELECT * FROM visitor_sessions WHERE invitation_id=? ORDER BY started_at DESC').all(r.id),events=await db.prepare('SELECT e.*,s.visitor_id,s.final_result FROM events e JOIN visitor_sessions s ON s.id=e.session_id WHERE e.invitation_id=? ORDER BY e.created_at ASC,e.sequence_number ASC').all(r.id);const yes=sessions.filter(s=>s.final_result?.startsWith('YES')).length,best=sessions.filter(s=>s.final_result?.startsWith('BEST')).length;res.json({summary:{views:sessions.length,uniqueSessions:sessions.length,yes,bestFriend:best,incomplete:sessions.filter(s=>!s.completed).length,revisits:sessions.reduce((n,s)=>n+Math.max(0,s.main_question_visits-1),0),averageSteps:sessions.length?Math.round(events.length/sessions.length):0,lastVisit:sessions[0]?.last_activity_at||null},sessions,events});});
+app.get('/api/invitations/:id/analytics',requireUser,async (req,res)=>{const r=await ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).json({error:'Not found.'});const sessions=await db.prepare('SELECT * FROM visitor_sessions WHERE invitation_id=? ORDER BY started_at DESC').all(r.id),events=await db.prepare('SELECT e.*,s.visitor_id,s.final_result FROM events e JOIN visitor_sessions s ON s.id=e.session_id WHERE e.invitation_id=? ORDER BY e.created_at ASC,e.sequence_number ASC').all(r.id);const yes=sessions.filter(s=>s.final_result?.startsWith('YES')||s.final_result?.startsWith('ACCEPTED')||s.final_result?.startsWith('READY')).length,best=sessions.filter(s=>s.final_result?.startsWith('BEST')||s.final_result?.startsWith('DECLINED')||s.final_result?.startsWith('REQUESTED')).length;res.json({summary:{views:sessions.length,uniqueSessions:sessions.length,yes,bestFriend:best,incomplete:sessions.filter(s=>!s.completed).length,revisits:sessions.reduce((n,s)=>n+Math.max(0,s.main_question_visits-1),0),averageSteps:sessions.length?Math.round(events.length/sessions.length):0,lastVisit:sessions[0]?.last_activity_at||null},sessions,events});});
 app.delete('/api/invitations/:id/analytics',requireUser,requireCsrf,async (req,res)=>{
   const r=await ownedInvitation(req.params.id,req.session.userId);if(!r)return res.status(404).json({error:'Not found.'});
   await db.prepare('DELETE FROM visitor_sessions WHERE invitation_id=?').run(r.id);
