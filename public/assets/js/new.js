@@ -2,26 +2,29 @@ const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const templates = JSON.parse(document.querySelector('#template-data')?.textContent || '[]');
 const form = document.querySelector('#template-form');
 const selectedInput = document.querySelector('#selected-template-id');
-const selectedLabel = document.querySelector('#selected-template-label');
 const preview = document.querySelector('#template-preview');
+const titleEl = document.querySelector('#selected-template-title');
+const descEl = document.querySelector('#selected-template-desc');
 let selectedId = selectedInput?.value || templates[0]?.id || '';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 function currentNames() {
   const data = new FormData(form);
+  const inv = (data.get('inviterName') || '').trim();
+  const rec = (data.get('recipientName') || '').trim();
   return {
-    creatorName: data.get('inviterName') || 'You',
-    inviterName: data.get('inviterName') || 'You',
-    recipientName: data.get('recipientName') || 'Favorite human',
-    nickname: data.get('recipientName') || 'Favorite human',
+    creatorName: inv || 'You',
+    inviterName: inv || 'You',
+    recipientName: rec || 'Favorite human',
+    nickname: rec || 'Favorite human',
     selectedMood: (template()?.moods || [])[0]?.title || 'Food + fun'
   };
 }
 
 function fillVars(value) {
   const vars = currentNames();
-  return String(value ?? '').replace(/{{\s*(creatorName|inviterName|recipientName|nickname|selectedMood|activity|date|time|location)\s*}}/g, (_, key) => vars[key] || '');
+  return String(value ?? '').replace(/{{s*(creatorName|inviterName|recipientName|nickname|selectedMood|activity|date|time|location)s*}}/g, (_, key) => vars[key] || '');
 }
 
 function template() {
@@ -34,20 +37,27 @@ function renderPreview() {
   const s = t.content?.main || {};
   const intro = t.content?.intro || {};
   const mood = (t.moods || [])[0] || {};
+
+  if (titleEl) titleEl.textContent = t.name;
+  if (descEl) descEl.textContent = t.tagline || '';
+
   preview.innerHTML = `
     <div class="preview-template-phone theme-${esc(t.themePreset || 'strawberry')}">
-      <span class="phone-notch"></span>
-      <small>${esc(fillVars(intro.eyebrow || t.name))}</small>
-      <h2>${esc(fillVars(s.heading || t.name))}</h2>
-      <p>${esc(fillVars(s.body || t.tagline || 'Ready to use.'))}</p>
-      <div class="preview-template-choice primary">${esc(fillVars(s.primary || 'Yes ❤️'))}</div>
-      <div class="preview-template-choice">${esc(fillVars(s.secondary || mood.title || 'Tell me more'))}</div>
-      <div class="preview-template-mood"><b>${esc(fillVars(mood.title || 'Date idea ✨'))}</b><span>${esc(fillVars(mood.description || 'Everything is already filled in.'))}</span></div>
-    </div>
-    <div class="template-preview-copy">
-      <span>Live preview</span>
-      <h2>${esc(t.name)}</h2>
-      <p>${esc(t.tagline || '')}</p>
+      <div class="phone-notch" aria-hidden="true"></div>
+      <div class="phone-screen-inner">
+        <span class="preview-card-kicker">${esc(fillVars(intro.eyebrow || 'Special Invitation 💌'))}</span>
+        <h2 class="preview-card-heading">${esc(fillVars(s.heading || t.name))}</h2>
+        <p class="preview-card-body">${esc(fillVars(s.body || t.tagline || 'Ready to use.'))}</p>
+        <div class="preview-choices-stack">
+          <div class="preview-template-choice primary">${esc(fillVars(s.primary || 'Yes ❤️'))}</div>
+          <div class="preview-template-choice">${esc(fillVars(s.secondary || mood.title || 'Tell me more 👀'))}</div>
+        </div>
+        <div class="preview-template-mood">
+          <div class="mood-pill-head"><span>✨ Featured Date Idea</span></div>
+          <b>${esc(fillVars(mood.title || 'Date idea ✨'))}</b>
+          <small>${esc(fillVars(mood.description || 'Everything is already filled in.'))}</small>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -57,13 +67,13 @@ function selectTemplate(id) {
   selectedId = id;
   selectedInput.value = id;
   const t = template();
-  if (selectedLabel) selectedLabel.textContent = t.name;
+  
   document.querySelectorAll('.new-template-card').forEach(card => {
     const active = card.dataset.templateId === id;
     card.classList.toggle('active', active);
     card.setAttribute('aria-pressed', active ? 'true' : 'false');
     const badge = card.querySelector('.template-selected-badge');
-    if (badge) badge.textContent = active ? '✓ Selected' : '';
+    if (badge) badge.textContent = active ? '✓ Active' : 'Select';
   });
   renderPreview();
 }
@@ -95,7 +105,7 @@ form?.addEventListener('submit', async event => {
   if (!response.ok) {
     alert(result.error || 'Could not create invitation.');
     submitter.disabled = false;
-    submitter.textContent = mode === 'preview' ? 'Use Template As-Is ❤️' : 'Customize Template ✨';
+    submitter.textContent = mode === 'preview' ? 'Publish As-Is 🚀' : 'Start with this Template ✨';
     return;
   }
   location.href = mode === 'preview'

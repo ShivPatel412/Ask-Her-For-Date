@@ -892,28 +892,91 @@ app.post('/dashboard/whatsapp', requireUser, requireCsrf, async (req,res)=>{
 app.get('/dashboard/invitations/new', requireUser, async (req, res) => {
   const templates = Object.values(invitationTemplates);
   const selected = templates.find(t => t.id === 'best-friend-date') || templates[0];
+  
+  const templateIcons = {
+    'classic': '❤️',
+    'best-friend-date': '👀',
+    'hinglish-proposal': '🇮🇳',
+    'funny-proposal': '😂',
+    'long-distance': '✈️',
+    'anniversary-special': '🥂',
+    'first-date': '🌹',
+    'birthday-date': '🎂',
+    'valentines-day': '💌',
+    'sorry-make-things-right': '🥺'
+  };
+
   const cards = templates.map(t => {
     const theme = themes[t.themePreset] || themes.strawberry;
-    return `<article class="new-template-card ${t.id === selected.id ? 'active' : ''}" data-template-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-pressed="${t.id === selected.id ? 'true' : 'false'}">
-      <div class="new-template-swatch" style="--swatch-bg:${escapeHtml(theme.background)};--swatch-primary:${escapeHtml(theme.primary)};--swatch-secondary:${escapeHtml(theme.secondary)}"><i></i><b></b><span></span></div>
-      <div class="new-template-body"><div class="new-template-title-row"><h3>${escapeHtml(t.name)}</h3><span class="template-selected-badge">${t.id === selected.id ? '✓ Selected' : ''}</span></div><p>${escapeHtml(t.tagline || '')}</p></div>
-      <button type="button" class="template-mini-cta" data-template-select="${escapeHtml(t.id)}">Use Template</button>
+    const icon = templateIcons[t.id] || '💌';
+    const isSel = t.id === selected.id;
+    return `<article class="new-template-card ${isSel ? 'active' : ''}" data-template-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-pressed="${isSel ? 'true' : 'false'}">
+      <div class="new-template-card-top">
+        <div class="new-template-icon-badge" style="background:${escapeHtml(theme.secondary || '#fff0f3')};color:${escapeHtml(theme.primary || '#e6496f')};">${icon}</div>
+        <span class="template-selected-badge">${isSel ? '✓ Active' : 'Select'}</span>
+      </div>
+      <div class="new-template-body">
+        <h3>${escapeHtml(t.name)}</h3>
+        <p>${escapeHtml(t.tagline || '')}</p>
+        <div class="new-template-tags">
+          <span class="tpl-tag theme-tag">${escapeHtml(t.themePreset || 'rose')}</span>
+          <span class="tpl-tag mood-tag">✨ ${(t.moods || []).length} Date Ideas</span>
+        </div>
+      </div>
     </article>`;
   }).join('');
+
   const previewData = templates.map(t => ({ id: t.id, name: t.name, tagline: t.tagline, themePreset: t.themePreset, content: t.content, moods: t.moods, features: t.features || {} }));
-  res.send(await page('New invitation', `<main class="new-wrap template-select-wrap">
-    <header><span class="eyebrow">Choose a starting point</span><h1>Create an invitation from a template</h1><p>Pick one polished flow, preview it, then either publish as-is or customize everything.</p></header>
+  
+  res.send(await page('Choose Template', `<main class="new-wrap template-select-wrap">
+    <header class="template-select-header">
+      <span class="eyebrow">✨ Curated Experiences</span>
+      <h1>Choose an Invitation Template</h1>
+      <p>Pick a predesigned romance flow, preview it live with your names, then customize or launch instantly.</p>
+    </header>
     <section class="template-select-layout">
-      <div class="template-list-panel"><div class="template-list-head"><b>10 predesigned templates</b><span id="selected-template-label">${escapeHtml(selected.name)}</span></div><div class="new-template-grid">${cards}</div></div>
+      <div class="template-list-panel">
+        <div class="template-list-head">
+          <div class="template-list-badge"><b>10 Curated Presets</b></div>
+          <span class="template-list-subhint">Click any card to preview</span>
+        </div>
+        <div class="new-template-grid">${cards}</div>
+      </div>
       <aside class="template-preview-panel">
-        <div id="template-preview" class="template-live-preview" aria-live="polite"></div>
-        <form id="template-form" class="panel stack">
+        <div class="preview-panel-header">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span class="preview-eyebrow">Interactive Live Preview</span>
+            <span class="preview-live-pill">● Live</span>
+          </div>
+          <h3 id="selected-template-title">${escapeHtml(selected.name)}</h3>
+          <p id="selected-template-desc">${escapeHtml(selected.tagline || '')}</p>
+        </div>
+
+        <div class="preview-phone-wrapper">
+          <div id="template-preview" class="template-live-preview" aria-live="polite"></div>
+        </div>
+
+        <form id="template-form" class="template-create-form">
           <input type="hidden" name="templateId" id="selected-template-id" value="${escapeHtml(selected.id)}">
-          <label>Your Name<input name="inviterName" required maxlength="60" placeholder="e.g. Vatsal"></label>
-          <label>Their Name<input name="recipientName" required maxlength="60" placeholder="e.g. Drasti"></label>
+          <div class="template-names-row">
+            <div class="form-group">
+              <label class="form-label"><span class="label-title">Your Name</span></label>
+              <input name="inviterName" id="input-inviter-name" class="form-input" required maxlength="60" placeholder="e.g. Alex" autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span class="label-title">Their Name</span></label>
+              <input name="recipientName" id="input-recipient-name" class="form-input" required maxlength="60" placeholder="e.g. Sam" autocomplete="off">
+            </div>
+          </div>
           <div class="template-action-row">
-            <button class="button primary" type="submit" data-mode="preview">Use Template As-Is ❤️</button>
-            <button class="button ghost" type="submit" data-mode="customize">Customize Template ✨</button>
+            <button class="button primary create-submit-btn" type="submit" data-mode="customize">
+              <span>Start with this Template ✨</span>
+              <small>Open editor to customize questions, dates & music</small>
+            </button>
+            <button class="button ghost create-submit-btn secondary" type="submit" data-mode="preview">
+              <span>Publish As-Is 🚀</span>
+              <small>Instant ready-to-share link</small>
+            </button>
           </div>
         </form>
       </aside>
