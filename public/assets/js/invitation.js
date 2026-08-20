@@ -461,34 +461,6 @@ function voiceNoteWidget() {
   return `<div class="voice-note-card ${state.voicePlaying ? "playing" : ""}" id="voice-note-player" role="region" aria-label="Voice note player"><button class="voice-play-btn" data-voice="toggle" type="button" aria-label="Play voice note">${state.voicePlaying ? "⏸" : "▶"}</button><div class="voice-meta"><b>🎙️ Voice note from ${esc(data.inviterName)}</b><small class="voice-status">${statusText}</small></div><div class="voice-waveform" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></div></div>`;
 }
 function musicControl() {
-  if (features.musicSource === 'spotify' && features.spotify?.embedUrl) {
-    return `
-      <div class="music-player style-spotify ${state.musicMinimized ? "minimized" : ""}" role="region" aria-label="Spotify music player">
-        <div class="music-head spotify-dock-head">
-          <button class="music-minimize" data-music="minimize" aria-label="${state.musicMinimized ? "Expand player" : "Minimize player"}">${state.musicMinimized ? "⌃" : "⌄"}</button>
-          <span class="music-cover" aria-hidden="true">🟢</span>
-          <div class="music-meta">
-            <b>${text(features.spotify.title || features.musicName || "Spotify soundtrack")}</b>
-            <small>Tap Spotify controls to play</small>
-          </div>
-          <a href="${esc(features.spotify.url || 'https://open.spotify.com')}" target="_blank" rel="noopener noreferrer" aria-label="Open in Spotify">↗</a>
-        </div>
-        <div class="spotify-embed-wrapper">
-          <iframe
-            style="border-radius:12px;border:none;"
-            src="${esc(features.spotify.embedUrl)}"
-            width="100%"
-            height="152"
-            frameborder="0"
-            allowfullscreen=""
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            title="Spotify Music">
-          </iframe>
-        </div>
-      </div>
-    `;
-  }
 
   const playlist = getPlaylist();
   const currentSong = getCurrentSong();
@@ -836,45 +808,11 @@ const btn = (label, action, kind = "") =>
   `<button class="choice ${kind}" data-action="${action}">${text(label)}</button>`;
 const copy = (obj, buttons = "") =>
   `<span class="eyebrow">${text(obj.eyebrow)}</span><h1>${text(obj.heading)}</h1>${obj.body ? `<div class="copy-note"><span>✦</span><div>${text(obj.body)}</div></div>` : ""}${buttons}`;
-function applyBackgroundCover() {
-  let bgCover = document.getElementById("bg-cover-layer");
-  if (features.coverPhoto && features.coverPhotoUrl && features.coverPhotoStyle === "full-bg") {
-    const opacity = (features.coverPhotoOverlay !== undefined ? features.coverPhotoOverlay : 40) / 100;
-    if (!bgCover) {
-      bgCover = document.createElement("div");
-      bgCover.id = "bg-cover-layer";
-      bgCover.className = "bg-cover-layer";
-      document.body.prepend(bgCover);
-    }
-    bgCover.style.cssText = `
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      background-image: linear-gradient(rgba(0,0,0,${opacity}), rgba(0,0,0,${opacity})), url('${esc(features.coverPhotoUrl)}');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      transition: opacity 0.4s ease;
-    `;
-  } else if (bgCover) {
-    bgCover.remove();
-  }
-}
-
 function render() {
   let content = "";
   const s = screens[state.screen] || screens.intro;
-  applyBackgroundCover();
   if (state.screen === "intro") {
-    let coverHtml = "";
-    if (features.coverPhoto && features.coverPhotoUrl && features.coverPhotoStyle !== "full-bg") {
-      const style = features.coverPhotoStyle || "polaroid";
-      const alt = features.coverPhotoAlt || `Romantic photo for ${data.recipientName || "you"}`;
-      const caption = features.coverPhotoCaption ? `<span class="intro-cover-caption">${text(features.coverPhotoCaption)}</span>` : "";
-      coverHtml = `<div class="intro-cover-frame style-${esc(style)}"><div class="cover-img-wrap"><img class="intro-cover-img" src="${esc(features.coverPhotoUrl)}" alt="${esc(alt)}" loading="lazy" onerror="this.closest('.intro-cover-frame')?.remove()"></div>${caption}</div>`;
-    }
-    content = `${coverHtml}${copy(s, btn(s.primary, "open", "primary"))}`;
+    content = copy(s, btn(s.primary, "open", "primary"));
   }
   if (state.screen === "analysis") content = analysisScreen();
   if (state.screen === "main") content = mainScreen();

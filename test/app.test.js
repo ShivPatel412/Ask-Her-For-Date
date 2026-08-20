@@ -564,42 +564,12 @@ test('PHASE B: Advanced Music Experience presets, volume, and playback payload',
   });
   assert.equal(updatePlaylistRes.status, 200);
 
-  // 5. Connect Spotify Track URL
-  const spotifyTrackRes = await client(`/api/invitations/${inv.id}/spotify`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
-    body: JSON.stringify({
-      spotifyUrl: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT'
-    })
-  });
-  assert.equal(spotifyTrackRes.status, 200);
-  const spotifyData = await spotifyTrackRes.json();
-  assert.equal(spotifyData.spotify.type, 'track');
-  assert.ok(spotifyData.spotify.embedUrl.includes('open.spotify.com/embed/track/'));
-
-  // 6. Reject invalid Spotify URL
-  const invalidSpotifyRes = await client(`/api/invitations/${inv.id}/spotify`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-csrf-token': userCsrf },
-    body: JSON.stringify({
-      spotifyUrl: 'https://malicious-site.com/track/12345'
-    })
-  });
-  assert.equal(invalidSpotifyRes.status, 400, 'Invalid Spotify URL domain must be rejected');
-
-  // 7. Verify preview renders Spotify embed
+  // 5. Verify multi-song playlist preview rendering
   const previewRes = await client(`/dashboard/invitations/${inv.id}/preview?embed=1`);
   const previewHtml = await previewRes.text();
-  assert.ok(previewHtml.includes('spotify.com/embed/track/'), 'Preview should contain Spotify embed iframe');
+  assert.ok(previewHtml.includes('Night Changes'), 'Preview should contain current active playlist song');
 
-  // 8. Remove Spotify
-  const removeSpotifyRes = await client(`/api/invitations/${inv.id}/spotify`, {
-    method: 'DELETE',
-    headers: { 'x-csrf-token': userCsrf }
-  });
-  assert.equal(removeSpotifyRes.status, 200);
-
-  // 9. Delete music
+  // 6. Delete music
   const delRes = await client(`/api/invitations/${inv.id}/music`, {
     method: 'DELETE',
     headers: { 'x-csrf-token': userCsrf }

@@ -1,3 +1,39 @@
+
+async function addPresetSoundscape(presetKey, presetName) {
+  document.querySelector('#save-status').textContent = 'Adding song…';
+  try {
+    let r = await fetch(`/api/invitations/${id}/tracks`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+      body: JSON.stringify({
+        title: presetName,
+        name: presetName,
+        url: presetKey,
+        sourceType: 'preset',
+        startTime: 0,
+        endTime: null
+      })
+    });
+    let out = await r.json().catch(() => ({}));
+    if (!r.ok) return toast(out.error || 'Could not add preset song.');
+    state.features.music = true;
+    state.features.playlist = out.playlist || out.tracks || [];
+    state.features.tracks = state.features.playlist;
+    const defaultTrack = state.features.playlist.find(s => s.default) || state.features.playlist[0];
+    if (defaultTrack) {
+      state.features.musicUrl = defaultTrack.url;
+      state.features.musicName = defaultTrack.name || defaultTrack.title;
+      state.features.musicStartOffset = defaultTrack.startTime;
+    }
+    document.querySelector('#save-status').textContent = '✓ Saved just now';
+    render();
+    preview.src = preview.src.split('?')[0] + `?embed=1&t=${Date.now()}`;
+    toast(`Added "${presetName}" to playlist ♫`);
+  } catch {
+    toast('Failed to add preset song.');
+  }
+}
+
 const root = document.querySelector('#builder');
 const id = root.dataset.id;
 const controls = document.querySelector('#controls');
@@ -123,9 +159,9 @@ const BUILDER_STEPS = [
   { id: 2, key: 'template', title: 'Template', subtitle: 'Occasion preset', icon: '2' },
   { id: 3, key: 'design', title: 'Design', subtitle: 'Colors & theme', icon: '3' },
   { id: 4, key: 'content', title: 'Content', subtitle: 'Questions & copy', icon: '4' },
-  { id: 5, key: 'photos', title: 'Photos', subtitle: 'Cover & memories', icon: '5' },
+  { id: 5, key: 'photos', title: 'Story', subtitle: 'Memories timeline', icon: '5' },
   { id: 6, key: 'features', title: 'Features', subtitle: 'Dates & mascots', icon: '6' },
-  { id: 7, key: 'music', title: 'Music', subtitle: 'Songs & sounds', icon: '7' },
+  { id: 7, key: 'music', title: 'Music', subtitle: 'Soundtrack playlist', icon: '7' },
   { id: 8, key: 'publish', title: 'Review', subtitle: 'Finalize invite', icon: '8' }
 ];
 
@@ -533,70 +569,15 @@ function render() {
       </div>
     </section>
 
-    <!-- STEP 5: PHOTOS & MEMORIES -->
+    <!-- STEP 5: OUR STORY & MEMORIES -->
     <section class="step-panel ${currentStep === 5 ? 'active' : ''}" id="step-panel-5" data-step="5" role="tabpanel" aria-labelledby="step-tab-5" ${currentStep === 5 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 5 of 8 · Photos & Memories</span>
-        <h2>Cover Photo & Our Story</h2>
-        <p>Add a personal cover photo and memorable timeline moments.</p>
+        <span class="step-kicker">Step 5 of 8 · Memories Timeline</span>
+        <h2>Our Story & Memories</h2>
+        <p>Add memorable moments, photos, and milestone dates leading up to your date ask.</p>
       </div>
       <div class="step-panel-body">
         <div class="editor-section-card">
-          <div class="editor-section-card-header">
-            <h3>Cover Photo & Intro Visual</h3>
-          </div>
-          ${customToggle('Show visual photo / background', 'features.coverPhoto', f.coverPhoto, 'Displays a photo on the intro opening screen')}
-          
-          <div class="form-group" style="margin-top:14px;">
-            <label class="form-label">
-              <span class="label-title">Display Presentation Style</span>
-              <small class="label-helper">Choose how your photo appears in the invitation</small>
-            </label>
-            <select data-path="features.coverPhotoStyle" class="form-select">
-              <option value="polaroid" ${(f.coverPhotoStyle || 'polaroid') === 'polaroid' ? 'selected' : ''}>📸 Romantic Polaroid (with caption & tilt)</option>
-              <option value="hero" ${f.coverPhotoStyle === 'hero' ? 'selected' : ''}>🖼️ Hero Banner (clean & prominent)</option>
-              <option value="full-bg" ${f.coverPhotoStyle === 'full-bg' ? 'selected' : ''}>🌌 Full Background (with contrast protection)</option>
-              <option value="memory-card" ${f.coverPhotoStyle === 'memory-card' ? 'selected' : ''}>💌 Memory Card (soft glass frame)</option>
-              <option value="circular" ${f.coverPhotoStyle === 'circular' ? 'selected' : ''}>⭕ Circular Photo (with glowing ring)</option>
-            </select>
-          </div>
-
-          ${formField('Photo Caption / Note (optional)', 'features.coverPhotoCaption', f.coverPhotoCaption || '', 'Shown under Polaroid & card styles', 'text', 'e.g. Our favorite memory ✨')}
-          ${formField('Accessibility Alt Text (optional)', 'features.coverPhotoAlt', f.coverPhotoAlt || '', 'Screen reader description', 'text', 'e.g. Us laughing together at the cafe')}
-
-          <div class="form-group">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span class="label-title">Background Overlay Tint</span>
-              <span id="cover-overlay-label" style="font-size:0.82rem;font-weight:700;color:var(--color-primary);">${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}%</span>
-            </div>
-            <input data-path="features.coverPhotoOverlay" type="range" min="10" max="85" value="${f.coverPhotoOverlay !== undefined ? f.coverPhotoOverlay : 40}" class="form-range">
-            <small class="label-helper" style="display:block;margin-top:4px;">Protects text readability over high-contrast photos.</small>
-          </div>
-
-          <div class="modern-upload-card" id="cover-dropzone">
-            <div class="upload-icon-circle">🖼️</div>
-            <h4>${f.coverPhotoUrl ? 'Replace Cover Photo' : 'Upload Cover Photo'}</h4>
-            <p>JPG, PNG, WebP or GIF · max 5 MB</p>
-            <label class="button primary small upload-btn-label">
-              <span id="cover-upload-copy">${f.coverPhotoUrl ? 'Change Photo' : 'Choose Photo'}</span>
-              <input id="cover-file" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" hidden>
-            </label>
-            <small class="drag-hint">or drag and drop file here</small>
-          </div>
-
-          ${f.coverPhotoUrl ? `
-            <div class="cover-current-card">
-              <img src="${esc(f.coverPhotoUrl)}" alt="${esc(f.coverPhotoAlt || 'Cover preview')}" class="cover-thumbnail">
-              <div class="cover-meta">
-                <b>Photo active (${f.coverPhotoStyle || 'polaroid'})</b>
-                <small>${esc(f.coverPhotoCaption || 'Opening screen visual')}</small>
-              </div>
-              <button id="remove-cover" class="icon-button danger-icon" type="button" aria-label="Remove photo">×</button>
-            </div>
-          ` : ''}
-        </div>
-
-        <div class="editor-section-card" style="margin-top:20px;">
           <div class="editor-section-card-header">
             <h3>Our Story & Memories Scrapbook</h3>
           </div>
@@ -714,8 +695,8 @@ function render() {
     <section class="step-panel ${currentStep === 7 ? 'active' : ''}" id="step-panel-7" data-step="7" role="tabpanel" aria-labelledby="step-tab-7" ${currentStep === 7 ? '' : 'hidden'}>
       <div class="step-panel-header">
         <span class="step-kicker">Step 7 of 8 · Music & Sound</span>
-        <h2>Soundtracks & Voice Note</h2>
-        <p>Connect a Spotify track and optionally add a personal voice note.</p>
+        <h2>Background Soundtrack & Voice Note</h2>
+        <p>Add multiple romantic songs, custom uploads, soundscape presets, and your personal voice note.</p>
       </div>
       <div class="step-panel-body">
         <div class="editor-section-card">
@@ -724,36 +705,112 @@ function render() {
           </div>
           ${customToggle('Enable background music', 'features.music', f.music, 'Starts gracefully when the invitation is opened (never forceful autoplay)')}
 
-          <div class="music-source-segmented-tabs" style="margin:14px 0;">
-            <button type="button" class="source-tab-btn active set-music-source" data-source="spotify">
-              🟢 Spotify
-            </button>
+          <!-- Volume & Settings -->
+          <div class="form-group" style="margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span class="label-title">Default Playback Volume</span>
+              <span id="music-volume-label" style="font-size:0.82rem;font-weight:700;color:var(--color-primary);">${f.musicVolume !== undefined ? f.musicVolume : 35}%</span>
+            </div>
+            <input data-path="features.musicVolume" type="range" min="5" max="100" value="${f.musicVolume !== undefined ? f.musicVolume : 35}" class="form-range" id="music-volume-slider">
           </div>
 
-          <div class="spotify-builder-card">
-              <div class="form-group">
-                <label class="form-label">
-                  <span class="label-title">Paste Spotify Track / Album / Playlist Link</span>
-                </label>
-                <div style="display:flex;gap:8px;">
-                  <input id="spotify-url-input" value="${esc(f.spotify?.url || '')}" placeholder="https://open.spotify.com/track/..." class="form-input" style="flex:1;">
-                  <button type="button" class="button primary small" id="apply-spotify-btn">Link</button>
-                </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="form-group">
+              <label class="form-label"><span class="label-title">Playback Mode</span></label>
+              <select data-path="features.musicPlaybackMode" class="form-select">
+                <option value="playlist" ${(f.musicPlaybackMode || 'playlist') === 'playlist' ? 'selected' : ''}>🔁 Loop Entire Playlist</option>
+                <option value="loop-track" ${f.musicPlaybackMode === 'loop-track' ? 'selected' : ''}>🔂 Loop Single Song</option>
+                <option value="once" ${f.musicPlaybackMode === 'once' ? 'selected' : ''}>⏹ Play Once & Stop</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span class="label-title">Player Style</span></label>
+              <select data-path="features.musicPlayerStyle" class="form-select">
+                <option value="romantic" ${(f.musicPlayerStyle || 'romantic') === 'romantic' ? 'selected' : ''}>💖 Floating Romantic Dock</option>
+                <option value="pill" ${f.musicPlayerStyle === 'pill' ? 'selected' : ''}>💊 Modern Sleek Pill</option>
+                <option value="minimal" ${f.musicPlayerStyle === 'minimal' ? 'selected' : ''}>🎵 Minimal Icon</option>
+                <option value="ambient" ${f.musicPlayerStyle === 'ambient' ? 'selected' : ''}>✨ Ambient Icon</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <label class="form-label"><span class="label-title">Player Position</span></label>
+            <select data-path="features.musicPlayerPosition" class="form-select">
+              <option value="bottom-right" ${(f.musicPlayerPosition || 'bottom-right') === 'bottom-right' ? 'selected' : ''}>↘ Bottom Right</option>
+              <option value="bottom-left" ${f.musicPlayerPosition === 'bottom-left' ? 'selected' : ''}>↙ Bottom Left</option>
+              <option value="top-right" ${f.musicPlayerPosition === 'top-right' ? 'selected' : ''}>↗ Top Right</option>
+              <option value="bottom-center" ${f.musicPlayerPosition === 'bottom-center' ? 'selected' : ''}>⬇ Bottom Center</option>
+            </select>
+          </div>
+
+          <!-- Multi-Song Playlist -->
+          <div class="playlist-manager" style="margin-top:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span class="label-title" style="font-size:0.92rem;font-weight:700;">Songs Playlist (${(f.playlist || []).length} song${(f.playlist || []).length === 1 ? '' : 's'})</span>
+              <span style="font-size:0.75rem;color:var(--color-text-muted);">Supports multiple songs</span>
+            </div>
+
+            <!-- Upload Custom Song Card -->
+            <div class="modern-upload-card mini" style="margin-bottom:14px;">
+              <div class="upload-icon-circle mini">🎵</div>
+              <h4>Upload Audio Song</h4>
+              <p>MP3, M4A, OGG, WAV · max 15 MB</p>
+              <label class="button primary small upload-btn-label">
+                <span id="music-upload-copy">+ Add Audio File</span>
+                <input id="music-file" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*" hidden>
+              </label>
+            </div>
+
+            <!-- Preset Soundscapes Quick Add -->
+            <div class="presets-quick-add" style="margin-bottom:16px;">
+              <span class="label-helper" style="display:block;margin-bottom:6px;font-weight:600;">Or add romantic preset soundscapes:</span>
+              <div class="presets-chip-grid" style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${[
+                  { key: 'preset:piano', name: 'Piano Serenade 🎹' },
+                  { key: 'preset:acoustic', name: 'Acoustic Sunset 🎸' },
+                  { key: 'preset:jazz', name: 'Midnight Jazz 🎷' },
+                  { key: 'preset:lofi', name: 'Lo-fi Romance 🎧' },
+                  { key: 'preset:ukulele', name: 'Sweet Ukulele ☀️' },
+                  { key: 'preset:ballad', name: 'Emotional Strings 🎻' },
+                  { key: 'preset:dreamy', name: 'Celestial Starlight ✨' }
+                ].map(p => `
+                  <button type="button" class="button small ghost add-preset-track-btn" data-preset-key="${p.key}" data-preset-name="${p.name}">
+                    + ${p.name}
+                  </button>
+                `).join('')}
               </div>
-              ${f.spotify?.embedUrl ? `
-                <div class="spotify-preview-card" style="margin-top:10px;">
-                  <iframe src="${esc(f.spotify.embedUrl)}" width="100%" height="152" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="border-radius:12px;border:none;"></iframe>
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-                    <small style="color:#166534;font-weight:600;">✓ Spotify embed connected · Official controls</small>
-                    <button type="button" class="button danger small" id="remove-spotify-btn">Remove</button>
+            </div>
+
+            <!-- Track List items -->
+            <div class="playlist-items-list" id="playlist-tracks-container">
+              ${(f.playlist || []).map((t, idx) => `
+                <div class="playlist-track-item ${t.default ? 'is-default' : ''}" data-track-id="${t.id}" data-track-idx="${idx}" style="padding:12px;background:var(--color-card-bg,#fff);border:1px solid var(--color-border,#e5e7eb);border-radius:12px;margin-bottom:8px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                      <span class="track-number-badge" style="font-size:0.75rem;font-weight:700;color:var(--color-primary);background:var(--color-primary-soft, rgba(230,73,111,0.1));padding:2px 8px;border-radius:20px;">#${idx + 1}</span>
+                      <div style="min-width:0;flex:1;">
+                        <b style="display:block;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.name || t.title || 'Song')}</b>
+                        <small style="color:var(--color-text-muted);font-size:0.75rem;">${t.url?.startsWith('preset:') ? 'Preset Soundscape' : 'Uploaded Audio'} ${t.default ? '· ★ Starting Song' : ''}</small>
+                      </div>
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                      <button type="button" class="button small ${t.default ? 'primary' : 'ghost'} set-default-track-btn" data-track-idx="${idx}">
+                        ${t.default ? '★ Active' : 'Set Default'}
+                      </button>
+                      <button type="button" class="button small ghost move-track-btn" data-track-move="up" data-track-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+                      <button type="button" class="button small ghost move-track-btn" data-track-move="down" data-track-idx="${idx}" ${idx === ((f.playlist || []).length - 1) ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+                      <button type="button" class="icon-button danger-icon remove-track-btn" data-track-idx="${idx}" data-track-id="${t.id}" aria-label="Remove song">×</button>
+                    </div>
                   </div>
                 </div>
+              `).join('')}
+              ${(f.playlist || []).length === 0 ? `
+                <div style="padding:16px;text-align:center;background:var(--color-secondary,#f9fafb);border-radius:12px;border:1px dashed var(--color-border,#e5e7eb);color:var(--color-text-muted);font-size:0.85rem;">
+                  No songs in playlist yet. Upload an audio song above or pick a romantic preset soundscape! 🎶
+                </div>
               ` : ''}
-              <p class="hint" style="margin:8px 0 0;font-size:0.75rem;color:#166534;">Spotify uses the official player, so playback and volume are controlled by Spotify after the recipient taps play.</p>
             </div>
-          <div class="music-tip" style="margin-top:14px;">
-            <span>ⓘ</span>
-            <div><b>Recipient controls playback</b><br>Spotify does not allow websites to force autoplay or set volume. The player appears as a draggable, minimizable dock on the public invitation.</div>
           </div>
         </div>
 
