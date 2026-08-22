@@ -16,29 +16,108 @@ const fonts = {
 };
 
 const defaultContent = {
-  intro: { eyebrow: 'Hey {{recipientName}} 👀', heading: 'I made something for you…', body: 'Made with way too much overthinking 😂', primary: 'Open it 👀' },
-  main: { eyebrow: 'Okay, ab main point pe aate hain… 👀', heading: 'Will you go on a date with me?', body: "I really enjoy spending time with you, and I've been wanting to ask you this for a while.", primary: 'Haan, chalo 😌', secondary: 'Hmm… sochna padega 👀', tertiary: 'Convince me 😏' },
-  thinking: { eyebrow: '← Ek baar question fir se dekh le? 👀', heading: 'One cute date? That’s it. 😌', body: 'No awkward pressure. Just food, fun, and me behaving (mostly). 😂', primary: 'Achha theek hai 😂', secondary: 'Pehle plan batao 👀', tertiary: 'Aur convince karo 😏', quaternary: 'Still thinking 🤭' },
-  convince: { eyebrow: '← Accha accha, options fir se dikhao 😌', heading: 'Okay {{nickname}}, presentation starts now. 😂', body: 'Why you should say yes:', primary: 'Fineee, yes 😂❤️', secondary: 'Date idea dikhao 👀', tertiary: 'Hmm, aur effort chahiye 😏' },
-  benefits: { eyebrow: '← Restart the drama 😂', heading: 'DATE BENEFITS PACKAGE™', body: 'Prepared specially for {{nickname}} 😂', primary: 'Okay okay, yes 😂❤️', secondary: 'Plan batao pehle 😌', tertiary: 'Still not convinced 😏' },
-  mood: { eyebrow: '← Main question, please 😏', heading: 'Okay {{nickname}}, pick your mood 👀', body: 'You choose the vibe… baaki planning meri. 😌❤️', primary: 'Continue 👀', secondary: '← Pick another vibe' },
-  finalAttempt: { eyebrow: '← Okay, ek aur chance do 😭😂', heading: 'Okay okay… I see how it is. 😂', body: 'One proper date. No big promises. No awkward expectations. Just you, me, food, and a good time. 😌', primary: 'Chal theek hai, date pe chalte hain 😂', secondary: 'Surprise me 😏', tertiary: 'Best friend hi theek hai 😂' },
-  yes: { eyebrow: 'WAIT.', heading: "IT'S A DATE.", body: 'Okay wow. This actually worked. 😂', primary: 'Okay, ab plan karte hain 👀' },
-  availability: { eyebrow: 'One last thing', heading: 'Pick our date & time 👀', body: 'Choose the exact moment and I’ll handle the rest. 😌', primary: 'Confirm date & time ❤️' },
-  success: { eyebrow: 'Perfect. 😌', heading: 'Baaki planning meri.', body: 'You picked the timing. You picked the vibe. You just have to show up. 😂', primary: 'Okay, ab plan karte hain 👀' },
-  decline: { eyebrow: 'Hahaha, okay. 😭😂', heading: 'Best-friend privileges remain fully active. 🤝', body: "Message received. No awkwardness. No pressure.\nUnlimited bakwaas, food plans, memes, and annoying each other continue as usual. 😂\n\nI'm still glad I asked.", primary: 'Done 🤝' },
-  secret: { heading: 'Jokes apart…', body: "I made all this because asking you with a boring text didn't feel right.\nWhatever happens, you're someone I genuinely love spending time with.\nAnd I'm really happy you said yes. ❤️", primary: 'Okay bas, emotional mat ho 😂' }
+  intro: {
+    eyebrow: 'Hey {{recipientName}} 👀',
+    heading: 'I made something for you…',
+    body: 'Made with way too much overthinking 😅',
+    primary: 'Open it 👀'
+  },
+  main: {
+    eyebrow: 'Special question ✨',
+    heading: 'Will you go on a date with me?',
+    body: 'I really enjoy spending time with you',
+    primary: 'Haan, chalo 😌',
+    secondary: 'Hmm… sochna padega 👀',
+    tertiary: 'Convince me 🙃',
+    quaternary: 'Pehle plan batao 👀'
+  },
+  thinking: {
+    eyebrow: 'Back',
+    heading: 'One cute date. No pressure.',
+    body: 'Just food, fun and good conversation.',
+    primary: 'Achha, theek hai 💖',
+    secondary: 'Date ideas dikhao 👀',
+    tertiary: 'Aur convince karo 🙃',
+    quaternary: 'Still thinking 🤔'
+  },
+  convince: {
+    eyebrow: 'Back',
+    heading: 'Why you should say yes',
+    body: 'Here is why saying yes is the best decision of your week:',
+    primary: 'Fine, yes 😂💖',
+    secondary: 'Benefits batao 🎁',
+    tertiary: 'Plan batao',
+    quaternary: 'Still not convinced'
+  },
+  benefits: {
+    eyebrow: 'Back',
+    heading: 'DATE BENEFITS',
+    body: 'Everything is planned so you just have to relax and enjoy:',
+    primary: 'Okay okay, yes 💖',
+    secondary: 'One last try'
+  },
+  mood: {
+    eyebrow: 'Back',
+    heading: 'CHOOSE DATE VIBE',
+    body: 'Pick the vibe you like best… baaki planning meri. 😌❤️',
+    primary: 'Continue',
+    secondary: 'Choose another'
+  },
+  finalAttempt: {
+    eyebrow: 'Return to question',
+    heading: 'No jokes now—choose what feels right for you.',
+    body: 'No awkward pressure. Just be honest and choose what feels right.',
+    primary: 'Chal theek hai! 💖',
+    secondary: 'Surprise me 🎁',
+    tertiary: 'I need more time',
+    quaternary: "Let's stay friends 💛",
+    quinary: 'No, thank you'
+  },
+  needsTime: {
+    eyebrow: 'Choice Respected 🌿',
+    heading: 'Take all the time you need.',
+    body: 'Thank you for being honest. No pressure and no rush.',
+    primary: 'Send response'
+  },
+  yes: {
+    eyebrow: 'YES CELEBRATION 🎉',
+    heading: "IT'S A DATE! 💖",
+    body: 'Okay wow. This actually worked. 😂❤️',
+    primary: 'Choose date and time',
+    secondary: 'Let {{inviterName}} plan it'
+  },
+  availability: {
+    eyebrow: 'One last thing',
+    heading: 'Pick our date & time 👀',
+    body: 'Choose the exact moment and I’ll handle the rest. 😌',
+    primary: 'Confirm our date'
+  },
+  success: {
+    eyebrow: 'Official Date Pass 💖',
+    heading: 'Baaki planning meri.',
+    body: 'You picked the timing. You picked the vibe. You just have to show up. 😂❤️',
+    primary: 'Done'
+  },
+  decline: {
+    eyebrow: 'Choice Respected 🤝',
+    heading: 'No pressure and no awkwardness.',
+    body: "Message received. No awkwardness. No pressure.\\nUnlimited friendship, memes, and fun continue as usual. 🤝\\n\\nI'm still glad I asked.",
+    primary: 'Send response'
+  },
+  secret: {
+    heading: 'Jokes apart…',
+    body: "I made all this because asking you with a boring text didn't feel right.\\nWhatever happens, you're someone I genuinely love spending time with.\\nAnd I'm really happy you said yes. ❤️",
+    primary: 'Close'
+  }
 };
 
-const favoriteMood = { title: 'Long Drive + Food 🚗🍟', description: 'Good playlist, long talks, and snacks.', favorite: true };
+const favoriteMood = { title: 'Dinner + Dessert 🍝', description: 'Food first. Everything else later.', favorite: true };
 const moods = [
   favoriteMood,
   { title: 'Coffee + Walk ☕', description: 'Good conversations + long walk' },
-  { title: 'Dinner + Dessert 🍝', description: 'Food first. Everything else later.' },
-  { title: 'Movie + Food 🎬', description: "We can judge each other's movie taste 😂" },
-  { title: 'Fun Activity 🎳', description: 'Loser buys dessert.' },
-  { title: 'Drinks + Party 🍸🎉', description: 'Music + drinks + questionable dancing 😂' },
-  { title: 'Surprise Me ✨', description: 'Dangerous amount of trust 👀' }
+  { title: 'Movie + Food 🎬', description: 'Movie, popcorn, and judging movie taste 😂' },
+  { title: 'Long Drive 🚗', description: 'Good music playlist and open roads' },
+  { title: 'Surprise Me ✨', description: 'You leave all the planning to me 😌' }
 ];
 
 const musicPresets = [

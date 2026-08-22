@@ -1,3 +1,19 @@
+
+function needsTimeScreen() {
+  const s = screens.needsTime || { eyebrow: "Choice Respected 🌿", heading: "Take all the time you need.", body: "Thank you for being honest. No pressure and no rush.", primary: "Send response" };
+  return `
+    <button class="back" data-action="main">← Go back</button>
+    <span class="eyebrow">${text(s.eyebrow)}</span>
+    <h1>${text(s.heading)}</h1>
+    <div class="copy-note"><span>🌿</span><div>${text(s.body)}</div></div>
+    <div class="status-chip">✓ Boundaries respected · No pressure</div>
+    <div class="action-stack" style="margin-top:20px;">
+      <button type="button" class="choice primary" data-action="sendNeedsTime">${text(s.primary)}</button>
+      <button type="button" class="choice ghost" data-action="main">Go back</button>
+    </div>
+  `;
+}
+
 const data = JSON.parse(document.querySelector("#invitation-data").textContent),
   app = document.querySelector("#app");
 const screens = data.content?.screens || data.content || {},
@@ -821,7 +837,8 @@ function render() {
   if (state.screen === "convince") content = convinceScreen();
   if (state.screen === "benefits") content = benefitsScreen();
   if (state.screen === "mood") content = moodScreen();
-  if (state.screen === "moodConfirm")
+  if (state.screen === "moodConfirm") content = `<button class="back" data-action="mood">← Back</button><span class="eyebrow">DATE VIBE SELECTED ✓</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div><div class="action-stack">${btn(screens.mood?.primary || "Continue", "yes", "primary")}${btn(screens.mood?.secondary || "Choose another", "mood")}</div>`;
+  if (state.screen === "needsTime") content = needsTimeScreen();
     content = `<span class="eyebrow">Option chosen ✨</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div><div class="action-stack">${btn(screens.mood?.primary || "Continue", "yes", "primary")}${btn(screens.mood?.secondary || "← Choose another option", "mood")}</div>`;
   if (state.screen === "finalAttempt") content = finalAttemptScreen();
   if (state.screen === "yes") content = yesScreen();
@@ -851,16 +868,16 @@ function render() {
 function thinkingScreen() {
   const s = screens.thinking;
   if (features.respectfulMode) {
-    return `${back(s.eyebrow || "← Back")}${copy({ ...s, eyebrow: "" })}<div class="action-stack">${btn(s.primary, "readyToTalk", "primary")}${btn(s.secondary, "needsTime", "respect")}${btn(s.tertiary, "requestSpace", "ghost")}${s.quaternary ? btn(s.quaternary, "benefits") : ""}</div>`;
+    return `${back(s.eyebrow || "Back")}${copy({ ...s, eyebrow: "" })}<div class="action-stack">${btn(s.primary, "readyToTalk", "primary")}${btn(s.secondary, "needsTime", "respect")}${btn(s.tertiary, "requestSpace", "ghost")}${s.quaternary ? btn(s.quaternary, "benefits") : ""}</div>`;
   }
-  return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="talk-points"><span>🥹 Come on ${text(state.nickname)}… ek date hi toh maang raha hoon</span><span>✨ I promise, achhi jagah leke jaunga</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "convince")}${btn(s.quaternary, "finalAttempt")}</div>`;
+  return `${back(s.eyebrow || "Back")}${copy({ ...s, eyebrow: "" })}<div class="talk-points"><span>🥹 Come on ${text(state.nickname)}… ek date hi toh maang raha hoon</span><span>✨ I promise, achhi jagah leke jaunga</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "convince")}${btn(s.quaternary, "finalAttempt")}</div>`;
 }
 function convinceScreen() {
   const s = screens.convince;
   if (features.respectfulMode) {
-    return `${back(s.eyebrow || "← Back")}${copy({ ...s, eyebrow: "" })}<div class="action-stack">${btn(s.primary, "readyToTalk", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "requestSpace", "ghost")}</div>`;
+    return `${back(s.eyebrow || "Back")}${copy({ ...s, eyebrow: "" })}<div class="action-stack">${btn(s.primary, "readyToTalk", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "requestSpace", "ghost")}</div>`;
   }
-  return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="reason-grid"><span><b>😌</b>Good company</span><span><b>🍕</b>Food involved</span><span><b>😂</b>Unlimited bakwaas</span><span><b>👀</b>Zero boring moments</span><span class="wide"><b>❤️</b>I really want to take YOU out</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "benefits")}</div>`;
+  return `${back(s.eyebrow || "Back")}${copy({ ...s, eyebrow: "" })}<div class="reason-grid"><span><b>😌</b>Good company</span><span><b>🍕</b>Food involved</span><span><b>😂</b>Unlimited bakwaas</span><span><b>👀</b>Zero boring moments</span><span class="wide"><b>❤️</b>I really want to take YOU out</span></div><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "benefits")}${s.tertiary ? btn(s.tertiary, "mood") : ""}${s.quaternary ? btn(s.quaternary, "finalAttempt") : ""}</div>`;
 }
 function spaceScreen() {
   return `
@@ -916,38 +933,19 @@ function memoriesScreen() {
 }
 function finalAttemptScreen() {
   const s = screens.finalAttempt;
-  if (features.respectfulMode) {
-    return `<span class="eyebrow">${text(s.eyebrow)}</span><h1 class="closing-question">${text(s.heading)}</h1><div class="copy-note"><span>💐</span><div>${text(s.body)}</div></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "decline", "respect")}${btn(s.tertiary, "decline", "ghost")}</div>`;
-  }
-  const isEvasion = state.evasionStage >= 1;
-  const yesScale = state.evasionStage === 1 ? 1.08 : state.evasionStage >= 2 ? 1.15 : 1;
-  const yesClass = isEvasion ? "primary evasion-growing-yes" : "primary";
-  const yesStyle = isEvasion ? `style="--yes-scale:${yesScale};"` : "";
-
-  const progressiveLabels = [
-    s.tertiary || "Nahi yaar 😜",
-    "Are you sure? 🥺",
-    "Think again 😭",
-    "Nice try 😂🏃💨",
-    "Getting shy now 👀",
-    "Okay okay... 😌"
-  ];
-
-  let rejectBtnText = progressiveLabels[Math.min(state.evasionStage, progressiveLabels.length - 1)];
-  let rejectBtnClass = "respect";
-  let rejectBtnAction = "rejectAttempt";
-  if (state.evasionStage >= 1) {
-    rejectBtnClass = "respect evasion-teleport sneaky-slide";
-  }
-
-  const showDeclineLink = state.evasionStage >= 2;
-  const isFourthAttempt = state.evasionStage >= 4;
-
-  if (isFourthAttempt) {
-    return `<div class="retro-error-card" role="alertdialog" aria-modal="true" aria-labelledby="retro-error-title"><div class="retro-error-head"><div class="retro-error-traffic"><span class="t-red"></span><span class="t-yellow"></span><span class="t-green"></span></div><span class="retro-error-badge">404 Exception</span></div><div class="retro-error-body"><span class="retro-error-code">404</span><h2 id="retro-error-title" class="retro-error-title">Button Disappeared! 🏃💨</h2><p class="retro-error-msg">The "No" button has officially evaporated from the space-time continuum. It was never meant to be clicked anyway. 😂</p><div class="retro-error-actions"><button class="choice primary retro-retry-btn" data-action="yes" type="button">Haan, theek hai maan gayi 😂❤️</button><button class="choice respect retro-besties-btn" data-action="forceDecline" type="button">Still Best Friends 🤝</button></div></div></div>`;
-  }
-
-  return `<span class="eyebrow">${text(s.eyebrow)}</span><h1 class="closing-question">${text(s.heading)}</h1><div class="copy-note"><span>🧸</span><div>${text(s.body)}</div></div><div class="question-actions evasion-container"><button class="choice ${yesClass}" data-action="yes" ${yesStyle}>${text(s.primary)}</button><button class="choice ${rejectBtnClass}" data-action="${rejectBtnAction}" type="button">${text(rejectBtnText)}</button>${showDeclineLink ? `<button class="fallback-friend-link" data-action="decline" type="button">Sach mein best friend hi rehna hai? 🤝</button>` : ""}</div>`;
+  return `
+    <button class="back" data-action="main">${text(s.eyebrow || "Return to question")}</button>
+    <span class="eyebrow">FINAL PLAYFUL QUESTION ✨</span>
+    <h1 class="closing-question">${text(s.heading)}</h1>
+    <div class="copy-note"><span>🧸</span><div>${text(s.body)}</div></div>
+    <div class="action-stack" style="margin-top:16px;">
+      ${btn(s.primary || "Chal theek hai! 💖", "yes", "primary")}
+      ${s.secondary ? btn(s.secondary, "surpriseYes", "primary") : ""}
+      ${s.tertiary ? btn(s.tertiary, "needsTime", "respect") : ""}
+      ${s.quaternary ? btn(s.quaternary, "decline", "ghost") : ""}
+      ${s.quinary ? btn(s.quinary, "decline", "ghost") : ""}
+    </div>
+  `;
 }
 function back(label) {
   return `<button class="back" data-action="main">${text(label)}</button>`;
@@ -969,24 +967,19 @@ function mainScreen() {
     ? btn(`📸 Our Memories (${features.memoriesList.length})`, "memories", "ghost")
     : "";
   if (features.respectfulMode) {
-    return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>💐</span><div>${text(s.body)}</div></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "decline", "respect")}${btn(s.tertiary, "decline", "ghost")}${memoriesBtn}</div>`;
+    return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>💐</span><div>${text(s.body)}</div></div><div class="question-actions">${btn(s.primary, "readyToTalk", "primary")}${btn(s.secondary, "needsTime", "respect")}${btn(s.tertiary, "requestSpace", "ghost")}${memoriesBtn}</div>`;
   }
-  return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>✉️</span><div>${text(s.body)}</div></div><div class="love-envelope" aria-hidden="true"><i></i><span>✦</span></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "thinking")}${btn(s.tertiary, "convince")}${memoriesBtn}</div>`;
+  return `<span class="eyebrow">${text(revisit)}</span><h1>${text(s.heading)}</h1><div class="copy-note"><span>✉️</span><div>${text(s.body)}</div></div><div class="love-envelope" aria-hidden="true"><i></i><span>✦</span></div><div class="question-actions">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "thinking")}${btn(s.tertiary, "convince")}${s.quaternary ? btn(s.quaternary, "mood") : ""}${memoriesBtn}</div>`;
 }
 function benefitsScreen() {
-  const s = screens.benefits,
-    items = [
-      ["🍕", "Your favorite food"],
-      ["👀", "My full attention"],
-      ["😂", "Unlimited gossip"],
-      ["🎤", "Terrible jokes included free"],
-      ["🍰", "Dessert is mandatory"],
-      ["🧸", "Cute things may become yours"],
-      ["📸", "Cute-photo potential"],
-      ["✨", "A date worth remembering"],
-      ["🚶", "Walking speed optimized"],
-    ];
-  return `${back(s.eyebrow)}${copy({ ...s, eyebrow: "" })}<div class="benefit-grid">${items.map(([icon, label]) => `<span><b>${icon}</b>${label}</span>`).join("")}</div><div class="stat-pills"><span><b>100%</b> Fun</span><span><b>100%</b> Food</span><span><b>127%</b> Bakwaas</span></div><div class="terms"><span>🍰</span><small>Dessert cannot be skipped.</small></div><h2 class="closing-question">Thoda sa YES ban raha hai na? 👀😂</h2><div class="action-stack">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "mood")}${btn(s.tertiary, "finalAttempt")}</div>`;
+  const s = screens.benefits;
+  const items = [
+    ["🍕", "Favorite food"],
+    ["💬", "Good conversation"],
+    ["🍰", "Dessert included"],
+    ["🌿", "Zero pressure"],
+  ];
+  return `<button class="back" data-action="convince">${text(s.eyebrow || "Back")}</button>${copy({ ...s, eyebrow: "" })}<div class="benefit-grid">${items.map(([icon, label]) => `<span><b>✓</b>${label}</span>`).join("")}</div><div class="stat-pills"><span><b>100%</b> Fun</span><span><b>100%</b> Food</span><span><b>127%</b> Bakwaas</span></div><div class="terms"><span>🍰</span><small>Dessert is included.</small></div><div class="action-stack" style="margin-top:18px;">${btn(s.primary, "yes", "primary")}${btn(s.secondary, "finalAttempt")}</div>`;
 }
 function moodIcon(title) {
   return title.includes("Drive")
@@ -1034,27 +1027,26 @@ function yesScreen() {
   return `
     <div class="celebration-hero">
       <div class="celebration-heart-badge" aria-hidden="true">
-        <span class="heart-pulse">❤️</span>
+        <span class="heart-pulse">💖</span>
         <span class="sparkle-orbit s1">✨</span>
         <span class="sparkle-orbit s2">✨</span>
         <span class="sparkle-orbit s3">✨</span>
       </div>
-      <div class="celebration-banner-tag">✨ OFFICIAL CELEBRATION ✨</div>
-      <h1 class="celebration-title">${text(s.heading || "SHE SAID YES!")}</h1>
-      <div class="celebration-emoji-stage" aria-hidden="true">🥹 ❤️ ✨</div>
+      <div class="celebration-banner-tag">✨ IT'S A DATE! 💖 ✨</div>
+      <h1 class="celebration-title">${text(s.heading || "IT'S A DATE! 💖")}</h1>
+      <div class="celebration-emoji-stage" aria-hidden="true">🥹 💖 ✨</div>
       <p class="celebration-quote">“${text(quote)}”</p>
       <p class="celebration-subquote">Our next chapter starts here. ✨</p>
       <div class="answer-chips">
-        <span>👀 Sach mein, ${text(state.nickname || data.recipientName)}?</span>
-        <span>✨ 100% Yes! ❤️</span>
+        <span>👀 ${text(state.nickname || data.recipientName)}</span>
+        <span>✨ 100% Date Locked! 💖</span>
       </div>
     </div>
-    ${datePass("Official Date Pass", `${state.nickname || data.recipientName} + ${data.inviterName}`, state.mood || "Food + Fun + Unlimited Bakwaas", state.date ? formatDateTime(state.date) : "Pick date & time below 😌")}
+    ${datePass("Official Date Pass", `${state.nickname || data.recipientName} + ${data.inviterName}`, state.mood || "Dinner + Dessert 🍝", state.date ? formatDateTime(state.date) : "Pick date & time below 😌")}
     ${voiceNoteWidget()}
-    <div class="evidence-note">📸 Screenshot this date pass · Evidence secured! 😂❤️</div>
-    <div class="action-stack" style="margin-top:16px;">
-      ${btn(s.primary || "It's a date ❤️", "availability", "primary")}
-      ${features.optionalScheduling ? btn("Skip scheduling for now", "success", "ghost") : ""}
+    <div class="action-stack" style="margin-top:18px;">
+      ${btn(s.primary || "Choose date and time", "availability", "primary")}
+      <button type="button" class="choice ghost" data-action="letThemPlan">${text(s.secondary || `Let ${data.inviterName} plan it`)}</button>
     </div>
   `;
 }
@@ -1925,6 +1917,32 @@ function go(screen, event = "screen_view", option = "") {
   track(screen === "main" ? "main_question_view" : event, screen, option);
 }
 function act(action, value) {
+  if (action === "surpriseYes") {
+    state.mood = "Surprise Me ✨";
+    state.moodChosen = true;
+    go("yes", "button_clicked", "Surprise me 🎁");
+    return;
+  }
+  if (action === "letThemPlan") {
+    state.date = new Date(Date.now() + 86400000 * 2).toISOString();
+    state.selectedTime = "Flexible";
+    state.selectedLocation = state.mood || "Dinner + Dessert 🍝";
+    go("success", "button_clicked", `Let ${data.inviterName} plan it`);
+    return;
+  }
+  if (action === "sendNeedsTime") {
+    track("response_needs_time", "needsTime", "Needs more time");
+    toast("Response sent: You need more time 🌿");
+    go("space", "screen_view", "Needs more time");
+    return;
+  }
+  if (action === "sendDecline") {
+    track("response_declined", "decline", "Friends only");
+    toast("Response sent: Friends only 🤝");
+    go("decline", "screen_view", "Friends only");
+    return;
+  }
+
   if (action === "open") {
     startMusic();
     go("main", "button_clicked", value);
