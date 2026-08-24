@@ -144,12 +144,95 @@ const invitationTemplates = {
     name: 'Best Friend → Date 👀',
     tagline: 'Playful friends-to-date banter & laughter',
     themePreset: 'blue',
-    content: defaultContent,
+    content: {
+      intro: {
+        eyebrow: 'Hey {{recipientName}} 👀',
+        heading: 'Okay bestie, I need to tell you something…',
+        body: 'Made with way too much courage and zero chill. 😂',
+        primary: 'What happened? 👀'
+      },
+      main: {
+        eyebrow: 'Hear me out… 👀',
+        heading: 'What if our next hangout was an actual date?',
+        body: 'Same us, same unlimited bakwaas, but maybe a little bit romantic? 😌',
+        primary: 'Bestie upgrade accepted 💖',
+        secondary: 'Wait… what? 👀',
+        tertiary: 'Convince me 😂'
+      },
+      thinking: {
+        eyebrow: 'Back',
+        heading: 'Same friendship, slightly more romantic',
+        body: 'Zero awkwardness. If it’s weird, we pretend it never happened and eat pizza. 😂',
+        primary: "Okay, I'm interested 💖",
+        secondary: 'Show me the plan',
+        tertiary: 'Try harder 😂',
+        quaternary: 'Still thinking'
+      },
+      convince: {
+        eyebrow: 'Back',
+        heading: 'Friendship Benefits & Upgrades 😂',
+        body: 'Why dating your best friend is top-tier: 100% food, 0% awkward small talk, and lifetime VIP gossip access.',
+        primary: "Fine, let's try it 💖",
+        secondary: 'Show date ideas'
+      },
+      benefits: {
+        eyebrow: 'Back',
+        heading: 'BESTIE DATE PERKS 🍕',
+        body: '✓ Free food and snacks\n✓ Shared memes throughout\n✓ Best wingman upgraded to date\n✓ Zero awkward silences',
+        primary: "Fine, let's try it 💖",
+        secondary: 'Show date ideas'
+      },
+      mood: {
+        eyebrow: 'Back',
+        heading: 'Choose Activity',
+        body: 'Pick what we do for our official first date:',
+        primary: 'Continue 💖',
+        secondary: 'Choose another'
+      },
+      finalAttempt: {
+        eyebrow: 'Back',
+        heading: 'The Final Decision 👀',
+        body: 'No pressure, bestie. Choose what feels right for you:',
+        primary: "Let's go on a date 💖",
+        secondary: 'I need more time',
+        tertiary: 'Keep us as friends 💛'
+      },
+      yes: {
+        eyebrow: 'UPGRADE UNLOCKED 🎉',
+        heading: 'Best-friend upgrade unlocked!',
+        body: 'Besties to date mode: ACTIVATED. This is going to be iconic. 😂❤️',
+        primary: 'Plan our date'
+      },
+      availability: {
+        eyebrow: 'Lock it in',
+        heading: 'Date, Time, Activity & Location',
+        body: 'Choose the best time for our official bestie date.',
+        primary: 'Confirm bestie date'
+      },
+      success: {
+        eyebrow: 'Official Date Pass 💖',
+        heading: 'Baaki planning meri.',
+        body: 'Date confirmed! Unlimited banter, good food, and bestie energy secured.',
+        primary: 'Done'
+      },
+      decline: {
+        eyebrow: 'Choice Respected 🤝',
+        heading: 'Best friends forever always 🤝',
+        body: 'No awkwardness at all! Best-friend privileges remain 100% intact. 🤝❤️',
+        primary: 'Send response'
+      },
+      secret: {
+        heading: 'Jokes apart, bestie…',
+        body: "You've always been one of my favorite humans.\nI'm so glad we have each other. ❤️",
+        primary: 'Close'
+      }
+    },
     moods: [
-      { title: 'Unlimited Pizza & Bakwaas 🍕🥤', description: 'Your favorite pizza and 4 hours of pure gossiping.', favorite: true },
-      { title: 'Arcade & Bowling Showdown 🎳👾', description: 'Winner gets free ice cream and bragging rights.' },
-      { title: 'Drive-in Movie & Snacks 🍿🚗', description: 'Late-night snacks, comfy seats, and endless laughs.' },
-      { title: 'Street Food Crawl 🌮🥟', description: 'Momos, chaat, and exploring the best street stalls.' }
+      { title: 'Pizza + Gossip 🍕🥤', description: 'Your favorite pizza and 4 hours of pure gossiping.', favorite: true },
+      { title: 'Arcade + Bowling 🎳👾', description: 'Winner gets free ice cream and bragging rights.' },
+      { title: 'Street Food 🌮🥟', description: 'Momos, chaat, and exploring the best street stalls.' },
+      { title: 'Movie + Long Drive 🍿🚗', description: 'Late-night snacks, comfy seats, and endless laughs.' },
+      { title: 'Surprise Me ✨', description: 'You trust me to pick the best spot 😌' }
     ]
   },
   'hinglish-proposal': {
@@ -158,24 +241,95 @@ const invitationTemplates = {
     tagline: 'Desi Bollywood vibes, sweet Hinglish banter',
     themePreset: 'rose',
     content: {
-      intro: { eyebrow: 'Suno {{recipientName}}… 🌹', heading: 'Ek bohot zaroori sawaal hai…', body: 'Kaafi time se bolna tha, socha thoda filmy style me pooch loon! ✨', primary: 'Aage Dekho ✨' },
-      main: { eyebrow: 'Dil ki baat… 😌❤️', heading: 'Kya mere saath date pe chalogi?', body: 'Achhi jagah leke jaunga, bills mai bharunga, aur full hero jaisa treat karunga!', primary: 'Haan bilkul, chalo! 🌹❤️', secondary: 'Sochne do thoda 👀', tertiary: 'Pehle plan batao 🍕' },
-      thinking: { eyebrow: '← Are aise mat karo 🥺', heading: 'Itna kya sochna yaar?', body: 'Pakka bore nahi hone dunga, promise! Unlimited bakwaas free me milegi.', primary: 'Theek hai, maan gayi 😌❤️', secondary: 'Date options dikhao 🍽️', tertiary: 'Aur manao 🌹', quaternary: 'Abhi bhi thinking 🤔' },
-      convince: { eyebrow: '← Reasons suno 🌹', heading: 'Mere Saath Date Ke Fayde ✨', body: 'Ye offers limited time ke liye available hain:', primary: 'Done karte hain ❤️', secondary: 'Vibe choose karo ✨', tertiary: 'Ek aur reason do 👀' },
-      benefits: { eyebrow: '← Full package 🌹', heading: 'THE SPECIAL VIP DATE ✨', body: 'Exclusively arranged for {{nickname}} 🌹', primary: 'Pakka done 🌹❤️', secondary: 'Select setting 🍽️', tertiary: 'Ek aakhri sawaal 💫' },
-      mood: { eyebrow: '← Back to question 🌹', heading: 'Kaisi date pasand aayegi? ✨', body: 'Tu bol bas, reservations mai karwa lunga.', primary: 'Aage badho ✨', secondary: '← Dusri vibe dekho' },
-      finalAttempt: { eyebrow: '← Ek aakhri try 🥺', heading: 'Ek baar chal ke dekho na!', body: 'Achhi memories banegi, pakka! Ab toh yes bol do? 😌', primary: 'Haan chalte hain! 🌹❤️', secondary: 'Surprise me ✨', tertiary: 'Pehle dost rehne do 🤝' },
-      yes: { eyebrow: 'YESSS! KAMAAL HO GAYA 🎉', heading: "IT'S A DATE JI! 🌹❤️", body: 'I am so excited! Bahut maza aayega.', primary: 'Time aur date fix karo 📅' },
-      availability: { eyebrow: 'Date book karo 🌹', heading: 'Kab chalna hai batao ✨', body: 'Apna free time select karo, baki sab mere pe chhod do.', primary: 'Confirm Date ❤️' },
-      success: { eyebrow: 'Reservation Confirmed 🌹', heading: 'Milte hain phir!', body: 'Time note kar liya hai. Bas ready hoke aa jana! ✨', primary: 'Invitation details dekho ✨' },
-      decline: { eyebrow: 'No problem yaar! 🌹', heading: 'Dosti zindabad hamesha ✨', body: "Koi pressure nahi hai!\nYou are super special to me always. 🤝❤️", primary: 'Done 🤝' },
-      secret: { heading: 'Dil se ek chhota sa note…', body: "Tumhare saath time spend karna mujhe bohot achha lagta hai.\nLooking forward to our special day together! ❤️", primary: 'See you soon ✨' }
+      intro: {
+        eyebrow: 'Suno {{recipientName}}… 🌹',
+        heading: 'Suno {{recipientName}}, ek zaroori baat hai…',
+        body: 'Kaafi time se bolna tha, socha thoda filmy style me pooch loon! ✨',
+        primary: 'Haan bolo 👀'
+      },
+      main: {
+        eyebrow: 'Dil ki baat… 😌❤️',
+        heading: 'Kya mere saath date pe chalogi?',
+        body: 'Achhi jagah leke jaunga, bills mai bharunga, aur full hero jaisa treat karunga!',
+        primary: 'Haan bilkul 💖',
+        secondary: 'Sochne do 👀',
+        tertiary: 'Pehle plan batao'
+      },
+      thinking: {
+        eyebrow: 'Back',
+        heading: 'Ek chance toh banta hai',
+        body: 'Pakka bore nahi hone dunga, promise! Unlimited bakwaas free me milegi.',
+        primary: 'Theek hai, chalo 💖',
+        secondary: 'Date options dikhao',
+        tertiary: 'Aur manao 🌹',
+        quaternary: 'Abhi bhi soch rahi hoon'
+      },
+      convince: {
+        eyebrow: 'Back',
+        heading: 'Filmy Convincing ✨',
+        body: 'Hero wali entry, mast khana, aur full entertainment guaranteed:',
+        primary: 'Maan gayi 💖',
+        secondary: 'Plan dikhao'
+      },
+      benefits: {
+        eyebrow: 'Back',
+        heading: 'VIP FILMY DATE BENEFITS 🌹',
+        body: '✓ Free delicious food\n✓ Bollywood playlist\n✓ Full hero treatment\n✓ 0% boring moments',
+        primary: 'Maan gayi 💖',
+        secondary: 'Plan dikhao'
+      },
+      mood: {
+        eyebrow: 'Back',
+        heading: 'Choose Date Vibe ✨',
+        body: 'Kaisi date pasand aayegi? Tu bol bas, reservations mai karwa lunga.',
+        primary: 'Continue 💖',
+        secondary: 'Choose another'
+      },
+      finalAttempt: {
+        eyebrow: 'Back',
+        heading: 'Aakhri Faisla 🌹',
+        body: 'Achhi memories banegi, pakka! Ab batao kya socha?',
+        primary: 'Haan, chalte hain 💖',
+        secondary: 'Mujhe time chahiye',
+        tertiary: 'Dost rehna better hai 🤝'
+      },
+      yes: {
+        eyebrow: 'KAMAAL HO GAYA 🎉',
+        heading: "It's a date ji! 🌹",
+        body: 'I am so excited! Bahut maza aayega. 🌹❤️',
+        primary: 'Din aur time fix karo'
+      },
+      availability: {
+        eyebrow: 'Booking 🌹',
+        heading: 'Date, Time & Location',
+        body: 'Apna free time select karo, baki sab mere pe chhod do.',
+        primary: 'Date pakki karo'
+      },
+      success: {
+        eyebrow: 'Date Pass 🌹',
+        heading: 'Milte hain phir!',
+        body: 'Time note kar liya hai. Bas ready hoke aa jana! ✨',
+        primary: 'Done'
+      },
+      decline: {
+        eyebrow: 'Choice Respected 🤝',
+        heading: 'Dosti zindabad hamesha ✨',
+        body: 'Koi pressure nahi hai! You are super special always. 🤝❤️',
+        primary: 'Send response'
+      },
+      secret: {
+        heading: 'Dil se ek chhota sa note…',
+        body: 'Tumhare saath time spend karna mujhe bohot achha lagta hai.\nLooking forward to our special day! ❤️',
+        primary: 'Close'
+      }
     },
     moods: [
-      { title: 'Rooftop Cafe & Chai ☕🌇', description: 'Sunset view, hot kulhad chai, and long conversations.', favorite: true },
-      { title: 'Candlelight North Indian Dinner 🥘🕯️', description: 'Butter chicken, paneer tikka, and soothing live music.' },
-      { title: 'Late Night Long Drive 🚗🌙', description: 'Bollywood playlist, cold breeze, and ice cream at 2am.' },
-      { title: 'Cozy Movie & Dessert 🍨🎬', description: 'Corner seats, big popcorn tub, and waffles afterwards.' }
+      { title: 'Rooftop Chai ☕🌇', description: 'Sunset view, hot kulhad chai, and long conversations.', favorite: true },
+      { title: 'Candlelight Dinner 🥘🕯️', description: 'Butter chicken, paneer tikka, and soothing live music.' },
+      { title: 'Long Drive 🚗🌙', description: 'Bollywood playlist, cold breeze, and ice cream at 2am.' },
+      { title: 'Street Food 🥟🌮', description: 'Momos, chaat, and exploring the best street stalls.' },
+      { title: 'Movie + Dessert 🍨🎬', description: 'Corner seats, big popcorn tub, and waffles afterwards.' },
+      { title: 'Surprise Me ✨', description: 'Full Bollywood surprise date 😌' }
     ]
   },
   'funny-proposal': {
@@ -184,24 +338,96 @@ const invitationTemplates = {
     tagline: 'High-energy comedy, teasing & zero boring moments',
     themePreset: 'yellow',
     content: {
-      intro: { eyebrow: 'ATTENTION PLEASE 🚨', heading: 'Official formal date application…', body: 'Subject: Seeking permission to take you out on a world-class date.', primary: 'Review Application 📄' },
-      main: { eyebrow: 'Non-negotiable offer 👀', heading: 'Will you go on a date with me?', body: 'Side effects may include laughing too hard and falling slightly in love.', primary: 'Application Accepted 😂❤️', secondary: 'Check resume 👀', tertiary: 'Interview questions 📋' },
-      thinking: { eyebrow: '← Wait wait wait 🏃💨', heading: 'System error: Rejection not found.', body: 'Our servers do not support saying no to such a handsome/lovely person. 😂', primary: 'Fine, let’s go 😂❤️', secondary: 'Show date ideas 🍔', tertiary: 'Convince me more 🍕', quaternary: 'Still reviewing 🤔' },
-      convince: { eyebrow: '← Top reasons 😂', heading: 'Why I am the #1 date candidate:', body: 'Peer-reviewed research and verified facts:', primary: 'Approved! 😂❤️', secondary: 'Select food vibe 🍟', tertiary: 'What else? 👀' },
-      benefits: { eyebrow: '← Package perks 🎁', heading: 'THE VIP DATE EXPERIENCE ✨', body: 'Guaranteed 100% fun, 0% awkward silence.', primary: 'Let’s do this! ❤️', secondary: 'Pick food category 🍕', tertiary: 'One more joke 😂' },
-      mood: { eyebrow: '← Back to form 📋', heading: 'Pick your preferred date vibe ✨', body: 'You select the vibe, I pay for the food.', primary: 'Lock it in ✨', secondary: '← Pick another option' },
-      finalAttempt: { eyebrow: '← Critical error ⚠️', heading: 'Saying no is currently illegal.', body: 'Just look at the effort put into this web app! Will you please say yes? 🥹', primary: 'YES OF COURSE 😂❤️', secondary: 'Surprise me 🍔', tertiary: 'Best friends forever 🤝' },
-      yes: { eyebrow: 'MISSION ACCOMPLISHED 🚀', heading: 'DATE CONFIRMED! 🎉❤️', body: 'Best decision of your week. Get ready!', primary: 'Pick our schedule 📅' },
-      availability: { eyebrow: 'Final step 📅', heading: 'When are you blessing me with your presence?', body: 'Pick a slot so I can iron my best shirt.', primary: 'Confirm Date Time ❤️' },
-      success: { eyebrow: 'It’s on the calendar 🗓️', heading: 'Get ready for greatness.', body: 'Date confirmed. Bring your appetite and your best jokes! 😂✨', primary: 'Done 🚀' },
-      decline: { eyebrow: 'Application Status 📋', heading: 'Friendzone Tier Unlocked 🤝', body: "Still honored to have your application reviewed.\nUnlimited friendship privileges remain active! 😂", primary: 'Done 🤝' },
-      secret: { heading: 'Behind the comedy…', body: "Jokes aside, I genuinely adore your company and cannot wait to hang out! ❤️", primary: 'See you soon ✨' }
+      intro: {
+        eyebrow: 'FORMAL NOTICE 🚨',
+        heading: 'Official date application submitted',
+        body: 'Subject: Seeking formal permission to take you out on a world-class date.',
+        primary: 'Review application'
+      },
+      main: {
+        eyebrow: 'Non-negotiable offer 👀',
+        heading: 'Will you accept this date application?',
+        body: 'Side effects may include laughing too hard and falling slightly in love.',
+        primary: 'Application accepted 💖',
+        secondary: 'Application under review 👀',
+        tertiary: 'Show qualifications 😂'
+      },
+      thinking: {
+        eyebrow: 'Back',
+        heading: 'Application Review In Progress',
+        body: 'Our system detected high qualification and 100% good company vibes.',
+        primary: 'Approve application 💖',
+        secondary: 'Show practical test',
+        tertiary: 'Needs more review'
+      },
+      convince: {
+        eyebrow: 'Back',
+        heading: 'Candidate Resume & Qualifications',
+        body: 'Peer-reviewed research and verified candidate facts:',
+        primary: 'Candidate approved 💖',
+        secondary: 'Schedule practical test',
+        tertiary: 'One more qualification'
+      },
+      benefits: {
+        eyebrow: 'Back',
+        heading: 'Extra Candidate Qualifications 🎁',
+        body: '✓ Always orders extra fries\n✓ Excellent playlist curator\n✓ Expert meme provider\n✓ 0% boring silences',
+        primary: 'Approved! 😂💖',
+        secondary: 'Schedule practical test'
+      },
+      mood: {
+        eyebrow: 'Back',
+        heading: 'Choose Activity',
+        body: 'Select candidate testing location / food category:',
+        primary: 'Continue 💖',
+        secondary: 'Choose another'
+      },
+      finalAttempt: {
+        eyebrow: 'Back',
+        heading: 'Final Committee Decision 📋',
+        body: 'Select final application status for this candidate:',
+        primary: 'Approved! 😂💖',
+        secondary: 'Keep application pending',
+        tertiary: 'Friendship position only 💛',
+        quaternary: 'Decline politely'
+      },
+      yes: {
+        eyebrow: 'OFFICIALLY HIRED 🚀',
+        heading: 'Candidate approved!',
+        body: 'Best hiring decision of your year. Onboarding begins immediately! 😂❤️',
+        primary: 'Schedule interview-date'
+      },
+      availability: {
+        eyebrow: 'Appointment Booking 📅',
+        heading: 'Date, Time & Location',
+        body: 'Lock in the slot for the official practical date exam.',
+        primary: 'Confirm appointment'
+      },
+      success: {
+        eyebrow: 'Date Approval Certificate 📜',
+        heading: 'Date Approval Certificate',
+        body: 'Candidate officially confirmed for date duties. Prepare for greatness! 😂✨',
+        primary: 'Done 🚀'
+      },
+      decline: {
+        eyebrow: 'Application Status 📋',
+        heading: 'Friendzone Tier Unlocked 🤝',
+        body: 'Honored to have my application reviewed. Unlimited friendship perks active! 😂🤝',
+        primary: 'Done 🤝'
+      },
+      secret: {
+        heading: 'Behind the comedy…',
+        body: 'Jokes aside, I genuinely adore your company and cannot wait to hang out! ❤️',
+        primary: 'See you soon ✨'
+      }
     },
     moods: [
-      { title: 'Tacos & Margaritas / Mocktails 🌮🍹', description: 'Messy delicious tacos and unlimited funny banter.', favorite: true },
-      { title: 'Arcade Gaming Madness 🕹️👾', description: 'Air hockey championship and claw machine attempts.' },
-      { title: 'Burger Feast & Milkshakes 🍔🥤', description: 'Loaded cheese fries, smash burgers, and thick shakes.' },
-      { title: 'Go-Kart Racing 🏎️💨', description: 'Fast laps, high adrenaline, and winner gets dinner paid.' }
+      { title: 'Burger Feast 🍔🥤', description: 'Loaded cheese fries, smash burgers, and thick shakes.', favorite: true },
+      { title: 'Arcade 🕹️👾', description: 'Air hockey championship and claw machine attempts.' },
+      { title: 'Tacos 🌮🍹', description: 'Messy delicious tacos and unlimited funny banter.' },
+      { title: 'Bowling 🎳', description: 'Bowling showdown and loser buys dessert.' },
+      { title: 'Go-Karting 🏎️💨', description: 'Fast laps, high adrenaline, and winner gets dinner paid.' },
+      { title: 'Comedy Show 🎤😂', description: 'Live stand-up comedy and nonstop laughter.' }
     ]
   },
   'long-distance': {
@@ -210,24 +436,96 @@ const invitationTemplates = {
     tagline: 'Miles apart, together at heart — reunion & virtual date',
     themePreset: 'midnight',
     content: {
-      intro: { eyebrow: 'Across every mile ✈️', heading: 'No distance can keep us apart…', body: 'Counting down every single second until I see you next. 🌎❤️', primary: 'Open our space 💌' },
-      main: { eyebrow: 'Even across the map 🗺️❤️', heading: 'Will you go on a special date with me?', body: 'Whether it’s our next reunion in person or our favorite virtual candlelight dinner.', primary: 'Yes, across all miles ❤️✈️', secondary: 'Virtual or In-Person? 👀', tertiary: 'Reunion plans ✨' },
-      thinking: { eyebrow: '← Distance is nothing 🌍', heading: 'You are always worth the wait.', body: 'Every timezone, every flight, and every phone call brought us right here. ✨', primary: 'Always yes ❤️', secondary: 'View date vibes 📱', tertiary: 'Reunion ideas ✈️', quaternary: 'Thinking of you 💕' },
-      convince: { eyebrow: '← Why us? 🌎', heading: 'Distance means so little when you mean so much.', body: 'Every memory we have and every countdown we share:', primary: 'Forever yes ❤️✈️', secondary: 'Choose our date vibe 📱', tertiary: 'Tell me more 💕' },
-      benefits: { eyebrow: '← Our connection ✈️', heading: 'THE LONG-DISTANCE DATE 🌍', body: 'Specially planned for {{nickname}} ❤️', primary: 'I’m ready ❤️✈️', secondary: 'Pick date setting 📱', tertiary: 'Countdown details ✨' },
-      mood: { eyebrow: '← Back to question 🌍', heading: 'Pick our special date setting ✈️', body: 'Virtual setup or our dream airport reunion date.', primary: 'Continue 💕', secondary: '← Choose another setting' },
-      finalAttempt: { eyebrow: '← Close your eyes 🌎', heading: 'Soon we will be in the same room.', body: 'Until then, let’s make tonight unforgettable. Will you say yes?', primary: 'Yes, my love ❤️', secondary: 'Surprise date ✈️', tertiary: 'Always together 💌' },
-      yes: { eyebrow: 'NO DISTANCE TOO FAR ✈️', heading: "IT'S A DATE, MY LOVE! ❤️", body: 'Cannot wait for our special time together.', primary: 'Set date & time 📅' },
-      availability: { eyebrow: 'Sync our clocks ⏰', heading: 'Choose our date & timezone 🌍', body: 'Lock in our special time together across the miles.', primary: 'Lock in our date ❤️' },
-      success: { eyebrow: 'Locked in across the map ✈️', heading: 'Counting down the hours.', body: 'I have the date and time saved. I love you so much! 🌎❤️', primary: 'View invitation ❤️' },
-      decline: { eyebrow: 'Always connected 💌', heading: 'You have my whole heart ✨', body: "No matter how many miles lie between us, you are my home. ❤️", primary: 'Done ❤️' },
-      secret: { heading: 'A note across the miles…', body: "Distance only proves how strong what we have truly is.\nI love you and cannot wait to hold you soon. ❤️✈️", primary: 'I love you ❤️' }
+      intro: {
+        eyebrow: 'Across every mile ✈️',
+        heading: 'Across every mile, you are close to my heart',
+        body: 'Counting down every second until we share our special time together. 🌎❤️',
+        primary: 'Open our message'
+      },
+      main: {
+        eyebrow: 'Even across the map 🗺️❤️',
+        heading: 'Will you have a special date with me?',
+        body: 'Whether it’s our next reunion in person or our favorite virtual candlelight dinner.',
+        primary: 'Yes, across every mile 💖',
+        secondary: 'Virtual or in-person? 👀',
+        tertiary: 'Show reunion plans'
+      },
+      thinking: {
+        eyebrow: 'Back',
+        heading: 'How should we celebrate?',
+        body: 'Pick our setup: virtual dinner, FaceTime movie, or planning our dream meetup.',
+        primary: 'Always yes 💖',
+        secondary: 'Virtual Date',
+        tertiary: 'In-Person Reunion',
+        quaternary: 'Let inviter decide'
+      },
+      convince: {
+        eyebrow: 'Back',
+        heading: 'Our Distance Story & Countdown',
+        body: 'Distance means so little when someone means so much:',
+        primary: 'Always yes 💖',
+        secondary: 'Show date ideas',
+        tertiary: 'I miss you—tell me more'
+      },
+      benefits: {
+        eyebrow: 'Back',
+        heading: 'Memories & Reunion Countdown ✈️',
+        body: '✓ Synchronized playlists\n✓ Coordinated food delivery\n✓ Unbroken countdown to our next hug\n✓ Whole heart across the miles',
+        primary: 'Always yes 💖',
+        secondary: 'Show date ideas'
+      },
+      mood: {
+        eyebrow: 'Back',
+        heading: 'Choose Activity ✈️',
+        body: 'Pick our date setting:',
+        primary: 'Continue 💖',
+        secondary: 'Choose another'
+      },
+      finalAttempt: {
+        eyebrow: 'Back',
+        heading: 'No Distance Can Stop Us ❤️',
+        body: 'Until we are in the same room, let’s make our date unforgettable.',
+        primary: 'Always yes 💖',
+        secondary: 'I need more time',
+        tertiary: 'Not right now'
+      },
+      yes: {
+        eyebrow: 'NO DISTANCE TOO FAR ✈️',
+        heading: 'No distance is too far!',
+        body: 'I cannot wait for our special time together across the miles. 🌎❤️',
+        primary: 'Plan across time zones'
+      },
+      availability: {
+        eyebrow: 'Sync our clocks ⏰',
+        heading: 'Confirm Both Time Zones & Schedule',
+        body: 'Lock in the date and time across both of our locations.',
+        primary: 'Confirm our date'
+      },
+      success: {
+        eyebrow: 'Date Pass + Countdown ✈️',
+        heading: 'Date Pass + Countdown',
+        body: 'Our date is locked in! Counting down the hours. I love you so much! 🌎❤️',
+        primary: 'Done ❤️'
+      },
+      decline: {
+        eyebrow: 'Always connected 💌',
+        heading: 'You have my whole heart ✨',
+        body: 'No matter how many miles lie between us, you are always special to me. ❤️',
+        primary: 'Done ❤️'
+      },
+      secret: {
+        heading: 'A note across the miles…',
+        body: 'Distance only proves how strong what we have truly is.\nI love you and cannot wait to hold you soon. ❤️✈️',
+        primary: 'I love you ❤️'
+      }
     },
     moods: [
-      { title: 'Virtual Candlelight & Netflix 💻🕯️', description: 'Same movie, coordinated takeout delivery, and FaceTime.', favorite: true },
-      { title: 'Airport Reunion & Flowers 💐✈️', description: 'Arrival hugs, biggest bouquet, and straight to dinner.' },
-      { title: 'Midway City Weekend Trip 🏙️🚆', description: 'Meeting in the middle for a 48-hour dream adventure.' },
-      { title: 'Virtual Stargazing & Late Talk 🌙🎧', description: 'Synchronized playlist, lo-fi beats, and talking till dawn.' }
+      { title: 'Virtual Dinner 💻🕯️', description: 'Same meal, coordinated takeout delivery, and FaceTime.', favorite: true },
+      { title: 'Synchronized Movie 🎬🍿', description: 'Teleparty sync, popcorn, and live video reactions.' },
+      { title: 'Online Game Night 🎮👾', description: 'Co-op games, trivia, and playful competition.' },
+      { title: 'Airport Reunion 💐✈️', description: 'Arrival hugs, biggest bouquet, and straight to dinner.' },
+      { title: 'Weekend Trip 🏙️🚆', description: 'Meeting in the middle for a 48-hour dream adventure.' },
+      { title: 'Virtual Stargazing 🌙🎧', description: 'Synchronized playlist, lo-fi beats, and talking till dawn.' }
     ]
   },
   'anniversary-special': {
@@ -236,24 +534,95 @@ const invitationTemplates = {
     tagline: 'Heartfelt milestone celebration & nostalgic romance',
     themePreset: 'rose',
     content: {
-      intro: { eyebrow: 'Happy Anniversary my love ❤️', heading: 'Celebrating another milestone together…', body: 'A journey of love, laughter, and memories. 🥂✨', primary: 'Open our celebration 💖' },
-      main: { eyebrow: 'To my favorite person ❤️', heading: 'Will you celebrate our special day with me?', body: 'Another year of loving you, and I want to celebrate us in the most unforgettable way.', primary: 'Forever yes ❤️💍', secondary: 'What’s the surprise? ✨', tertiary: 'Where are we going? 🥂' },
-      thinking: { eyebrow: '← Looking back ❤️', heading: 'Every moment with you is special.', body: 'Let’s dress up, reminisce, and make new memories together. ✨', primary: 'I can’t wait 🥂❤️', secondary: 'Show celebration ideas 🍾', tertiary: 'Tell me more 💕', quaternary: 'Thinking 😌' },
-      convince: { eyebrow: '← Our milestone 🥂', heading: 'Celebrating our love story 💖', body: 'Why this anniversary is going to be extraordinary:', primary: 'Yes, forever and always 💍❤️', secondary: 'Pick anniversary vibe 🍾', tertiary: 'More surprises ✨' },
-      benefits: { eyebrow: '← Anniversary perks 💍', heading: 'ANNIVERSARY SPECIAL EDITION ✨', body: 'Crafted exclusively for {{nickname}} ❤️', primary: 'Let’s celebrate 🥂❤️', secondary: 'Choose vibe 🍾', tertiary: 'More details ✨' },
-      mood: { eyebrow: '← Back to question ❤️', heading: 'Pick our anniversary setting 🥂', body: 'Choose how we celebrate another beautiful year together.', primary: 'Continue 💖', secondary: '← Choose another setting' },
-      finalAttempt: { eyebrow: '← Forever & always ❤️', heading: 'You and me, always.', body: 'Let’s celebrate how far we’ve come and everything ahead.', primary: 'Always yes, my love ❤️', secondary: 'Surprise celebration ✨', tertiary: 'Of course yes 💍' },
-      yes: { eyebrow: 'HAPPY ANNIVERSARY 🥂', heading: 'TO US AND OUR LOVE! ❤️', body: 'Here is to many more chapters together.', primary: 'Choose date & time 📅' },
-      availability: { eyebrow: 'Save the date 💍', heading: 'Select our celebration time 🥂', body: 'Lock in the perfect moment for our special evening.', primary: 'Confirm Anniversary Date ❤️' },
-      success: { eyebrow: 'It’s official ❤️', heading: 'Counting down the hours.', body: 'Everything is set for our anniversary. I love you! 🥂✨', primary: 'View invitation ❤️' },
-      decline: { eyebrow: 'Together always ❤️', heading: 'Every day is a celebration with you ✨', body: "No matter where or when, celebrating you is my favorite thing. ❤️", primary: 'Done ❤️' },
-      secret: { heading: 'My love note for you…', body: "Thank you for being my anchor, my joy, and my favorite adventure.\nHappy Anniversary! ❤️💍", primary: 'I love you ❤️' }
+      intro: {
+        eyebrow: 'Happy Anniversary my love ❤️',
+        heading: 'Happy anniversary, my love',
+        body: 'Celebrating another beautiful milestone in our journey together. 🥂✨',
+        primary: 'Open our story 💖',
+        secondary: 'Skip to surprise'
+      },
+      main: {
+        eyebrow: 'To my favorite person ❤️',
+        heading: 'Will you celebrate our anniversary with me?',
+        body: 'Another year of loving you, and I want to make our celebration truly unforgettable.',
+        primary: 'Forever yes 💖',
+        secondary: "What's the surprise? 👀",
+        tertiary: 'Choose together'
+      },
+      thinking: {
+        eyebrow: 'Back',
+        heading: 'A few hints for our special day…',
+        body: 'A romantic evening, your favorite treats, and celebrating everything we share.',
+        primary: "I'm in 💖",
+        secondary: 'Keep it a surprise',
+        tertiary: 'Show celebration options'
+      },
+      convince: {
+        eyebrow: 'Back',
+        heading: 'Celebrating our love story 💖',
+        body: 'Why this anniversary is going to be extraordinary:',
+        primary: 'Forever and always 💖',
+        secondary: 'Show celebration options'
+      },
+      benefits: {
+        eyebrow: 'Back',
+        heading: 'ANNIVERSARY SPECIAL EDITION ✨',
+        body: '✓ Romantic ambience\n✓ Your favorite cuisine\n✓ Reminiscing on our best memories\n✓ A celebration dedicated to us',
+        primary: 'Forever and always 💖',
+        secondary: 'Show celebration options'
+      },
+      mood: {
+        eyebrow: 'Back',
+        heading: 'Celebration Options 🥂',
+        body: 'Choose how we celebrate our anniversary:',
+        primary: 'Continue 💖',
+        secondary: 'Choose another plan'
+      },
+      finalAttempt: {
+        eyebrow: 'Back',
+        heading: 'Celebrating Our Love Story ❤️',
+        body: 'You and me, always. How would you like to celebrate?',
+        primary: 'Forever and always 💖',
+        secondary: 'Simple celebration',
+        tertiary: 'Celebrate another day'
+      },
+      yes: {
+        eyebrow: 'HAPPY ANNIVERSARY 🥂',
+        heading: 'Forever and always',
+        body: 'Here is to our journey, our love, and many more chapters together. 🥂❤️',
+        primary: 'Plan our anniversary',
+        secondary: 'Keep it a surprise'
+      },
+      availability: {
+        eyebrow: 'Save the date 💍',
+        heading: 'Date, Time, Dress Code & Pickup',
+        body: 'Select our celebration time and details.',
+        primary: 'Confirm celebration'
+      },
+      success: {
+        eyebrow: 'Anniversary Itinerary 🥂',
+        heading: 'Anniversary Itinerary',
+        body: 'Everything is set for our anniversary. I love you! 🥂✨',
+        primary: 'Done ❤️'
+      },
+      decline: {
+        eyebrow: 'Together always ❤️',
+        heading: 'Every day is a celebration with you ✨',
+        body: 'Celebrating you is my favorite thing always. ❤️',
+        primary: 'Done ❤️'
+      },
+      secret: {
+        heading: 'My love note for you…',
+        body: 'Thank you for being my anchor, my joy, and my favorite adventure.\nHappy Anniversary! ❤️💍',
+        primary: 'I love you ❤️'
+      }
     },
     moods: [
       { title: 'Romantic Getaway Weekend ✈️🏖️', description: 'Scenic resort stay, spa, and oceanside dinner.', favorite: true },
-      { title: 'Fine Dining & Champagne 🍾🕯️', description: 'Chef tasting menu, vintage champagne, and live violin.' },
-      { title: 'Scenic Sunset Cruise ⛵🌅', description: 'Private boat, golden hour skyline, and hors d’oeuvres.' },
-      { title: 'Cozy Cabin Staycation 🪵🔥', description: 'Fireplace, hot cocoa, stargazing, and movie marathon.' }
+      { title: 'Candlelight Dinner 🍾🕯️', description: 'Chef tasting menu, vintage champagne, and live violin.' },
+      { title: 'Rooftop Evening 🌇✨', description: 'Skyline view, jazz musician, and intimate dining.' },
+      { title: 'Staycation 🪵🔥', description: 'Fireplace, hot cocoa, stargazing, and movie marathon.' },
+      { title: 'Memory Walk 🌿📸', description: 'Revisiting where we first met and all our favorite spots.' }
     ]
   },
   'first-date': {
