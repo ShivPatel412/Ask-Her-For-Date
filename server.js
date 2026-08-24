@@ -890,97 +890,53 @@ app.post('/dashboard/whatsapp', requireUser, requireCsrf, async (req,res)=>{
 });
 
 app.get('/dashboard/invitations/new', requireUser, async (req, res) => {
-  const templates = Object.values(invitationTemplates);
-  const selected = templates.find(t => t.id === 'best-friend-date') || templates[0];
+  const t = invitationTemplates['classic'] || { id: 'classic', name: 'Classic Date ❤️', themePreset: 'strawberry', content: defaultContent, moods: moods };
+  const previewData = [{ id: t.id, name: t.name, tagline: 'Classic romantic date invitation', themePreset: t.themePreset || 'strawberry', content: t.content, moods: t.moods, features: t.features || {} }];
   
-  const templateIcons = {
-    'classic': '❤️',
-    'best-friend-date': '👀',
-    'hinglish-proposal': '🇮🇳',
-    'funny-proposal': '😂',
-    'long-distance': '✈️',
-    'anniversary-special': '🥂',
-    'first-date': '🌹',
-    'birthday-date': '🎂',
-    'valentines-day': '💌',
-    'sorry-make-things-right': '🥺'
-  };
-
-  const cards = templates.map(t => {
-    const theme = themes[t.themePreset] || themes.strawberry;
-    const icon = templateIcons[t.id] || '💌';
-    const isSel = t.id === selected.id;
-    return `<article class="new-template-card ${isSel ? 'active' : ''}" data-template-id="${escapeHtml(t.id)}" tabindex="0" role="button" aria-pressed="${isSel ? 'true' : 'false'}">
-      <div class="new-template-card-top">
-        <div class="new-template-icon-badge" style="background:${escapeHtml(theme.secondary || '#fff0f3')};color:${escapeHtml(theme.primary || '#e6496f')};">${icon}</div>
-        <span class="template-selected-badge">${isSel ? '✓ Active' : 'Select'}</span>
-      </div>
-      <div class="new-template-body">
-        <h3>${escapeHtml(t.name)}</h3>
-        <p>${escapeHtml(t.tagline || '')}</p>
-        <div class="new-template-tags">
-          <span class="tpl-tag theme-tag">${escapeHtml(t.themePreset || 'rose')}</span>
-          <span class="tpl-tag mood-tag">✨ ${(t.moods || []).length} Date Ideas</span>
-        </div>
-      </div>
-    </article>`;
-  }).join('');
-
-  const previewData = templates.map(t => ({ id: t.id, name: t.name, tagline: t.tagline, themePreset: t.themePreset, content: t.content, moods: t.moods, features: t.features || {} }));
-  
-  res.send(await page('Choose Template', `<main class="new-wrap template-select-wrap">
-    <header class="template-select-header">
-      <span class="eyebrow">✨ Curated Experiences</span>
-      <h1>Choose an Invitation Template</h1>
-      <p>Pick a predesigned romance flow, preview it live with your names, then customize or launch instantly.</p>
+  res.send(await page('New Invitation', `<main class="new-wrap" style="max-width:960px;margin:0 auto;padding:24px 16px 60px;">
+    <header class="page-head" style="margin-bottom:28px;text-align:center;">
+      <span class="eyebrow">✨ Create Invitation</span>
+      <h1 style="font-size:2rem;margin:6px 0 8px;">Make a New Date Invitation</h1>
+      <p style="color:var(--muted);max-width:540px;margin:0 auto;">Enter your names to start. You can customize every question, button, date idea, music, and theme in the next step!</p>
     </header>
-    <section class="template-select-layout">
-      <div class="template-list-panel">
-        <div class="template-list-head">
-          <div class="template-list-badge"><b>10 Curated Presets</b></div>
-          <span class="template-list-subhint">Click any card to preview</span>
-        </div>
-        <div class="new-template-grid">${cards}</div>
-      </div>
-      <aside class="template-preview-panel">
-        <div class="preview-panel-header">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <span class="preview-eyebrow">Interactive Live Preview</span>
-            <span class="preview-live-pill">● Live</span>
+    
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:32px;align-items:start;">
+      <div class="card" style="padding:28px;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.04);">
+        <h2 style="font-size:1.25rem;margin-bottom:20px;display:flex;align-items:center;gap:8px;">
+          <span>💌</span>
+          <span>Invitation Details</span>
+        </h2>
+        <form id="template-form">
+          <input type="hidden" name="templateId" id="selected-template-id" value="classic">
+          <div class="form-group" style="margin-bottom:18px;">
+            <label class="form-label" for="input-inviter-name" style="font-weight:600;margin-bottom:6px;display:block;">Your Name</label>
+            <input name="inviterName" id="input-inviter-name" class="form-input" required maxlength="60" placeholder="e.g. Alex" autocomplete="name" autofocus style="width:100%;height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);font-size:1rem;">
           </div>
-          <h3 id="selected-template-title">${escapeHtml(selected.name)}</h3>
-          <p id="selected-template-desc">${escapeHtml(selected.tagline || '')}</p>
-        </div>
-
-        <div class="preview-phone-wrapper">
-          <div id="template-preview" class="template-live-preview" aria-live="polite"></div>
-        </div>
-
-        <form id="template-form" class="template-create-form">
-          <input type="hidden" name="templateId" id="selected-template-id" value="${escapeHtml(selected.id)}">
-          <div class="template-names-row">
-            <div class="form-group">
-              <label class="form-label"><span class="label-title">Your Name</span></label>
-              <input name="inviterName" id="input-inviter-name" class="form-input" required maxlength="60" placeholder="e.g. Alex" autocomplete="name">
-            </div>
-            <div class="form-group">
-              <label class="form-label"><span class="label-title">Their Name</span></label>
-              <input name="recipientName" id="input-recipient-name" class="form-input" required maxlength="60" placeholder="e.g. Sam" autocomplete="off">
-            </div>
+          <div class="form-group" style="margin-bottom:18px;">
+            <label class="form-label" for="input-recipient-name" style="font-weight:600;margin-bottom:6px;display:block;">Their Name / Nickname</label>
+            <input name="recipientName" id="input-recipient-name" class="form-input" required maxlength="60" placeholder="e.g. Sam" autocomplete="off" style="width:100%;height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);font-size:1rem;">
           </div>
-          <div class="template-action-row">
-            <button class="button primary create-submit-btn" type="submit" data-mode="customize">
-              <span>Start with this Template ✨</span>
-              <small>Open editor to customize questions, dates & music</small>
-            </button>
-            <button class="button ghost create-submit-btn secondary" type="submit" data-mode="preview">
-              <span>Publish As-Is 🚀</span>
-              <small>Instant ready-to-share link</small>
-            </button>
+          <div class="form-group" style="margin-bottom:24px;">
+            <label class="form-label" for="input-title" style="font-weight:600;margin-bottom:6px;display:block;">Title (Optional)</label>
+            <input name="title" id="input-title" class="form-input" maxlength="100" placeholder="Something special for you ❤️" style="width:100%;height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);font-size:1rem;">
           </div>
+          <button class="button primary create-submit-btn" type="submit" style="width:100%;height:48px;border-radius:12px;font-size:1.05rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span>Continue to Editor ✨</span>
+          </button>
         </form>
-      </aside>
-    </section>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div style="display:flex;justify-content:space-between;width:100%;max-width:320px;margin-bottom:8px;align-items:center;">
+          <span style="font-size:0.82rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Live Preview</span>
+          <span style="font-size:0.75rem;padding:2px 8px;border-radius:12px;background:rgba(230,73,111,0.1);color:#e6496f;font-weight:700;">● Real-time</span>
+        </div>
+        <div class="preview-phone-wrapper" style="width:100%;max-width:320px;">
+          <div id="template-preview" class="template-live-preview"></div>
+        </div>
+      </div>
+    </div>
+    
     <script id="template-data" type="application/json">${safeJSON(previewData)}</script>
   </main>`, req, '/assets/js/new.js'));
 });
