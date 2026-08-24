@@ -156,13 +156,12 @@ const featureToggleCard = (label, path, value) => {
 
 const BUILDER_STEPS = [
   { id: 1, key: 'basics', title: 'Basics', subtitle: 'Names & title', icon: '1' },
-  { id: 2, key: 'template', title: 'Template', subtitle: 'Occasion preset', icon: '2' },
-  { id: 3, key: 'design', title: 'Design', subtitle: 'Colors & theme', icon: '3' },
-  { id: 4, key: 'content', title: 'Content', subtitle: 'Questions & copy', icon: '4' },
-  { id: 5, key: 'photos', title: 'Story', subtitle: 'Memories timeline', icon: '5' },
-  { id: 6, key: 'features', title: 'Features', subtitle: 'Dates & mascots', icon: '6' },
-  { id: 7, key: 'music', title: 'Music', subtitle: 'Soundtrack playlist', icon: '7' },
-  { id: 8, key: 'publish', title: 'Review', subtitle: 'Finalize invite', icon: '8' }
+  { id: 2, key: 'design', title: 'Design', subtitle: 'Colors & theme', icon: '2' },
+  { id: 3, key: 'content', title: 'Content', subtitle: 'Questions & copy', icon: '3' },
+  { id: 4, key: 'photos', title: 'Story', subtitle: 'Memories timeline', icon: '4' },
+  { id: 5, key: 'features', title: 'Features', subtitle: 'Dates & mascots', icon: '5' },
+  { id: 6, key: 'music', title: 'Music', subtitle: 'Soundtrack playlist', icon: '6' },
+  { id: 7, key: 'publish', title: 'Review', subtitle: 'Finalize invite', icon: '7' }
 ];
 
 const CONTENT_SCREENS = [
@@ -176,7 +175,7 @@ const CONTENT_SCREENS = [
   { key: 'secret', label: '8. Secret Note', icon: '🔒', desc: 'Hidden easter-egg letter' }
 ];
 
-let currentStep = 3;
+let currentStep = 1;
 let activeContentScreen = 'intro';
 
 fetch(`/api/invitations/${id}`)
@@ -334,8 +333,8 @@ function renderStepper() {
 
   const counterText = document.querySelector('#step-counter-text');
   const counterFill = document.querySelector('#step-progress-fill');
-  if (counterText) counterText.textContent = `${currentStep} / 8`;
-  if (counterFill) counterFill.style.width = `${(currentStep / 8) * 100}%`;
+  if (counterText) counterText.textContent = `${currentStep} / 7`;
+  if (counterFill) counterFill.style.width = `${(currentStep / 7) * 100}%`;
 }
 
 function goToStep(stepId, smooth = true) {
@@ -359,7 +358,7 @@ function goToStep(stepId, smooth = true) {
     controlsEl.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
   }
 
-  if (currentStep === 7 && state?.features?.musicPlayerPosition === 'custom') {
+  if (currentStep === 6 && state?.features?.musicPlayerPosition === 'custom') {
     setTimeout(setupPositionCanvas, 50);
   }
 }
@@ -412,10 +411,7 @@ function render() {
   const s = c.screens;
   const t = state.theme;
   const f = state.features;
-  if (currentStep === 7) {
-    f.musicSource = 'spotify';
-    f.musicPlayerStyle = 'spotify';
-  }
+  
 
   renderStepper();
 
@@ -426,7 +422,7 @@ function render() {
     <!-- STEP 1: BASICS -->
     <section class="step-panel ${currentStep === 1 ? 'active' : ''}" id="step-panel-1" data-step="1" role="tabpanel" aria-labelledby="step-tab-1" ${currentStep === 1 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 1 of 8 · Basics</span>
+        <span class="step-kicker">Step 1 of 7 · Basics</span>
         <h2>Invitation Basics</h2>
         <p>Set your name, your recipient's name, and an inviting title.</p>
       </div>
@@ -440,51 +436,15 @@ function render() {
       </div>
       <div class="step-panel-footer">
         <div></div>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="2">Next: Template →</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="2">Next: Design →</button>
       </div>
     </section>
 
-    <!-- STEP 2: TEMPLATE -->
+    <!-- STEP 2: DESIGN (THEME & COLORS) -->
     <section class="step-panel ${currentStep === 2 ? 'active' : ''}" id="step-panel-2" data-step="2" role="tabpanel" aria-labelledby="step-tab-2" ${currentStep === 2 ? '' : 'hidden'}>
       <div class="step-panel-header with-action">
         <div>
-          <span class="step-kicker">Step 2 of 8 · Template</span>
-          <h2>Occasion Templates</h2>
-          <p>Choose a curated romantic storyline, vibe, and playful questions.</p>
-        </div>
-        <button type="button" class="button ghost small btn-reset-preset" data-action="restore-template">↺ Restore Template</button>
-      </div>
-      <div class="step-panel-body">
-        <p class="hint">Switching templates loads tailored copy, romantic questions, and mood options.</p>
-        <div class="template-picker-grid">
-          ${Object.entries(state.presets?.templates || {
-            'classic': { name: 'Classic Playful Invite ❤️', tagline: 'The viral romantic & playful banter experience' },
-            'romantic-dinner': { name: 'Candlelight Dinner 🍷✨', tagline: 'Intimate dinner date with soft romantic elegance' },
-            'coffee-casual': { name: 'Cozy Coffee & Conversations ☕🌿', tagline: 'Warm, relaxed coffee date with cozy aesthetic' },
-            'best-friend-date': { name: 'Best Friends Day Out 🍕🎈', tagline: 'High-energy, teasing Hinglish invite with food' },
-            'anniversary-special': { name: 'Anniversary Celebration 💍🥂', tagline: 'Heartfelt milestone invitation with romantic memories' }
-          }).map(([k, v]) => `
-            <button type="button" class="template-card ${state.templateId === k ? 'active' : ''}" data-template-key="${k}">
-              <div class="template-card-header">
-                <strong class="template-name">${v.name}</strong>
-                <span class="template-badge">${state.templateId === k ? '✓ Selected' : 'Preset'}</span>
-              </div>
-              <p class="template-tagline">${v.tagline}</p>
-            </button>
-          `).join('')}
-        </div>
-      </div>
-      <div class="step-panel-footer">
-        <button type="button" class="button ghost step-nav-btn" data-nav-step="1">← Previous</button>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="3">Next: Design →</button>
-      </div>
-    </section>
-
-    <!-- STEP 3: DESIGN (THEME & COLORS) -->
-    <section class="step-panel ${currentStep === 3 ? 'active' : ''}" id="step-panel-3" data-step="3" role="tabpanel" aria-labelledby="step-tab-3" ${currentStep === 3 ? '' : 'hidden'}>
-      <div class="step-panel-header with-action">
-        <div>
-          <span class="step-kicker">STEP 3 OF 8 · DESIGN</span>
+          <span class="step-kicker">Step 2 of 7 · Design</span>
           <h2>Theme Colors & Styling</h2>
           <p>Pick a theme or fine-tune your colors to match your invitation.</p>
         </div>
@@ -531,15 +491,15 @@ function render() {
         </div>
       </div>
       <div class="step-panel-footer">
-        <button type="button" class="button ghost step-nav-btn" data-nav-step="2">← Previous</button>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="4">Next: Content →</button>
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="1">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="3">Next: Content →</button>
       </div>
     </section>
 
-    <!-- STEP 4: CONTENT -->
-    <section class="step-panel ${currentStep === 4 ? 'active' : ''}" id="step-panel-4" data-step="4" role="tabpanel" aria-labelledby="step-tab-4" ${currentStep === 4 ? '' : 'hidden'}>
+    <!-- STEP 3: CONTENT -->
+    <section class="step-panel ${currentStep === 3 ? 'active' : ''}" id="step-panel-3" data-step="3" role="tabpanel" aria-labelledby="step-tab-3" ${currentStep === 3 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 4 of 8 · Content</span>
+        <span class="step-kicker">Step 3 of 7 · Content</span>
         <h2>Questions & Screen Copy</h2>
         <p>Select a screen below to edit its words, questions, and buttons.</p>
       </div>
@@ -564,15 +524,15 @@ function render() {
         </div>
       </div>
       <div class="step-panel-footer">
-        <button type="button" class="button ghost step-nav-btn" data-nav-step="3">← Previous</button>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="5">Next: Photos →</button>
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="2">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="4">Next: Story →</button>
       </div>
     </section>
 
-    <!-- STEP 5: OUR STORY & MEMORIES -->
-    <section class="step-panel ${currentStep === 5 ? 'active' : ''}" id="step-panel-5" data-step="5" role="tabpanel" aria-labelledby="step-tab-5" ${currentStep === 5 ? '' : 'hidden'}>
+    <!-- STEP 4: OUR STORY & MEMORIES -->
+    <section class="step-panel ${currentStep === 4 ? 'active' : ''}" id="step-panel-4" data-step="4" role="tabpanel" aria-labelledby="step-tab-4" ${currentStep === 4 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 5 of 8 · Memories Timeline</span>
+        <span class="step-kicker">Step 4 of 7 · Memories Timeline</span>
         <h2>Our Story & Memories</h2>
         <p>Add memorable moments, photos, and milestone dates leading up to your date ask.</p>
       </div>
@@ -628,15 +588,15 @@ function render() {
         </div>
       </div>
       <div class="step-panel-footer">
-        <button type="button" class="button ghost step-nav-btn" data-nav-step="4">← Previous</button>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="6">Next: Features →</button>
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="3">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="5">Next: Features →</button>
       </div>
     </section>
 
-    <!-- STEP 6: DATE OPTIONS & FEATURES -->
-    <section class="step-panel ${currentStep === 6 ? 'active' : ''}" id="step-panel-6" data-step="6" role="tabpanel" aria-labelledby="step-tab-6" ${currentStep === 6 ? '' : 'hidden'}>
+    <!-- STEP 5: DATE OPTIONS & FEATURES -->
+    <section class="step-panel ${currentStep === 5 ? 'active' : ''}" id="step-panel-5" data-step="5" role="tabpanel" aria-labelledby="step-tab-5" ${currentStep === 5 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 6 of 8 · Features & Dates</span>
+        <span class="step-kicker">Step 5 of 7 · Features & Dates</span>
         <h2>Date Ideas & Playful Touches</h2>
         <p>Set date choices, mascots, confetti celebrations, and playful surprises.</p>
       </div>
@@ -686,15 +646,15 @@ function render() {
         </div>
       </div>
       <div class="step-panel-footer">
-        <button type="button" class="button ghost step-nav-btn" data-nav-step="5">← Previous</button>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="7">Next: Music →</button>
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="4">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="6">Next: Music →</button>
       </div>
     </section>
 
-    <!-- STEP 7: MUSIC & SOUND -->
-    <section class="step-panel ${currentStep === 7 ? 'active' : ''}" id="step-panel-7" data-step="7" role="tabpanel" aria-labelledby="step-tab-7" ${currentStep === 7 ? '' : 'hidden'}>
+    <!-- STEP 6: MUSIC & SOUND -->
+    <section class="step-panel ${currentStep === 6 ? 'active' : ''}" id="step-panel-6" data-step="6" role="tabpanel" aria-labelledby="step-tab-6" ${currentStep === 6 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 7 of 8 · Music & Sound</span>
+        <span class="step-kicker">Step 6 of 7 · Music & Sound</span>
         <h2>Background Soundtrack & Voice Note</h2>
         <p>Add multiple romantic songs, custom uploads, soundscape presets, and your personal voice note.</p>
       </div>
@@ -847,15 +807,15 @@ function render() {
         </div>
       </div>
       <div class="step-panel-footer">
-        <button type="button" class="button ghost step-nav-btn" data-nav-step="6">← Previous</button>
-        <button type="button" class="button primary step-nav-btn" data-nav-step="8">Next: Review →</button>
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="5">← Previous</button>
+        <button type="button" class="button primary step-nav-btn" data-nav-step="7">Next: Review →</button>
       </div>
     </section>
 
-    <!-- STEP 8: REVIEW & PUBLISH -->
-    <section class="step-panel ${currentStep === 8 ? 'active' : ''}" id="step-panel-8" data-step="8" role="tabpanel" aria-labelledby="step-tab-8" ${currentStep === 8 ? '' : 'hidden'}>
+    <!-- STEP 7: REVIEW & PUBLISH -->
+    <section class="step-panel ${currentStep === 7 ? 'active' : ''}" id="step-panel-7" data-step="7" role="tabpanel" aria-labelledby="step-tab-7" ${currentStep === 7 ? '' : 'hidden'}>
       <div class="step-panel-header">
-        <span class="step-kicker">Step 8 of 8 · Final Review</span>
+        <span class="step-kicker">Step 7 of 7 · Final Review</span>
         <h2>Review & Share</h2>
         <p>Publish your date invitation and get your private share link.</p>
       </div>
@@ -889,13 +849,13 @@ function render() {
         ` : ''}
       </div>
       <div class="step-panel-footer">
-        <button type="button" class="button ghost step-nav-btn" data-nav-step="7">← Previous</button>
+        <button type="button" class="button ghost step-nav-btn" data-nav-step="6">← Previous</button>
         <button type="button" class="button primary" id="publish-bottom-btn">Publish Invitation 🚀</button>
       </div>
     </section>
   `;
 
-  if (f.musicPlayerPosition === 'custom' && currentStep === 7) {
+  if (f.musicPlayerPosition === 'custom' && currentStep === 6) {
     setTimeout(setupPositionCanvas, 50);
   }
 }
