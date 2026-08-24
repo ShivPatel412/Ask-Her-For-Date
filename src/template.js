@@ -859,25 +859,103 @@ const invitationTemplates = {
     fontPreset: 'modern',
     features: { confetti: false, collection: false, funnyBack: false, music: false, respectfulMode: true, optionalScheduling: true },
     content: {
-      intro: { eyebrow: 'A sincere note for {{recipientName}}', heading: 'I owe you a real apology.', body: 'No drama. No pressure. I just want to acknowledge what happened properly.', primary: 'Read it' },
-      main: { eyebrow: 'I am listening', heading: 'I am truly sorry.', body: 'You did not deserve what happened. I take responsibility, and I am not here to make excuses.', primary: "I'm ready to talk", secondary: 'I need more time', tertiary: 'Please give me space' },
-      thinking: { eyebrow: 'Your pace matters', heading: 'Take all the time you need.', body: 'I understand if you are not ready. Your comfort matters more than my timeline.', primary: "I'm ready to talk", secondary: 'Maybe later', tertiary: 'Please give me space', quaternary: 'Show me what changes' },
-      convince: { eyebrow: 'Accountability', heading: 'What I understand now', body: 'I understand that my actions hurt you. I should have handled things with more care, honesty, and respect.', primary: "I'm ready to talk", secondary: 'Meeting options', tertiary: 'I need space' },
-      benefits: { eyebrow: 'What will change', heading: 'Not just words.', body: 'I will listen first, not interrupt, respect your boundaries, and avoid repeating the same mistake.', primary: "I'm ready to talk", secondary: 'How can we talk?', tertiary: 'I need space' },
-      mood: { eyebrow: 'Only if comfortable', heading: 'How would you prefer to talk?', body: 'Choose whatever feels safest and easiest for you.', primary: 'Continue', secondary: '← Choose another option' },
-      finalAttempt: { eyebrow: 'One respectful question', heading: 'If and when you are comfortable, may I apologize properly?', body: 'You can say yes, ask for more time, or ask for space. I will respect it.', primary: "I'm ready to talk", secondary: 'I need more time', tertiary: 'Please give me space' },
-      yes: { eyebrow: 'Thank you for being open', heading: 'We can talk at your pace.', body: 'You choose the time and format. If you want to skip scheduling, that is okay too.', primary: 'Pick date & time' },
-      availability: { eyebrow: 'Optional scheduling', heading: 'Pick a time only if you want to.', body: 'Choose a date, time, and format—or skip this step.', primary: 'Confirm if comfortable' },
-      success: { eyebrow: 'Thank you', heading: 'I will respect the plan.', body: 'Thank you for giving me a chance to talk. I will listen and keep this respectful.', primary: 'Done' },
-      decline: { eyebrow: 'Choice respected', heading: 'I understand.', body: "I will respect your space and won't pressure you. I am still sorry for what happened.", primary: 'Done' },
-      secret: { heading: 'One more sincere note', body: 'I am not asking you to forget or forgive immediately. I just want to do better and respect whatever you need.', primary: 'Close' }
+      intro: {
+        eyebrow: 'A sincere note for {{recipientName}}',
+        heading: 'Hey {{recipientName}}, I owe you a sincere apology.',
+        body: 'No drama. No pressure. I just want to acknowledge what happened properly.',
+        primary: 'Read My Apology'
+      },
+      main: {
+        eyebrow: '1. Acknowledgement',
+        heading: 'Acknowledgement',
+        body: 'I know I hurt you, and I am not here to make excuses or minimize how you feel.',
+        primary: 'Continue',
+        secondary: 'Back'
+      },
+      thinking: {
+        eyebrow: '2. Sincere Apology',
+        heading: 'I am truly sorry.',
+        body: 'You did not deserve what happened. I take full responsibility for my actions.',
+        primary: 'Continue',
+        secondary: 'Back'
+      },
+      convince: {
+        eyebrow: '3. Accountability',
+        heading: 'What I understand now',
+        body: 'I understand that my actions hurt you. I should have handled things with more care, honesty, and respect.',
+        primary: 'What Will Change?',
+        secondary: "I'm Ready to Respond",
+        tertiary: 'Back'
+      },
+      benefits: {
+        eyebrow: '4. Specific Changes',
+        heading: 'Not just words.',
+        body: '✓ Listen without interrupting\n✓ Respect your pace and boundaries\n✓ Learn and avoid repeating the mistake\n✓ Give you total space if needed',
+        primary: 'Continue',
+        secondary: 'Respond Now',
+        tertiary: 'Back'
+      },
+      finalAttempt: {
+        eyebrow: '5. May I Apologize Properly?',
+        heading: 'If and when you are comfortable, may I apologize properly?',
+        body: 'You choose how we communicate, or whether you want more time or space. I will respect whatever you need.',
+        primary: "I'm Ready to Talk",
+        secondary: 'I Need More Time',
+        tertiary: 'Message Me Instead',
+        quaternary: 'Back'
+      },
+      mood: {
+        eyebrow: 'Choose Conversation Method',
+        heading: 'Choose Conversation Method',
+        body: 'Choose whatever feels safest and easiest for you:',
+        primary: 'Schedule Conversation',
+        secondary: 'I Prefer a Message'
+      },
+      availability: {
+        eyebrow: 'Schedule Conversation',
+        heading: 'Schedule Conversation',
+        body: 'Pick a time only if you want to. Or skip this step.',
+        primary: 'Confirm Conversation',
+        secondary: 'I Prefer a Message'
+      },
+      yes: {
+        eyebrow: 'Response Confirmation',
+        heading: 'Thank you for being open',
+        body: 'We can talk at your pace. You choose the time and format.',
+        primary: 'Add to Calendar — if scheduled',
+        secondary: 'Finish'
+      },
+      success: {
+        eyebrow: 'Response Confirmation',
+        heading: 'Thank you',
+        body: 'Thank you for giving me a chance to talk. I will listen and keep this strictly respectful.',
+        primary: 'Finish'
+      },
+      needsTime: {
+        eyebrow: 'Choice Respected 🌿',
+        heading: 'Take all the time you need.',
+        body: 'Your comfort matters more than my timeline. Take all the time you need.',
+        primary: 'Confirm and End',
+        secondary: 'Return to Response Choices',
+        tertiary: 'Please Give Me Space'
+      },
+      decline: {
+        eyebrow: 'Honesty Respected',
+        heading: 'Honesty respected.',
+        body: 'I understand completely and respect your feelings. I will not push or make excuses. I am truly sorry.',
+        primary: 'Confirm and End',
+        secondary: 'Return to Response Choices'
+      },
+      secret: {
+        heading: 'One more sincere note',
+        body: 'I am not asking you to forget or forgive immediately. I just want to do better and respect whatever you need.',
+        primary: 'Close'
+      }
     },
     moods: [
-      { title: 'Coffee and conversation ☕', description: 'A calm public place, short and respectful.', favorite: true },
-      { title: 'Peaceful walk 🌿', description: 'Low-pressure conversation with space to pause.' },
-      { title: 'Phone call 📞', description: 'Talk from wherever feels comfortable.' },
-      { title: 'Video call 💻', description: 'Face-to-face without needing to meet.' },
-      { title: 'Message only 💬', description: 'No call, no meetup—just written words.' }
+      { title: 'Coffee or Peaceful Walk ☕🌿', description: 'A calm public place, short and respectful.', favorite: true },
+      { title: 'Phone or Video Call 📞💻', description: 'Talk from wherever feels comfortable.' },
+      { title: 'Message Only 💬', description: 'No call, no meetup—just written words.' }
     ]
   }
 };
@@ -907,7 +985,7 @@ function validateTemplateGraph(template) {
   if (!template || !template.id) return { valid: false, error: 'Missing template or ID' };
   const content = template.content || {};
   const screens = content.screens || content;
-  const standardScreens = ['intro', 'main', 'thinking', 'convince', 'benefits', 'mood', 'finalAttempt', 'yes', 'availability', 'success', 'decline'];
+  const standardScreens = ['intro', 'main', 'thinking', 'convince', 'benefits', 'mood', 'finalAttempt', 'yes', 'availability', 'success', 'decline', 'needsTime'];
   const required = ['intro', 'main', 'yes', 'success', 'decline'];
   for (const req of required) {
     if (!screens[req]) return { valid: false, error: `Missing required screen ${req} in template ${template.id}` };
@@ -925,34 +1003,36 @@ function validateTemplateGraph(template) {
     let nextScreens = [];
     if (current === 'intro') nextScreens = ['main'];
     else if (current === 'main') {
-      if (template.features?.respectfulMode) nextScreens = ['yes', 'decline', 'space'];
-      else nextScreens = ['yes', 'thinking', 'convince', 'memories'];
+      if (template.features?.respectfulMode) nextScreens = ['thinking', 'yes', 'decline', 'space'];
+      else nextScreens = ['yes', 'thinking', 'convince', 'mood', 'memories'];
     } else if (current === 'thinking') {
-      if (template.features?.respectfulMode) nextScreens = ['yes', 'decline', 'space', 'benefits', 'main'];
+      if (template.features?.respectfulMode) nextScreens = ['convince', 'yes', 'decline', 'space', 'benefits', 'main'];
       else nextScreens = ['yes', 'mood', 'convince', 'finalAttempt', 'main'];
     } else if (current === 'convince') {
-      if (template.features?.respectfulMode) nextScreens = ['yes', 'mood', 'space', 'main'];
-      else nextScreens = ['yes', 'mood', 'benefits', 'main'];
+      if (template.features?.respectfulMode) nextScreens = ['benefits', 'finalAttempt', 'yes', 'mood', 'space', 'main'];
+      else nextScreens = ['yes', 'mood', 'benefits', 'finalAttempt', 'main'];
     } else if (current === 'benefits') {
-      if (template.features?.respectfulMode) nextScreens = ['yes', 'mood', 'space', 'main'];
+      if (template.features?.respectfulMode) nextScreens = ['finalAttempt', 'yes', 'mood', 'space', 'main'];
       else nextScreens = ['yes', 'mood', 'finalAttempt', 'main'];
     } else if (current === 'mood') {
-      nextScreens = ['yes', 'moodConfirm', 'main'];
+      nextScreens = ['yes', 'moodConfirm', 'availability', 'main'];
     } else if (current === 'moodConfirm') {
       nextScreens = ['yes', 'mood'];
     } else if (current === 'finalAttempt') {
-      if (template.features?.respectfulMode) nextScreens = ['yes', 'decline', 'space'];
-      else nextScreens = ['yes', 'mood', 'decline'];
+      if (template.features?.respectfulMode) nextScreens = ['mood', 'needsTime', 'yes', 'decline', 'space'];
+      else nextScreens = ['yes', 'mood', 'needsTime', 'decline'];
+    } else if (current === 'needsTime') {
+      nextScreens = ['space', 'decline', 'main'];
     } else if (current === 'yes') {
       nextScreens = ['availability', 'success'];
     } else if (current === 'availability') {
       nextScreens = ['success', 'decline', 'space'];
     } else if (current === 'decline') {
-      nextScreens = ['intro']; // replay transition
+      nextScreens = ['intro'];
     }
     
     for (const nxt of nextScreens) {
-      if (nxt === 'memories' || nxt === 'space' || nxt === 'moodConfirm' || screens[nxt] || standardScreens.includes(nxt)) {
+      if (nxt === 'memories' || nxt === 'space' || nxt === 'moodConfirm' || nxt === 'needsTime' || screens[nxt] || standardScreens.includes(nxt)) {
         if (!visited.has(nxt) && !queue.includes(nxt) && nxt !== current) {
           queue.push(nxt);
         }
@@ -960,7 +1040,7 @@ function validateTemplateGraph(template) {
     }
   }
   
-  const terminals = ['success', 'decline', 'space'];
+  const terminals = ['success', 'decline', 'space', 'needsTime'];
   const hasTerminal = terminals.some(t => visited.has(t));
   if (!hasTerminal) return { valid: false, error: `No terminal screen reachable in template ${template.id}` };
   
