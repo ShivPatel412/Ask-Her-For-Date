@@ -631,24 +631,98 @@ const invitationTemplates = {
     tagline: 'Gentle butterflies, sweet charm & relaxed conversation',
     themePreset: 'rose',
     content: {
-      intro: { eyebrow: 'Hey {{recipientName}} 🌹', heading: 'A little question for you…', body: 'No awkwardness, just genuine curiosity and sweet vibes. ✨', primary: 'Open invitation 🌹' },
-      main: { eyebrow: 'First date butterflies ✨', heading: 'Would you like to go out on a date with me?', body: 'I would truly love the chance to get to know you better over good food and relaxed conversation.', primary: 'I would love to 🌹', secondary: 'What do you have in mind? 👀', tertiary: 'Where are we going? ✨' },
-      thinking: { eyebrow: '← Take your time 😌', heading: 'Just a casual, lovely evening.', body: 'Zero pressure, just great conversation and delicious treats.', primary: 'Sounds wonderful 🌹', secondary: 'View date ideas 🍽️', tertiary: 'Tell me more ✨', quaternary: 'Thinking… 💫' },
-      convince: { eyebrow: '← The first date plan 🌹', heading: 'What to expect on our date:', body: 'Thoughtfully planned so you can simply relax and enjoy:', primary: 'Count me in 🌹❤️', secondary: 'Choose our first vibe ✨', tertiary: 'One more detail 👀' },
-      benefits: { eyebrow: '← Date highlights 🌹', heading: 'OUR FIRST DATE EXPERIENCE ✨', body: 'Tailored for {{nickname}} 🌹', primary: 'I’m convinced 🌹❤️', secondary: 'Pick our spot 🍽️', tertiary: 'One quick thing… 💫' },
-      mood: { eyebrow: '← Back to question 🌹', heading: 'Choose your ideal first date vibe ✨', body: 'Pick whatever setting feels most comfortable and fun for you.', primary: 'Continue 🌹', secondary: '← Choose another vibe' },
-      finalAttempt: { eyebrow: '← One chance? 🥺', heading: 'Just one delightful evening.', body: 'I promise to make it relaxed, fun, and memorable.', primary: 'Yes, let’s do it 🌹✨', secondary: 'Surprise me ✨', tertiary: 'Maybe as friends first 🤝' },
-      yes: { eyebrow: 'SO HAPPY YOU SAID YES 🌹', heading: "IT'S OUR FIRST DATE! ✨", body: 'I am so genuinely excited to take you out.', primary: 'Choose date & time 📅' },
-      availability: { eyebrow: 'Pick your free day 🌹', heading: 'When are you free to meet? ✨', body: 'Select the date and time that works best for your schedule.', primary: 'Confirm First Date ❤️' },
-      success: { eyebrow: 'All set perfectly 🌹', heading: 'Looking forward to our first date.', body: 'I have the time and date noted. See you soon! ✨', primary: 'View invitation details 🌹' },
-      decline: { eyebrow: 'Thank you for your honesty 🌹', heading: 'Grateful for you always ✨', body: "I truly appreciate you taking the time to read this.\nWishing you all the happiness always! 🌹", primary: 'Done 🌹' },
-      secret: { heading: 'From the heart…', body: "I have wanted to ask you out for a while now.\nReally looking forward to spending time with you! 🌹❤️", primary: 'See you soon ✨' }
+      intro: {
+        eyebrow: 'Hey {{recipientName}} 🌹',
+        heading: 'Can I ask you something?',
+        body: 'No pressure at all, just wanted to ask you something with a smile. ✨',
+        primary: 'Yes, tell me'
+      },
+      main: {
+        eyebrow: 'First date butterflies ✨',
+        heading: 'Would you like to go on a date with me?',
+        body: 'I would love the chance to get to know you better over good food and relaxed conversation.',
+        primary: "Yes, I'd like that 🌹",
+        secondary: 'What did you have in mind?',
+        tertiary: 'I need to think',
+        quaternary: 'I need more time'
+      },
+      thinking: {
+        eyebrow: 'Back',
+        heading: 'No pressure—your comfort comes first',
+        body: 'A relaxed, casual hangout in a comfortable public spot. You set the pace.',
+        primary: "I'm interested",
+        secondary: 'Tell me more',
+        tertiary: 'Choose Date Style'
+      },
+      convince: {
+        eyebrow: 'Back',
+        heading: 'Choose Date Style',
+        body: 'Pick the vibe that feels easiest and most comfortable for you: Quiet & Relaxed, Fun & Active, Food-Focused, Creative, or Surprise.',
+        primary: 'Quiet & Relaxed ☕',
+        secondary: 'Fun & Active 🎳',
+        tertiary: 'Food-Focused 🥞',
+        quaternary: 'Creative 🎨'
+      },
+      benefits: {
+        eyebrow: 'Back',
+        heading: 'FIRST DATE COMFORTS 🌹',
+        body: '✓ Public & comfortable setting\n✓ Zero awkward pressure\n✓ Great coffee / delicious treats\n✓ Relaxed pace always',
+        primary: 'Choose Activity',
+        secondary: 'Back'
+      },
+      mood: {
+        eyebrow: 'Back',
+        heading: 'Choose Activity',
+        body: 'Pick our first date activity:',
+        primary: 'Continue 🌹',
+        secondary: 'Change activity'
+      },
+      finalAttempt: {
+        eyebrow: 'Back',
+        heading: 'Our First Date Awaits ✨',
+        body: 'No awkward expectations. Just good company and comfortable conversation.',
+        primary: "Yes, let's meet 🌹",
+        secondary: 'I need more time',
+        tertiary: "I'm not comfortable",
+        quaternary: 'Change activity'
+      },
+      yes: {
+        eyebrow: 'SO EXCITED 🌹',
+        heading: 'Our first date is happening!',
+        body: 'I am genuinely looking forward to spending time with you. ✨',
+        primary: 'Select a comfortable time'
+      },
+      availability: {
+        eyebrow: 'First Date Plan 🌹',
+        heading: 'Date, Time & Public Location',
+        body: 'Select a comfortable day and public spot.',
+        primary: 'Confirm first date'
+      },
+      success: {
+        eyebrow: 'Official Date Pass 🌹',
+        heading: 'Looking forward to our first date.',
+        body: 'Everything is noted! Relax, be yourself, and see you soon! 🌹✨',
+        primary: 'Done'
+      },
+      decline: {
+        eyebrow: 'Thank you 🌹',
+        heading: 'Thank you for your honesty 🌹',
+        body: 'I truly appreciate you taking the time to read this. Wishing you all the happiness always! 🌹',
+        primary: 'Done 🌹'
+      },
+      secret: {
+        heading: 'From the heart…',
+        body: 'I have wanted to ask you out for a while now.\nReally looking forward to spending time with you! 🌹❤️',
+        primary: 'See you soon ✨'
+      }
     },
     moods: [
-      { title: 'Cozy Italian & Gelato 🍝🍨', description: 'Fresh pasta, warm candle ambience, and artisan gelato.', favorite: true },
-      { title: 'Art Gallery & Coffee Walk 🖼️☕', description: 'Exhibitions, quiet museum halls, and a warm latte stroll.' },
-      { title: 'Sunset Rooftop Appetizers 🌇🍸', description: 'City lights, golden hour skyline, and finger food.' },
-      { title: 'Botanical Garden & Tea 🌿🍵', description: 'Fresh flowers, afternoon tea, and a peaceful garden walk.' }
+      { title: 'Coffee ☕', description: 'Warm latte, comfortable cafe, and quiet conversation.', favorite: true },
+      { title: 'Brunch 🥞', description: 'Fresh pancakes, artisan brunch, and relaxed morning vibes.' },
+      { title: 'Public Park Walk 🌿', description: 'Fresh air, scenic trails, and easy walking pace.' },
+      { title: 'Bookstore 📚', description: 'Browsing favorite novels and finding cute stationery.' },
+      { title: 'Casual Dinner 🍝', description: 'Cozy pasta, relaxed ambience, and delicious dessert.' },
+      { title: 'Art Gallery 🎨', description: 'Quiet exhibits, inspiring art, and calm atmosphere.' }
     ]
   },
   'birthday-date': {
@@ -683,24 +757,98 @@ const invitationTemplates = {
     tagline: 'The ultimate Valentine proposal, roses & romantic dinner',
     themePreset: 'strawberry',
     content: {
-      intro: { eyebrow: 'Happy Valentine’s Season 💌🌹', heading: 'A special question for February 14th…', body: 'Roses are red, violets are blue, Valentine’s Day is better with you. ❤️', primary: 'Open Valentine Card 💌' },
-      main: { eyebrow: 'Will you be my Valentine? 🌹💌', heading: 'Will you be my Valentine and go on a date with me?', body: 'Flowers, your favorite food, chocolates, and an unforgettable romantic evening together.', primary: 'Yes! I will be your Valentine 🌹❤️', secondary: 'What are you planning? 🍫', tertiary: 'Where are we going? 🍷' },
-      thinking: { eyebrow: '← Valentine question 🌹', heading: 'A date made for romance.', body: 'Let me make this Valentine’s Day genuinely magical for you.', primary: 'I would love that 🌹❤️', secondary: 'Show Valentine vibes 🍫', tertiary: 'Tell me more 💕', quaternary: 'Thinking 😌' },
-      convince: { eyebrow: '← Valentine perks 💌', heading: 'THE VALENTINE’S EXPERIENCE 🌹', body: 'Why saying yes to this Valentine’s date is a must:', primary: 'Yes, my Valentine! 🌹❤️', secondary: 'Pick date setting 🍷', tertiary: 'More surprises 🍫' },
-      benefits: { eyebrow: '← Romantic perks 🌹', heading: 'VALENTINE SPECIAL EDITION ✨', body: 'Crafted exclusively for my Valentine {{nickname}} ❤️', primary: 'Let’s do it 🌹❤️', secondary: 'Choose setting 🍷', tertiary: 'One more question 💌' },
-      mood: { eyebrow: '← Back to question 🌹', heading: 'Pick your dream Valentine setting 🍷', body: 'Choose how we spend our romantic Valentine’s Day together.', primary: 'Continue 💌', secondary: '← Choose another setting' },
-      finalAttempt: { eyebrow: '← One sweet question 🌹', heading: 'Be my Valentine?', body: 'No one else I would rather spend Valentine’s Day with.', primary: 'Yes, forever your Valentine 🌹❤️', secondary: 'Surprise Valentine date 🍫', tertiary: 'Maybe as friends 🤝' },
-      yes: { eyebrow: 'HAPPY VALENTINE’S DAY 🌹', heading: "IT'S A VALENTINE DATE! 💌❤️", body: 'I cannot wait to celebrate this day of love with you.', primary: 'Choose Valentine time 📅' },
-      availability: { eyebrow: 'Reserve Valentine’s 🌹', heading: 'Select our Valentine date & time 💌', body: 'Lock in our reservation for February 14th or Valentine weekend.', primary: 'Confirm Valentine’s Date ❤️' },
-      success: { eyebrow: 'Valentine locked in 🌹', heading: 'Counting down to February 14th.', body: 'Everything is reserved for our Valentine’s date. Happy Valentine’s! 💌✨', primary: 'View invitation ❤️' },
-      decline: { eyebrow: 'Warmest wishes 💌', heading: 'Sending you love always ✨', body: "No matter what, I appreciate and adore you.\nHappy Valentine’s Day! 🌹❤️", primary: 'Done 🌹' },
-      secret: { heading: 'From my heart to yours…', body: "You make every single day feel like Valentine’s Day.\nI am so lucky to have you in my life. ❤️💌", primary: 'Happy Valentine’s ❤️' }
+      intro: {
+        eyebrow: "Happy Valentine's Season 💌",
+        heading: 'A little Valentine surprise for you',
+        body: 'Because Valentine’s Day is infinitely better when celebrated with you. ❤️',
+        primary: 'Open love letter 💌',
+        secondary: 'Skip to question'
+      },
+      main: {
+        eyebrow: 'Be My Valentine? 🌹💌',
+        heading: 'Will you be my Valentine?',
+        body: 'Flowers, chocolates, delicious food, and an unforgettable romantic celebration together.',
+        primary: 'Yes, my Valentine 💖',
+        secondary: 'Tell me more',
+        tertiary: 'Show me the plan'
+      },
+      thinking: {
+        eyebrow: 'Back',
+        heading: 'Why You? ❤️',
+        body: 'Because every moment with you is special, and no one else could make this day as meaningful.',
+        primary: 'Yes 💖',
+        secondary: 'Show Valentine ideas',
+        tertiary: 'One more sweet reason'
+      },
+      convince: {
+        eyebrow: 'Back',
+        heading: 'Why You Deserve The Best Valentine 🌹',
+        body: 'Because you bring so much warmth, laughter, and happiness into my life.',
+        primary: 'Yes, my Valentine 💖',
+        secondary: 'Show Valentine ideas',
+        tertiary: 'One more sweet reason'
+      },
+      benefits: {
+        eyebrow: 'Back',
+        heading: 'ROMANTIC BENEFITS 🌹',
+        body: '✓ Fresh red roses\n✓ Gourmet chocolates & wine\n✓ Candlelight ambience\n✓ A magical evening dedicated to you',
+        primary: 'Show Valentine ideas',
+        secondary: 'Back'
+      },
+      mood: {
+        eyebrow: 'Back',
+        heading: 'Valentine Ideas',
+        body: 'Choose how we celebrate our romantic Valentine’s Day together:',
+        primary: 'Continue 💖',
+        secondary: 'Choose another plan'
+      },
+      finalAttempt: {
+        eyebrow: 'Back',
+        heading: 'Make This Valentine’s Unforgettable ❤️',
+        body: 'Choose how we spend our romantic Valentine’s Day together:',
+        primary: "I'll be your Valentine 💖",
+        secondary: 'I need more time',
+        tertiary: 'No, thank you',
+        quaternary: 'Choose another plan'
+      },
+      yes: {
+        eyebrow: "HAPPY VALENTINE'S DAY 🌹",
+        heading: 'My Valentine!',
+        body: 'Best Valentine’s decision ever! I cannot wait to celebrate with you. 💌❤️',
+        primary: "Plan Valentine's date",
+        secondary: 'Keep it a surprise'
+      },
+      availability: {
+        eyebrow: 'Valentine Reservation 🌹',
+        heading: 'Date, Time & Location',
+        body: 'Lock in our reservation for Valentine’s Day or Valentine weekend.',
+        primary: "Confirm Valentine's date"
+      },
+      success: {
+        eyebrow: 'Valentine Date Pass 💌',
+        heading: 'Valentine Date Pass',
+        body: 'Everything is reserved for our Valentine’s date. Happy Valentine’s! 💌✨',
+        primary: 'Done ❤️'
+      },
+      decline: {
+        eyebrow: 'Warmest wishes 💌',
+        heading: 'Sending you love always ✨',
+        body: 'No matter what, I appreciate and adore you. Happy Valentine’s Day! 🌹❤️',
+        primary: 'Done 🌹'
+      },
+      secret: {
+        heading: 'From my heart to yours…',
+        body: 'You make every single day feel like Valentine’s Day.\nI am so lucky to have you in my life. ❤️💌',
+        primary: "Happy Valentine's ❤️"
+      }
     },
     moods: [
-      { title: 'Candlelight Dinner & Rose Bouquet 🌹🍷', description: '50 red roses, candlelit table, and wine pairing.', favorite: true },
-      { title: 'Chocolatier Tasting & Sunset Walk 🍫🌅', description: 'Artisan chocolate truffles, fondue, and golden hour walk.' },
-      { title: 'Starlit Rooftop Romance 🌇✨', description: 'Skyline view, jazz musician, and intimate dining.' },
-      { title: 'Cozy Fireside Fondue & Wine 🧀🍷', description: 'Cheese and chocolate fondue, warm fire, and acoustic playlist.' }
+      { title: 'Candlelight Dinner 🌹🍷', description: '50 red roses, candlelit table, and wine pairing.', favorite: true },
+      { title: 'Rooftop Date 🌇✨', description: 'Skyline view, jazz musician, and intimate dining.' },
+      { title: 'Romantic Picnic 🧺🍓', description: 'Fresh strawberries, pastries, and sunset picnic.' },
+      { title: 'Movie Night 🍿🎬', description: 'Private corner lounge, gourmet popcorn, and wine.' },
+      { title: 'Dessert Date 🍰🍨', description: 'Artisan chocolatier tasting and warm fondue.' },
+      { title: 'Surprise Me 🎁', description: 'A completely curated romantic Valentine surprise.' }
     ]
   },
   'sorry-make-things-right': {
