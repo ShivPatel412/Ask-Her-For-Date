@@ -827,25 +827,23 @@ const copy = (obj, buttons = "") =>
 function render() {
   let content = "";
   const s = screens[state.screen] || screens.intro;
-  if (state.screen === "intro") {
-    content = copy(s, btn(s.primary, "open", "primary"));
-  }
-  if (state.screen === "analysis") content = analysisScreen();
-  if (state.screen === "main") content = mainScreen();
-  if (state.screen === "memories") content = memoriesScreen();
-  if (state.screen === "thinking") content = thinkingScreen();
-  if (state.screen === "convince") content = convinceScreen();
-  if (state.screen === "benefits") content = benefitsScreen();
-  if (state.screen === "mood") content = moodScreen();
-  if (state.screen === "moodConfirm") content = `<button class="back" data-action="mood">← Back</button><span class="eyebrow">DATE VIBE SELECTED ✓</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div><div class="action-stack">${btn(screens.mood?.primary || "Continue", "yes", "primary")}${btn(screens.mood?.secondary || "Choose another", "mood")}</div>`;
-  if (state.screen === "needsTime") content = needsTimeScreen();
-    content = `<span class="eyebrow">Option chosen ✨</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div><div class="action-stack">${btn(screens.mood?.primary || "Continue", "yes", "primary")}${btn(screens.mood?.secondary || "← Choose another option", "mood")}</div>`;
-  if (state.screen === "finalAttempt") content = finalAttemptScreen();
-  if (state.screen === "yes") content = yesScreen();
-  if (state.screen === "availability") content = availabilityScreen();
-  if (state.screen === "success") content = successScreen();
-  if (state.screen === "decline") content = declineScreen();
-  if (state.screen === "space") content = spaceScreen();
+  if (state.screen === "intro") content = copy(s, btn(s.primary, "open", "primary"));
+  else if (state.screen === "analysis") content = analysisScreen();
+  else if (state.screen === "main") content = mainScreen();
+  else if (state.screen === "memories") content = memoriesScreen();
+  else if (state.screen === "thinking") content = thinkingScreen();
+  else if (state.screen === "convince") content = convinceScreen();
+  else if (state.screen === "benefits") content = benefitsScreen();
+  else if (state.screen === "mood") content = moodScreen();
+  else if (state.screen === "moodConfirm") content = `<button class="back" data-action="mood">← Back</button><span class="eyebrow">DATE VIBE SELECTED ✓</span><h1>${text(state.mood)}</h1><div class="reaction-card"><span>✨</span><b>${moodReaction()}</b></div><div class="action-stack">${btn(screens.mood?.primary || "Continue", "yes", "primary")}${btn(screens.mood?.secondary || "Choose another", "mood")}</div>`;
+  else if (state.screen === "needsTime") content = needsTimeScreen();
+  else if (state.screen === "finalAttempt") content = finalAttemptScreen();
+  else if (state.screen === "yes") content = yesScreen();
+  else if (state.screen === "availability") content = availabilityScreen();
+  else if (state.screen === "success") content = successScreen();
+  else if (state.screen === "decline") content = declineScreen();
+  else if (state.screen === "space") content = spaceScreen();
+  else content = mainScreen();
   app.innerHTML = shell(content);
   bind();
   initDraggableMusicPlayer();
